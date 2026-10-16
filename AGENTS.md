@@ -188,3 +188,18 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - IMPORTANT: Activate `inertia-react-development` when working with Inertia React client-side patterns.
 
 </laravel-boost-guidelines>
+
+## Security & design hardening rules
+- This is a clinical records system. Treat all patient data as sensitive. Never log, echo, or
+  commit patient data, passwords, tokens, or .env values. Never print secrets in chat or artifacts.
+- Authorization is enforced SERVER-SIDE (route middleware or policies). Hiding a button is never enough.
+  Every state-changing route needs its own permission check matching the action
+  (view / create / update / delete). Never gate a write route with a *.view permission.
+- Only the "Super Admin" role may manage users, roles, permissions, clinic settings, and audit logs.
+- Never edit the "Super Admin" role's permissions. Never allow removal, deactivation, or deletion of the last Super Admin by any path.
+- Validate every request field with a Form Request class: type, length, enum, exists:, array item rules.
+- Do not add external CDNs or hotlinked assets. Self-host fonts and images (the host is shared cPanel, and privacy matters).
+- Production target is shared cPanel PHP hosting. No persistent Node process. Assets are built locally with `npm run build`.
+- Add or update automated tests for every fix. Run `php artisan test`, `vendor/bin/pint --test`, and `npm run build` before declaring a phase done.
+- Do not remove existing behavior that is not in scope. Prefer small, reviewable diffs. Ask before destructive migrations.
+

@@ -33,3 +33,7 @@ database/*.sql
 database/*.sqlite
 Prescription.jpeg
 .antigravityignore
+
+# Dev-tool configs — must not reach production
+.mcp.json
+boost.json

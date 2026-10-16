@@ -16,6 +16,9 @@
             <h3 class="text-xl font-bold mb-4">Send us a Message</h3>
             <form action="{{ route('appointment.store') }}" method="POST" class="space-y-4">
                 @csrf
+                <div style="display:none;" aria-hidden="true">
+                    <input type="text" name="website" tabindex="-1" autocomplete="off" value="" />
+                </div>
                 @if(session('success'))
                     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
                         {{ session('success') }}

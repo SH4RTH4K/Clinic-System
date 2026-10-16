@@ -19,7 +19,12 @@ class PublicController extends Controller
 
     public function about(): View
     {
-        return view('public.about');
+        $doctors = Doctor::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('public.about', ['doctors' => $doctors]);
     }
 
     public function doctors(): View

@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -213,6 +213,8 @@ export default function Edit({ settings }) {
     const { data, setData, put, processing } = useForm({
         clinic_name_en: settings?.clinic_name_en || '',
         clinic_name_bn: settings?.clinic_name_bn || '',
+        about_text: settings?.about_text || '',
+        about_text_bn: settings?.about_text_bn || '',
         phone: settings?.phone || '',
         address: settings?.address || '',
         visiting_hours: settings?.visiting_hours || '',
@@ -246,6 +248,33 @@ export default function Edit({ settings }) {
                         </div>
 
                         <div className="border-b p-6">
+                            <h3 className="mb-4 text-base font-bold text-gray-700">About Page Content</h3>
+                            <p className="mb-4 text-sm text-gray-500">Provide clinic background and philosophy for the public About page (avoid unverified cure or guarantee claims).</p>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">About Clinic (English)</label>
+                                    <textarea
+                                        rows={4}
+                                        value={data.about_text}
+                                        onChange={(event) => setData('about_text', event.target.value)}
+                                        placeholder="Enter English description for the About page..."
+                                        className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">About Clinic (Bangla)</label>
+                                    <textarea
+                                        rows={4}
+                                        value={data.about_text_bn}
+                                        onChange={(event) => setData('about_text_bn', event.target.value)}
+                                        placeholder="বাংলায় ক্লিনিক পরিচিতি লিখুন..."
+                                        className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-b p-6">
                             <h3 className="mb-1 text-base font-bold text-gray-700">Visiting Hours</h3>
                             <p className="mb-5 text-sm text-gray-500">Configure how your business hours appear on the public website.</p>
                             <VisitingHoursBuilder
@@ -275,12 +304,30 @@ export default function Edit({ settings }) {
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="rounded-md bg-blue-600 px-8 py-2.5 font-semibold text-white shadow transition hover:bg-blue-700 disabled:opacity-50"
+                                className="rounded-md bg-primary-600 px-8 py-2.5 font-semibold text-white shadow transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
                             >
                                 {processing ? 'Saving...' : 'Save Settings'}
                             </button>
                         </div>
                     </form>
+                </div>
+
+                {/* Link to Dedicated Prescription Options Page */}
+                <div className="mt-6 rounded-lg border border-primary-100 bg-primary-50/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+                    <div>
+                        <h4 className="text-sm font-bold text-primary-900 flex items-center gap-2">
+                            <span>⚙️</span> Prescription Options &amp; Presets (প্রেসক্রিপশন অপশন ও প্রিসেট)
+                        </h4>
+                        <p className="text-xs text-primary-700 mt-0.5">
+                            Manage dosage units, meal relations, timing options, dilution instruction templates, and duration presets.
+                        </p>
+                    </div>
+                    <Link
+                        href={route('admin.prescription_options.edit')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-primary-600 text-white hover:bg-primary-700 transition shadow-xs shrink-0 self-start sm:self-auto"
+                    >
+                        Configure Prescription Options →
+                    </Link>
                 </div>
             </div>
         </AuthenticatedLayout>

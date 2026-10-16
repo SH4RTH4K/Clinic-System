@@ -29,6 +29,14 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Guard: if running in production with the log mailer, reset emails will
+        // never reach the user. Fail loudly instead of silently dropping the link.
+        if (app()->environment('production') && config('mail.default') === 'log') {
+            return back()->withErrors([
+                'email' => 'Password reset by email is not configured. Please contact your system administrator to reset your password.',
+            ]);
+        }
+
         $request->validate([
             'email' => 'required|email',
         ]);

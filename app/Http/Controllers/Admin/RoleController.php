@@ -32,6 +32,7 @@ class RoleController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:roles',
             'permissions' => 'array',
+            'permissions.*' => ['string', Rule::exists('permissions', 'name')],
         ]);
 
         $role = Role::create(['name' => $request->name]);
@@ -61,6 +62,7 @@ class RoleController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('roles')->ignore($role)],
             'permissions' => 'array',
+            'permissions.*' => ['string', Rule::exists('permissions', 'name')],
         ]);
 
         $role->update(['name' => $request->name]);

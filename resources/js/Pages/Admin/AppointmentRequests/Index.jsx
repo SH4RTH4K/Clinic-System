@@ -1,70 +1,144 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import PageHeader from '@/Components/PageHeader';
+import DataTable from '@/Components/DataTable';
+import Pagination from '@/Components/Pagination';
+import StatusBadge from '@/Components/StatusBadge';
+import { Head, useForm, router } from '@inertiajs/react';
 
-export default function Index({ requests, filters }) {
+export default function Index({ requests, filters = {} }) {
     const { data, setData, get } = useForm({ status: filters.status || '' });
-    const { put } = useForm();
-    const { post } = useForm();
 
-    const onSearch = (e) => { e.preventDefault(); get(route('admin.appointment_requests.index')); };
+    const onFilter = (e) => {
+        e.preventDefault();
+        get(route('admin.appointment_requests.index'), { preserveState: true });
+    };
 
     const updateStatus = (id, newStatus) => {
-        put(route('admin.appointment_requests.update', id), { data: { status: newStatus } });
+        router.put(
+            route('admin.appointment_requests.update', id),
+            { status: newStatus },
+            { preserveScroll: true }
+        );
     };
 
     const convertToPatient = (id) => {
-        post(route('admin.appointment_requests.convert', id));
+        router.post(route('admin.appointment_requests.convert', id));
     };
 
-    return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Appointment Requests</h2>}>
-            <Head title="Appointment Requests" />
-            <div className="py-12 max-w-7xl mx-auto px-4"><div className="bg-white p-6 shadow-sm sm:rounded-lg">
-                <form onSubmit={onSearch} className="flex space-x-2 mb-4">
-                    <select value={data.status} onChange={e => setData('status', e.target.value)} className="rounded border-gray-300">
-                        <option value="">All Statuses</option>
+    const columns = [
+        {
+            header: 'Submitted',
+            accessor: 'created_at',
+            cell: (req) => (
+                <span className="text-xs font-mono text-gray-500 whitespace-nowrap">
+                    {new Date(req.created_at).toLocaleDateString()}
+                </span>
+            ),
+        },
+        {
+            header: 'Patient Name',
+            accessor: 'name',
+            cell: (req) => <span className="font-semibold text-gray-900">{req.name}</span>,
+        },
+        {
+            header: 'Phone',
+            accessor: 'phone',
+            cell: (req) => <span className="text-xs font-mono text-gray-700">{req.phone}</span>,
+        },
+        {
+            header: 'Pref. Date',
+            accessor: 'preferred_date',
+            cell: (req) => (
+                <span className="text-xs text-gray-600">
+                    {req.preferred_date ? new Date(req.preferred_date).toLocaleDateString() : 'Flexible'}
+                </span>
+            ),
+        },
+        {
+            header: 'Message / Notes',
+            accessor: 'message',
+            cell: (req) => (
+                <p className="text-xs text-gray-600 max-w-xs truncate" title={req.message}>
+                    {req.message || '—'}
+                </p>
+            ),
+        },
+        {
+            header: 'Status',
+            accessor: 'status',
+            cell: (req) => (
+                <div className="flex items-center gap-1.5">
+                    <StatusBadge status={req.status} />
+                    <select
+                        value={req.status}
+                        onChange={(e) => updateStatus(req.id, e.target.value)}
+                        className="text-[11px] py-0.5 px-1.5 rounded border-gray-300 text-gray-700 focus:border-primary-500 focus:ring-primary-500 bg-white"
+                    >
                         <option value="pending">Pending</option>
                         <option value="contacted">Contacted</option>
                         <option value="scheduled">Scheduled</option>
                         <option value="cancelled">Cancelled</option>
                     </select>
-                    <button className="bg-gray-200 px-4 rounded border border-gray-300">Filter</button>
-                </form>
-                
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-sm">
-                        <thead><tr className="bg-gray-50 border-b"><th className="p-2">Date</th><th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">Pref. Date</th><th className="p-2">Message</th><th className="p-2">Status</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>
-                            {requests.data.map(req => (
-                                <tr key={req.id} className="border-b hover:bg-gray-50">
-                                    <td className="p-2 whitespace-nowrap">{new Date(req.created_at).toLocaleDateString()}</td>
-                                    <td className="p-2 font-bold">{req.name}</td>
-                                    <td className="p-2">{req.phone}</td>
-                                    <td className="p-2">{req.preferred_date ? new Date(req.preferred_date).toLocaleDateString() : '-'}</td>
-                                    <td className="p-2 max-w-xs truncate" title={req.message}>{req.message}</td>
-                                    <td className="p-2">
-                                        <select value={req.status} onChange={(e) => updateStatus(req.id, e.target.value)} className="text-xs p-1 rounded border-gray-300">
-                                            <option value="pending">Pending</option>
-                                            <option value="contacted">Contacted</option>
-                                            <option value="scheduled">Scheduled</option>
-                                            <option value="cancelled">Cancelled</option>
-                                        </select>
-                                    </td>
-                                    <td className="p-2 space-x-2">
-                                        <button onClick={() => convertToPatient(req.id)} className="bg-blue-600 text-white px-2 py-1 rounded text-xs">Convert to Patient</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
                 </div>
+            ),
+        },
+        {
+            header: 'Actions',
+            className: 'text-right',
+            cell: (req) => (
+                <div className="flex justify-end gap-2 text-xs">
+                    <button
+                        type="button"
+                        onClick={() => convertToPatient(req.id)}
+                        className="px-2.5 py-1 text-primary-800 bg-primary-50 hover:bg-primary-100 rounded font-medium transition shadow-xs"
+                    >
+                        Convert to Patient
+                    </button>
+                </div>
+            ),
+        },
+    ];
 
-                <div className="mt-4 flex space-x-2">
-                    {requests.links.map((link, i) => (
-                        link.url ? <Link key={i} href={link.url} className={`px-2 py-1 border \${link.active ? 'bg-blue-500 text-white' : 'bg-white'}`} dangerouslySetInnerHTML={{__html: link.label}}></Link> : <span key={i} className={`px-2 py-1 border text-gray-400 bg-gray-50`} dangerouslySetInnerHTML={{__html: link.label}}></span>
-                    ))}
+    return (
+        <AuthenticatedLayout>
+            <Head title="Appointment Requests" />
+            <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+                <PageHeader
+                    title="Appointment Requests"
+                    subtitle="Manage incoming patient consultation requests from the public website"
+                />
+
+                <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-4 space-y-4">
+                    <form onSubmit={onFilter} className="flex max-w-xs gap-2">
+                        <select
+                            value={data.status}
+                            onChange={(e) => setData('status', e.target.value)}
+                            className="flex-1 rounded-md border-gray-300 shadow-sm text-xs focus:border-primary-500 focus:ring-primary-500"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                        <button
+                            type="submit"
+                            className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-xs font-medium transition"
+                        >
+                            Filter
+                        </button>
+                    </form>
+
+                    <DataTable
+                        columns={columns}
+                        data={requests.data}
+                        keyExtractor={(r) => r.id}
+                        emptyMessage="No appointment requests found."
+                    />
+
+                    {requests.links && <Pagination links={requests.links} />}
                 </div>
-            </div></div>
+            </div>
         </AuthenticatedLayout>
     );
 }

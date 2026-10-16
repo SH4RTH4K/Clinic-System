@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -17,8 +18,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Roles and Permissions
-        $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map', 'appointments', 'reports', 'settings', 'users', 'roles'];
-        $actions = ['view', 'create', 'update', 'delete', 'export'];
+        $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map', 'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs'];
+        $actions = ['view', 'create', 'update', 'delete', 'export', 'amend'];
 
         foreach ($modules as $module) {
             foreach ($actions as $action) {
@@ -58,15 +59,23 @@ class DatabaseSeeder extends Seeder
         $accountant->givePermissionTo(['reports.view']);
 
         // Create one Super Admin User
-        $admin = User::firstOrCreate([
-            'username' => 'superadmin', 'email' => 'superadmin@clinic.com',
-        ], [
-            'name' => 'Super Admin',
-            'password' => Hash::make('ChangeMe123!'),
-            'phone' => '01700000000',
-            'is_active' => true,
-            'must_change_password' => true,
-        ]);
+        $seedPassword = env('SEED_ADMIN_PASSWORD');
+        if (! $seedPassword) {
+            $seedPassword = Str::password(20);
+            $this->command->info("No SEED_ADMIN_PASSWORD set. Generated Super Admin password: {$seedPassword}");
+            $this->command->info('Save it now — it will not be shown again.');
+        }
+
+        $admin = User::firstOrCreate(
+            ['username' => 'superadmin', 'email' => 'superadmin@clinic.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make($seedPassword),
+                'phone' => '01700000000',
+                'is_active' => true,
+                'must_change_password' => true,
+            ]
+        );
         if (! $admin->hasRole('Super Admin')) {
             $admin->assignRole('Super Admin');
         }

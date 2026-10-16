@@ -19,7 +19,14 @@ class PrescriptionItem extends Model
 
     public function getActivitylogOptions(): LogOptions
     {
-        return LogOptions::defaults()->logUnguarded();
+        return LogOptions::defaults()
+            ->logOnly([
+                'visit_id', 'medicine_id', 'sort_order',
+                'timing', 'before_after', 'dose_qty', 'dose_unit',
+                'dilution_note', 'duration_days',
+            ])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 
     public function medicine()

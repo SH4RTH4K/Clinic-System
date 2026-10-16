@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreVisitRequest;
+use App\Http\Requests\Admin\UpdateVisitRequest;
 use App\Models\AdviceItem;
 use App\Models\ClinicSetting;
+use App\Models\Doctor;
 use App\Models\FoodRestriction;
 use App\Models\Medicine;
 use App\Models\Patient;
@@ -21,7 +24,7 @@ class VisitController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Visit::with('patient')->latest();
+        $query = Visit::with(['patient', 'doctor'])->latest();
 
         return Inertia::render('Admin/Visits/Index', [
             'visits' => $query->paginate(10),
@@ -32,41 +35,36 @@ class VisitController extends Controller
     {
         $patient = null;
         if ($request->patient_id) {
-            $patient = Patient::find($request->patient_id);
+            $patient = Patient::select('id', 'patient_no', 'patient_series', 'name', 'age_years', 'age_months', 'age_days', 'dob', 'gender')
+                ->find($request->patient_id);
         }
+
+        $settings = ClinicSetting::first();
+        $prescriptionConfig = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
 
         return Inertia::render('Admin/Visits/Create', [
             'patient' => $patient,
-            'patients' => Patient::all(),
+            'doctors' => Doctor::where('is_active', true)->select('id', 'name', 'credentials')->orderBy('sort_order')->get(),
             'symptoms' => Symptom::where('is_active', true)->get(),
             'medicines' => Medicine::where('is_active', true)->get(),
             'defaultAdvice' => AdviceItem::where('is_default', true)->get(),
             'defaultFood' => FoodRestriction::where('is_default', true)->get(),
+            'prescriptionConfig' => $prescriptionConfig,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreVisitRequest $request)
     {
-        $validated = $request->validate([
-            'patient_id' => 'required|exists:patients,id',
-            'visit_date' => 'required|date',
-            'age_at_visit' => 'nullable|integer',
-            'chief_complaint' => 'required|string',
-            'bp_symptoms_notes' => 'nullable|string',
-            'diagnosis_notes' => 'nullable|string',
-            'follow_up_date' => 'nullable|date',
-            'status' => 'required|in:draft,finalized',
-            'symptoms' => 'array',
-            'prescription_items' => 'array',
-            'advice_items' => 'array',
-            'food_restrictions' => 'array',
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($validated) {
             $visit = Visit::create([
                 'patient_id' => $validated['patient_id'],
+                'doctor_id' => $validated['doctor_id'] ?? null,
                 'visit_date' => $validated['visit_date'],
                 'age_at_visit' => $validated['age_at_visit'] ?? null,
+                'age_months' => $validated['age_months'] ?? null,
+                'age_days' => $validated['age_days'] ?? null,
                 'chief_complaint' => $validated['chief_complaint'],
                 'bp_symptoms_notes' => $validated['bp_symptoms_notes'] ?? null,
                 'diagnosis_notes' => $validated['diagnosis_notes'] ?? null,
@@ -74,6 +72,27 @@ class VisitController extends Controller
                 'status' => $validated['status'],
                 'created_by' => Auth::id(),
             ]);
+
+            // Sync missing demographics to patient record if provided
+            $patient = Patient::find($validated['patient_id']);
+            if ($patient) {
+                $patientUpdates = [];
+                if (! empty($validated['patient_dob']) && empty($patient->dob)) {
+                    $patientUpdates['dob'] = $validated['patient_dob'];
+                }
+                if (isset($validated['age_at_visit']) && is_null($patient->age_years)) {
+                    $patientUpdates['age_years'] = $validated['age_at_visit'];
+                }
+                if (isset($validated['age_months']) && is_null($patient->age_months)) {
+                    $patientUpdates['age_months'] = $validated['age_months'];
+                }
+                if (isset($validated['age_days']) && is_null($patient->age_days)) {
+                    $patientUpdates['age_days'] = $validated['age_days'];
+                }
+                if (! empty($patientUpdates)) {
+                    $patient->update($patientUpdates);
+                }
+            }
 
             if (! empty($validated['symptoms'])) {
                 $visit->symptoms()->sync($validated['symptoms']);
@@ -109,47 +128,41 @@ class VisitController extends Controller
 
     public function show(Visit $visit)
     {
-        $visit->load(['patient', 'symptoms', 'prescriptionItems.medicine', 'adviceItems', 'foodRestrictions']);
+        $visit->load(['patient', 'doctor', 'symptoms', 'prescriptionItems.medicine', 'adviceItems', 'foodRestrictions']);
 
         return Inertia::render('Admin/Visits/Show', ['visit' => $visit]);
     }
 
     public function edit(Visit $visit)
     {
-        $visit->load(['symptoms', 'prescriptionItems', 'adviceItems', 'foodRestrictions']);
+        $visit->load(['patient', 'doctor', 'symptoms', 'prescriptionItems', 'adviceItems', 'foodRestrictions']);
+
+        $settings = ClinicSetting::first();
+        $prescriptionConfig = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
 
         return Inertia::render('Admin/Visits/Edit', [
             'visit' => $visit,
-            'patients' => Patient::all(),
+            'doctors' => Doctor::where('is_active', true)->select('id', 'name', 'credentials')->orderBy('sort_order')->get(),
             'symptoms' => Symptom::where('is_active', true)->get(),
             'medicines' => Medicine::where('is_active', true)->get(),
             'allAdvice' => AdviceItem::all(),
             'allFood' => FoodRestriction::all(),
+            'prescriptionConfig' => $prescriptionConfig,
         ]);
     }
 
-    public function update(Request $request, Visit $visit)
+    public function update(UpdateVisitRequest $request, Visit $visit)
     {
-        $validated = $request->validate([
-            'patient_id' => 'required|exists:patients,id',
-            'visit_date' => 'required|date',
-            'age_at_visit' => 'nullable|integer',
-            'chief_complaint' => 'required|string',
-            'bp_symptoms_notes' => 'nullable|string',
-            'diagnosis_notes' => 'nullable|string',
-            'follow_up_date' => 'nullable|date',
-            'status' => 'required|in:draft,finalized',
-            'symptoms' => 'array',
-            'prescription_items' => 'array',
-            'advice_items' => 'array',
-            'food_restrictions' => 'array',
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($validated, $visit) {
             $visit->update([
                 'patient_id' => $validated['patient_id'],
+                'doctor_id' => $validated['doctor_id'] ?? null,
                 'visit_date' => $validated['visit_date'],
                 'age_at_visit' => $validated['age_at_visit'] ?? null,
+                'age_months' => $validated['age_months'] ?? null,
+                'age_days' => $validated['age_days'] ?? null,
                 'chief_complaint' => $validated['chief_complaint'],
                 'bp_symptoms_notes' => $validated['bp_symptoms_notes'] ?? null,
                 'diagnosis_notes' => $validated['diagnosis_notes'] ?? null,
@@ -170,7 +183,9 @@ class VisitController extends Controller
             }
 
             if (isset($validated['prescription_items'])) {
-                $visit->prescriptionItems()->delete();
+                // Use each() so SoftDeletes model events fire on every item
+                $visit->prescriptionItems()->each(fn ($item) => $item->delete());
+
                 foreach ($validated['prescription_items'] as $index => $item) {
                     PrescriptionItem::create([
                         'visit_id' => $visit->id,
@@ -188,6 +203,17 @@ class VisitController extends Controller
         });
 
         return redirect()->route('admin.visits.show', $visit->id)->with('success', 'Visit updated.');
+    }
+
+    public function destroy(Visit $visit)
+    {
+        if ($visit->status === 'finalized') {
+            abort(403, 'Finalized visits cannot be deleted.');
+        }
+
+        $visit->delete();
+
+        return redirect()->route('admin.visits.index')->with('success', 'Visit deleted.');
     }
 
     public function suggestions(Request $request)
@@ -225,13 +251,14 @@ class VisitController extends Controller
 
     public function pdf(Visit $visit)
     {
-        $visit->load(['patient', 'symptoms', 'prescriptionItems.medicine', 'adviceItems', 'foodRestrictions']);
+        $visit->load(['patient', 'doctor', 'symptoms', 'prescriptionItems.medicine', 'adviceItems', 'foodRestrictions']);
         $settings = ClinicSetting::first();
+        $prescriptionConfig = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
 
-        // PDF requires view. Let's return it as download or stream.
         $pdf = Pdf::loadView('pdf.prescription', [
             'visit' => $visit,
             'settings' => $settings,
+            'prescriptionConfig' => $prescriptionConfig,
         ]);
 
         return $pdf->stream('prescription-'.$visit->id.'.pdf');
