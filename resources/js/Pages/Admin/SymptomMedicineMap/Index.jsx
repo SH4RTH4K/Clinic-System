@@ -3,20 +3,25 @@ import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import Pagination from '@/Components/Pagination';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import usePermission from '@/Components/usePermission';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ maps }) {
+    const can = usePermission();
+    const canCreate = can('symptom_medicine_map.create');
+    const canDelete = can('symptom_medicine_map.delete');
     const { data, setData, post, processing, errors } = useForm({ csv_file: null });
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const uploadCsv = (e) => {
         e.preventDefault();
+        if (!canCreate) return;
         post(route('admin.symptom_medicine_map.import'), { preserveScroll: true });
     };
 
     const confirmDelete = () => {
-        if (!deleteTarget) return;
+        if (!canDelete || !deleteTarget) return;
         router.delete(route('admin.symptom_medicine_map.destroy', deleteTarget.id), {
             onSuccess: () => setDeleteTarget(null),
         });
@@ -60,7 +65,8 @@ export default function Index({ maps }) {
                     <button
                         type="button"
                         onClick={() => setDeleteTarget(m)}
-                        className="px-2.5 py-1 text-red-700 bg-red-50 hover:bg-red-100 rounded font-medium transition"
+                        disabled={!canDelete}
+                        className="px-2.5 py-1 text-red-700 bg-red-50 rounded font-medium transition enabled:hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Delete
                     </button>
@@ -76,14 +82,18 @@ export default function Index({ maps }) {
                 <PageHeader
                     title="Symptom &amp; Medicine Repertory"
                     subtitle="Define clinical relationships between homeopathic symptoms and remedies"
-                    action={
+                    action={canCreate ? (
                         <Link
                             href={route('admin.symptom_medicine_map.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"
                         >
                             + Add Mapping
                         </Link>
-                    }
+                    ) : (
+                        <button type="button" disabled className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-semibold shadow-xs cursor-not-allowed opacity-50">
+                            + Add Mapping
+                        </button>
+                    )}
                 />
 
                 {/* CSV Import Card */}
@@ -93,6 +103,7 @@ export default function Index({ maps }) {
                     <form onSubmit={uploadCsv} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                         <input
                             type="file"
+                            disabled={!canCreate}
                             onChange={e => setData('csv_file', e.target.files[0])}
                             accept=".csv"
                             required
@@ -100,8 +111,8 @@ export default function Index({ maps }) {
                         />
                         <button
                             type="submit"
-                            disabled={processing}
-                            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-md shadow-xs transition disabled:opacity-50"
+                            disabled={!canCreate || processing}
+                            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-md shadow-xs transition disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {processing ? 'Uploading...' : 'Upload & Import'}
                         </button>

@@ -3,9 +3,11 @@ import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import Pagination from '@/Components/Pagination';
 import StatusBadge from '@/Components/StatusBadge';
+import usePermission from '@/Components/usePermission';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function Index({ visits, filters = {} }) {
+    const canExport = usePermission()('reports.export');
     const { data, setData, get, processing } = useForm({
         start_date: filters.start_date || '',
         end_date: filters.end_date || '',
@@ -31,7 +33,7 @@ export default function Index({ visits, filters = {} }) {
                 <div>
                     <div className="font-semibold text-gray-900">{v.patient?.name || 'Unknown'}</div>
                     <div className="text-xs text-primary-700 font-mono">
-                        {v.patient?.patient_no}{v.patient?.patient_series}
+                        {v.patient?.patient_identifier || `${v.patient?.patient_no}${v.patient?.patient_series || ''}`}
                     </div>
                 </div>
             ),
@@ -68,7 +70,8 @@ export default function Index({ visits, filters = {} }) {
                         <button
                             type="button"
                             onClick={() => window.print()}
-                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-semibold transition inline-flex items-center gap-1.5"
+                            disabled={!canExport}
+                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-semibold transition inline-flex items-center gap-1.5 enabled:hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             🖨 Print Report
                         </button>

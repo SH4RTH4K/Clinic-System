@@ -3,80 +3,65 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use App\Http\Requests\Admin\StoreRoleRequest;
+use App\Http\Requests\Admin\UpdateRoleRequest;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Permission;
+use Inertia\Response;
 use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
-    public function index()
+    public function index(): Response
     {
-        $roles = Role::with('permissions')->get();
-
         return Inertia::render('Admin/Roles/Index', [
-            'roles' => $roles,
+            'roles' => Role::query()
+                ->withCount(['users', 'permissions'])
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
-    public function create()
+    public function create(): Response
     {
-        return Inertia::render('Admin/Roles/Create', [
-            'permissions' => Permission::all(),
-        ]);
+        return Inertia::render('Admin/Roles/Create');
     }
 
-    public function store(Request $request)
+    public function store(StoreRoleRequest $request): RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:roles',
-            'permissions' => 'array',
-            'permissions.*' => ['string', Rule::exists('permissions', 'name')],
-        ]);
+        Role::create($request->validated());
 
-        $role = Role::create(['name' => $request->name]);
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
-
-        return redirect()->route('admin.roles.index')->with('success', 'Role created.');
+        return redirect()->route('admin.roles.index')->with('success', 'Role created. Assign its permissions from Permission Management.');
     }
 
-    public function edit(Role $role)
+    public function edit(Role $role): Response
     {
-        $role->load('permissions');
+        abort_if($role->name === 'Super Admin', 403, 'The Super Admin role is protected.');
 
         return Inertia::render('Admin/Roles/Edit', [
             'role' => $role,
-            'permissions' => Permission::all(),
         ]);
     }
 
-    public function update(Request $request, Role $role)
+    public function update(UpdateRoleRequest $request, Role $role): RedirectResponse
     {
-        if ($role->name === 'Super Admin') {
-            return back()->withErrors(['error' => "The Super Admin role's permissions cannot be changed."]);
-        }
+        $role->update($request->validated());
 
-        $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('roles')->ignore($role)],
-            'permissions' => 'array',
-            'permissions.*' => ['string', Rule::exists('permissions', 'name')],
-        ]);
-
-        $role->update(['name' => $request->name]);
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
-
-        return redirect()->route('admin.roles.index')->with('success', 'Role updated.');
+        return redirect()->route('admin.roles.index')->with('success', 'Role updated. Manage its permissions from Permission Management.');
     }
 
-    public function destroy(Role $role)
+    public function destroy(Role $role): RedirectResponse
     {
-        if ($role->name === 'Super Admin') {
-            return back()->withErrors(['error' => 'Cannot delete Super Admin role.']);
+        abort_if($role->name === 'Super Admin', 403, 'The Super Admin role cannot be deleted.');
+
+        $assignedUserCount = $role->users()->count();
+
+        if ($assignedUserCount > 0) {
+            $userLabel = $assignedUserCount === 1 ? 'user' : 'users';
+
+            return back()->withErrors([
+                'role' => "Cannot delete {$role->name}; it is assigned to {$assignedUserCount} {$userLabel}. Reassign those users first.",
+            ]);
         }
 
         $role->delete();

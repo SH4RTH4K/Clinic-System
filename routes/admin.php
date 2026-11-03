@@ -7,7 +7,10 @@ use App\Http\Controllers\Admin\ClinicSettingController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\FoodRestrictionController;
 use App\Http\Controllers\Admin\MedicineController;
+use App\Http\Controllers\Admin\PatientConfigController;
 use App\Http\Controllers\Admin\PatientController;
+use App\Http\Controllers\Admin\PatientNumberingProfileController;
+use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\PrescriptionOptionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
@@ -31,11 +34,17 @@ Route::middleware(['auth', 'role:Super Admin', 'permission:users.delete'])
 Route::middleware(['auth', 'role:Super Admin', 'permission:roles.create'])
     ->group(fn () => Route::resource('roles', RoleController::class)->only(['create', 'store']));
 Route::middleware(['auth', 'role:Super Admin', 'permission:roles.view'])
-    ->group(fn () => Route::resource('roles', RoleController::class)->only(['index', 'show']));
+    ->group(fn () => Route::resource('roles', RoleController::class)->only(['index']));
 Route::middleware(['auth', 'role:Super Admin', 'permission:roles.update'])
     ->group(fn () => Route::resource('roles', RoleController::class)->only(['edit', 'update']));
 Route::middleware(['auth', 'role:Super Admin', 'permission:roles.delete'])
     ->group(fn () => Route::resource('roles', RoleController::class)->only(['destroy']));
+
+// Permission assignments are managed separately from role details.
+Route::middleware(['auth', 'role:Super Admin', 'permission:roles.view'])
+    ->get('permissions', [PermissionController::class, 'index'])->name('permissions.index');
+Route::middleware(['auth', 'role:Super Admin', 'permission:roles.update'])
+    ->put('permissions/{role}', [PermissionController::class, 'update'])->name('permissions.update');
 
 // Patients
 Route::middleware(['auth', 'permission:patients.create'])
@@ -48,6 +57,15 @@ Route::middleware(['auth', 'permission:patients.update'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['edit', 'update']));
 Route::middleware(['auth', 'permission:patients.delete'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['destroy']));
+
+// Patient form configuration
+Route::middleware(['auth', 'role_or_permission:Super Admin|patient_config.view'])
+    ->get('patient-config', [PatientConfigController::class, 'edit'])->name('patient_config.edit');
+Route::middleware(['auth', 'role_or_permission:Super Admin|patient_config.create|patient_config.update|patient_config.order'])
+    ->put('patient-config', [PatientConfigController::class, 'update'])->name('patient_config.update');
+Route::middleware(['auth', 'role_or_permission:Super Admin|patient_config.delete'])
+    ->delete('patient-config/relationships/{relationship}', [PatientConfigController::class, 'destroyRelationship'])
+    ->name('patient_config.relationships.destroy');
 
 // Medicines
 Route::middleware(['auth', 'permission:medicines.create'])
@@ -86,28 +104,68 @@ Route::middleware(['auth', 'permission:visits.delete'])
 Route::middleware(['auth', 'permission:symptom_medicine_map.create'])
     ->group(fn () => Route::resource('symptom_medicine_map', SymptomMedicineMapController::class)->only(['create', 'store']));
 Route::middleware(['auth', 'permission:symptom_medicine_map.view'])->group(function () {
-    Route::post('symptom_medicine_map/import', [SymptomMedicineMapController::class, 'import'])->name('symptom_medicine_map.import');
     Route::resource('symptom_medicine_map', SymptomMedicineMapController::class)->only(['index']);
 });
+Route::middleware(['auth', 'permission:symptom_medicine_map.create'])
+    ->post('symptom_medicine_map/import', [SymptomMedicineMapController::class, 'import'])->name('symptom_medicine_map.import');
 Route::middleware(['auth', 'permission:symptom_medicine_map.delete'])
     ->group(fn () => Route::resource('symptom_medicine_map', SymptomMedicineMapController::class)->only(['destroy']));
 
-// Settings & Related Entities
+// Clinic settings
+Route::middleware(['auth', 'role_or_permission:Super Admin|clinic_settings.view'])
+    ->get('settings', [ClinicSettingController::class, 'edit'])->name('settings.edit');
+Route::middleware(['auth', 'role_or_permission:Super Admin|clinic_settings.update'])
+    ->put('settings', [ClinicSettingController::class, 'update'])->name('settings.update');
+
+// General settings
+Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.view'])
+    ->get('general-settings', [ClinicSettingController::class, 'editGeneral'])->name('general_settings.edit');
+Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.create'])
+    ->post('general-settings/numbering-profiles', [PatientNumberingProfileController::class, 'store'])->name('general_settings.profiles.store');
+Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.update'])
+    ->put('general-settings/numbering-profiles/{profile}', [PatientNumberingProfileController::class, 'update'])->name('general_settings.profiles.update');
+Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.delete'])
+    ->delete('general-settings/numbering-profiles/{profile}', [PatientNumberingProfileController::class, 'destroy'])->name('general_settings.profiles.destroy');
+
+// Prescription options
+Route::middleware(['auth', 'role_or_permission:Super Admin|prescription_options.view'])
+    ->get('prescription-options', [PrescriptionOptionController::class, 'edit'])->name('prescription_options.edit');
+Route::middleware(['auth', 'role_or_permission:Super Admin|prescription_options.create|prescription_options.update|prescription_options.delete'])
+    ->put('prescription-options', [PrescriptionOptionController::class, 'update'])->name('prescription_options.update');
+Route::middleware(['auth', 'role_or_permission:Super Admin|prescription_options.create|prescription_options.update|prescription_options.delete'])
+    ->put('settings/prescription-config', [PrescriptionOptionController::class, 'update'])->name('settings.prescription_config');
+
+// Doctor profiles
+Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.create'])
+    ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['create', 'store']));
+Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.view'])
+    ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['index', 'show']));
+Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.update'])
+    ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['edit', 'update']));
+Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.delete'])
+    ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['destroy']));
+
+// Advice and food restriction changes require their matching settings permission.
+Route::middleware(['auth', 'permission:settings.create'])
+    ->group(function () {
+        Route::resource('advice_items', AdviceItemController::class)->only(['create', 'store']);
+        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['create', 'store']);
+    });
+
 Route::middleware(['auth', 'permission:settings.update'])
     ->group(function () {
-        Route::put('settings', [ClinicSettingController::class, 'update'])->name('settings.update');
-        Route::put('settings/prescription-config', [ClinicSettingController::class, 'updatePrescriptionConfig'])->name('settings.prescription_config');
-        Route::put('prescription-options', [PrescriptionOptionController::class, 'update'])->name('prescription_options.update');
-        Route::resource('doctors', DoctorController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
-        Route::resource('advice_items', AdviceItemController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
-        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('advice_items', AdviceItemController::class)->only(['edit', 'update']);
+        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['edit', 'update']);
+    });
+
+Route::middleware(['auth', 'permission:settings.delete'])
+    ->group(function () {
+        Route::resource('advice_items', AdviceItemController::class)->only(['destroy']);
+        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['destroy']);
     });
 
 Route::middleware(['auth', 'permission:settings.view'])
     ->group(function () {
-        Route::get('settings', [ClinicSettingController::class, 'edit'])->name('settings.edit');
-        Route::get('prescription-options', [PrescriptionOptionController::class, 'edit'])->name('prescription_options.edit');
-        Route::resource('doctors', DoctorController::class)->only(['index', 'show']);
         Route::resource('advice_items', AdviceItemController::class)->only(['index', 'show']);
         Route::resource('food_restrictions', FoodRestrictionController::class)->only(['index', 'show']);
     });

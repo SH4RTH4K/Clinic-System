@@ -1,12 +1,16 @@
 import DataTable from '@/Components/DataTable';
 import PageHeader from '@/Components/PageHeader';
 import Pagination from '@/Components/Pagination';
+import usePermission from '@/Components/usePermission';
 import PrimaryButton from '@/Components/PrimaryButton';
 import StatusBadge from '@/Components/StatusBadge';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Index({ visits }) {
+    const can = usePermission();
+    const canCreate = can('visits.create');
+    const canUpdate = can('visits.update');
     const columns = [
         {
             key: 'visit_date',
@@ -24,7 +28,7 @@ export default function Index({ visits }) {
                 <div>
                     <span className="font-semibold text-gray-900">{v.patient?.name}</span>
                     <span className="ml-2 font-mono text-xs text-gray-500">
-                        ({v.patient?.patient_no} {v.patient?.patient_series})
+                        ({v.patient?.patient_identifier || `${v.patient?.patient_no}${v.patient?.patient_series || ''}`})
                     </span>
                 </div>
             ),
@@ -55,12 +59,12 @@ export default function Index({ visits }) {
                     >
                         View
                     </Link>
-                    <Link
+                    {canUpdate ? <Link
                         href={route('admin.visits.edit', v.id)}
                         className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition"
                     >
                         Edit
-                    </Link>
+                    </Link> : <button type="button" disabled className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 cursor-not-allowed opacity-50">Edit</button>}
                     <a
                         href={route('admin.visits.pdf', v.id)}
                         target="_blank"
@@ -85,7 +89,7 @@ export default function Index({ visits }) {
                 <PageHeader
                     title="Visits"
                     subtitle="Track clinical encounters, prescriptions and patient consultations"
-                    actions={
+                    actions={canCreate ? (
                         <Link href={route('admin.visits.create')}>
                             <PrimaryButton className="gap-1.5">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -94,7 +98,12 @@ export default function Index({ visits }) {
                                 <span>New Visit</span>
                             </PrimaryButton>
                         </Link>
-                    }
+                    ) : <PrimaryButton disabled className="gap-1.5">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span>New Visit</span>
+                        </PrimaryButton>}
                 />
 
                 <DataTable

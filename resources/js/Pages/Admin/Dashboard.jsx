@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import PermissionLink from '@/Components/PermissionLink';
+import { Head } from '@inertiajs/react';
 
 const statCards = [
     {
@@ -8,6 +9,7 @@ const statCards = [
         accent: 'text-blue-700',
         bg: 'bg-blue-50',
         route: 'admin.patients.index',
+        permission: 'patients.view',
         metaKey: 'new_patients_this_month',
         metaLabel: 'new this month',
     },
@@ -17,6 +19,7 @@ const statCards = [
         accent: 'text-emerald-700',
         bg: 'bg-emerald-50',
         route: 'admin.visits.index',
+        permission: 'visits.view',
         metaKey: 'weekly_visits_total',
         metaLabel: 'last 7 days',
     },
@@ -26,6 +29,7 @@ const statCards = [
         accent: 'text-rose-700',
         bg: 'bg-rose-50',
         route: 'admin.appointment_requests.index',
+        permission: 'appointments.view',
         metaLabel: 'needs follow-up',
     },
     {
@@ -34,6 +38,7 @@ const statCards = [
         accent: 'text-indigo-700',
         bg: 'bg-indigo-50',
         route: 'admin.doctors.index',
+        permission: 'doctors.view',
         metaKey: 'total_medicines',
         metaLabel: 'medicines listed',
     },
@@ -76,7 +81,7 @@ function formatPatientNo(patient) {
         return 'No patient';
     }
 
-    return `${patient.patient_series ?? ''}${patient.patient_no ?? patient.id}`;
+    return patient.patient_identifier || `${patient.patient_no ?? patient.id}${patient.patient_series ?? ''}`;
 }
 
 function StatusPill({ status }) {
@@ -89,7 +94,7 @@ function StatusPill({ status }) {
 
 function StatCard({ card, metrics }) {
     return (
-        <Link href={route(card.route)} className={`${card.bg} block rounded-lg border border-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}>
+        <PermissionLink permission={card.permission} href={route(card.route)} className={`${card.bg} block rounded-lg border border-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}>
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{card.label}</p>
@@ -102,7 +107,7 @@ function StatCard({ card, metrics }) {
             <p className="mt-4 text-sm text-slate-600">
                 <span className="font-semibold text-slate-900">{card.metaKey ? (metrics[card.metaKey] ?? 0) : (metrics[card.key] ?? 0)}</span> {card.metaLabel}
             </p>
-        </Link>
+        </PermissionLink>
     );
 }
 
@@ -129,15 +134,15 @@ export default function Dashboard({
                         <h1 className="mt-1 text-2xl font-bold text-slate-950">Admin Dashboard</h1>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Link href={route('admin.visits.create')} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+                        <PermissionLink permission="visits.create" href={route('admin.visits.create')} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
                             New Visit
-                        </Link>
-                        <Link href={route('admin.patients.create')} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        </PermissionLink>
+                        <PermissionLink permission="patients.create" href={route('admin.patients.create')} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                             New Patient
-                        </Link>
-                        <Link href={route('admin.doctors.index')} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        </PermissionLink>
+                        <PermissionLink permission="doctors.view" href={route('admin.doctors.index')} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                             Doctors
-                        </Link>
+                        </PermissionLink>
                     </div>
                 </div>
 
@@ -154,9 +159,9 @@ export default function Dashboard({
                                 <h3 className="text-base font-bold text-slate-900">Weekly Visits</h3>
                                 <p className="text-sm text-slate-500">{metrics.weekly_visits_total ?? 0} visits in the last 7 days</p>
                             </div>
-                            <Link href={route('admin.visits.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+                            <PermissionLink permission="visits.view" href={route('admin.visits.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
                                 View all
-                            </Link>
+                            </PermissionLink>
                         </div>
                         <div className="mt-6 flex h-56 items-end gap-3">
                             {weekly_visits.map((day) => (
@@ -183,9 +188,9 @@ export default function Dashboard({
                                 <h3 className="text-base font-bold text-slate-900">Appointments</h3>
                                 <p className="text-sm text-slate-500">{appointmentTotal} total requests</p>
                             </div>
-                            <Link href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+                            <PermissionLink permission="appointments.view" href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
                                 Manage
-                            </Link>
+                            </PermissionLink>
                         </div>
                         <div className="mt-6 space-y-4">
                             {appointmentStatuses.map((item) => {
@@ -212,9 +217,9 @@ export default function Dashboard({
                     <section className="rounded-lg bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-slate-900">Recent Requests</h3>
-                            <Link href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+                            <PermissionLink permission="appointments.view" href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
                                 Open
-                            </Link>
+                            </PermissionLink>
                         </div>
                         <div className="mt-5 space-y-4">
                             {recent_requests.length ? recent_requests.map((request) => (
@@ -239,18 +244,18 @@ export default function Dashboard({
                     <section className="rounded-lg bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-slate-900">Recent Visits</h3>
-                            <Link href={route('admin.visits.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+                            <PermissionLink permission="visits.view" href={route('admin.visits.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
                                 Open
-                            </Link>
+                            </PermissionLink>
                         </div>
                         <div className="mt-5 space-y-4">
                             {recent_visits.length ? recent_visits.map((visit) => (
                                 <div key={visit.id} className="border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <Link href={route('admin.visits.show', visit.id)} className="font-semibold text-slate-900 hover:text-blue-700">
+                                            <PermissionLink permission="visits.view" href={route('admin.visits.show', visit.id)} className="font-semibold text-slate-900 hover:text-blue-700">
                                                 {visit.patient?.name ?? 'Unknown patient'}
-                                            </Link>
+                                            </PermissionLink>
                                             <p className="text-sm text-slate-500">{formatPatientNo(visit.patient)} - {formatDate(visit.visit_date)}</p>
                                         </div>
                                         <StatusPill status={visit.status} />
@@ -269,9 +274,9 @@ export default function Dashboard({
                                 <h3 className="text-base font-bold text-slate-900">Top Medicines</h3>
                                 <p className="text-sm text-slate-500">Last 30 days</p>
                             </div>
-                            <Link href={route('admin.medicines.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+                            <PermissionLink permission="medicines.view" href={route('admin.medicines.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
                                 Inventory
-                            </Link>
+                            </PermissionLink>
                         </div>
                         <div className="mt-5 space-y-4">
                             {top_medicines.length ? top_medicines.map((item) => (
@@ -309,16 +314,16 @@ export default function Dashboard({
                             </div>
                         </div>
                     </div>
-                    <Link href={route('admin.medicines.index')} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <PermissionLink permission="medicines.view" href={route('admin.medicines.index')} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Medicines</p>
                         <p className="mt-4 text-3xl font-bold text-slate-900">{metrics.active_medicines ?? 0}</p>
                         <p className="text-sm text-slate-500">active of {metrics.total_medicines ?? 0} total</p>
-                    </Link>
-                    <Link href={route('admin.appointment_requests.index', { status: 'pending' })} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    </PermissionLink>
+                    <PermissionLink permission="appointments.view" href={route('admin.appointment_requests.index', { status: 'pending' })} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Next Action</p>
                         <p className="mt-4 text-lg font-bold text-slate-900">Follow up pending requests</p>
                         <p className="text-sm text-slate-500">{metrics.pending_requests ?? 0} waiting now</p>
-                    </Link>
+                    </PermissionLink>
                 </div>
             </div>
         </AuthenticatedLayout>

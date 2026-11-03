@@ -16,11 +16,144 @@ class ClinicSetting extends Model
     protected $casts = [
         'visiting_hours_schedule' => 'array',
         'prescription_config' => 'array',
+        'patient_form_config' => 'array',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()->logAll()->logOnlyDirty()->dontLogEmptyChanges();
+    }
+
+    /**
+     * @return array<string, array{label: string, visible: bool, required: bool, order: int}>
+     */
+    public static function defaultPatientFormConfig(): array
+    {
+        return [
+            'name' => ['label' => 'Patient Full Name', 'visible' => true, 'required' => true, 'order' => 1],
+            'guardian_relationship' => ['label' => 'Relationship to Patient', 'visible' => true, 'required' => false, 'order' => 2],
+            'guardian_name' => ['label' => 'Contact Name', 'visible' => true, 'required' => false, 'order' => 3],
+            'gender' => ['label' => 'Gender', 'visible' => true, 'required' => true, 'order' => 4],
+            'age_years' => ['label' => 'Years', 'visible' => true, 'required' => false, 'order' => 5],
+            'age_months' => ['label' => 'Months', 'visible' => true, 'required' => false, 'order' => 5],
+            'age_days' => ['label' => 'Days', 'visible' => true, 'required' => false, 'order' => 5],
+            'dob' => ['label' => 'Date of Birth', 'visible' => true, 'required' => false, 'order' => 6],
+            'phone' => ['label' => 'Mobile Phone Number', 'visible' => true, 'required' => false, 'order' => 7],
+            'referred_by' => ['label' => 'Referred By', 'visible' => true, 'required' => false, 'order' => 8],
+            'address' => ['label' => 'Residential Address / Village & Area', 'visible' => true, 'required' => false, 'order' => 9],
+            'blood_group' => ['label' => 'Blood Group', 'visible' => true, 'required' => false, 'order' => 10],
+            'known_allergies' => ['label' => 'Known Allergies / Sensitivities', 'visible' => true, 'required' => false, 'order' => 11],
+        ];
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public static function defaultPatientRelationshipOptions(): array
+    {
+        return [
+            ['value' => 'father', 'label' => 'Father'],
+            ['value' => 'mother', 'label' => 'Mother'],
+            ['value' => 'spouse', 'label' => 'Spouse'],
+            ['value' => 'son', 'label' => 'Son'],
+            ['value' => 'daughter', 'label' => 'Daughter'],
+            ['value' => 'brother', 'label' => 'Brother'],
+            ['value' => 'sister', 'label' => 'Sister'],
+            ['value' => 'grandfather', 'label' => 'Grandfather'],
+            ['value' => 'grandmother', 'label' => 'Grandmother'],
+            ['value' => 'grandson', 'label' => 'Grandson'],
+            ['value' => 'granddaughter', 'label' => 'Granddaughter'],
+            ['value' => 'uncle', 'label' => 'Uncle'],
+            ['value' => 'aunt', 'label' => 'Aunt'],
+            ['value' => 'cousin', 'label' => 'Cousin'],
+            ['value' => 'legal_guardian', 'label' => 'Legal guardian'],
+            ['value' => 'caregiver', 'label' => 'Caregiver'],
+            ['value' => 'friend', 'label' => 'Friend'],
+            ['value' => 'neighbor', 'label' => 'Neighbor'],
+        ];
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public static function currentPatientRelationshipOptions(): array
+    {
+        return static::query()->first()?->getPatientRelationshipOptions() ?? self::defaultPatientRelationshipOptions();
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public static function patientFormFieldOrderGroups(): array
+    {
+        return [
+            'name' => ['name'],
+            'guardian_relationship' => ['guardian_relationship'],
+            'guardian_name' => ['guardian_name'],
+            'gender' => ['gender'],
+            'age_years' => ['age_years', 'age_months', 'age_days'],
+            'dob' => ['dob'],
+            'phone' => ['phone'],
+            'referred_by' => ['referred_by'],
+            'address' => ['address'],
+            'blood_group' => ['blood_group'],
+            'known_allergies' => ['known_allergies'],
+        ];
+    }
+
+    /**
+     * @return array<string, array{label: string, visible: bool, required: bool, order: int}>
+     */
+    public static function currentPatientFormConfig(): array
+    {
+        return static::query()->first()?->getPatientFormConfig() ?? self::defaultPatientFormConfig();
+    }
+
+    /**
+     * @return array<string, array{label: string, visible: bool, required: bool, order: int}>
+     */
+    public function getPatientFormConfig(): array
+    {
+        $defaults = self::defaultPatientFormConfig();
+        $storedConfig = $this->patient_form_config ?? [];
+        $savedConfig = $storedConfig['fields'] ?? $storedConfig;
+        $config = [];
+
+        foreach ($defaults as $key => $default) {
+            $saved = $savedConfig[$key] ?? [];
+            $config[$key] = [
+                'label' => is_string($saved['label'] ?? null) && trim($saved['label']) !== ''
+                    ? trim($saved['label'])
+                    : $default['label'],
+                'visible' => in_array($key, ['name', 'gender'], true) ? true : (bool) ($saved['visible'] ?? $default['visible']),
+                'required' => in_array($key, ['name', 'gender'], true) ? true : (bool) ($saved['required'] ?? $default['required']),
+                'order' => max(1, (int) ($saved['order'] ?? $default['order'])),
+            ];
+        }
+
+        return $config;
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function getPatientRelationshipOptions(): array
+    {
+        $storedOptions = $this->patient_form_config['relationships'] ?? null;
+
+        if (! is_array($storedOptions)) {
+            return self::defaultPatientRelationshipOptions();
+        }
+
+        return array_values(array_filter(array_map(
+            fn (mixed $option): ?array => is_array($option) && isset($option['value'], $option['label'])
+                ? [
+                    'value' => (string) $option['value'],
+                    'label' => (string) $option['label'],
+                ]
+                : null,
+            $storedOptions,
+        )));
     }
 
     /**

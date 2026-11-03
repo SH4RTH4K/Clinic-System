@@ -156,24 +156,24 @@ class UserRoleAuthorizationTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // Test 9: Role creation with unknown permission returns validation error
+    // Role permissions are managed from the separate Permissions page.
     // -------------------------------------------------------------------------
 
-    public function test_role_creation_with_unknown_permission_returns_422(): void
+    public function test_role_creation_rejects_permission_assignments(): void
     {
         $this->actingAs($this->userWithRole('Super Admin'))
             ->post('/admin/roles', [
                 'name' => 'Rogue Role',
                 'permissions' => ['nonexistent.permission'],
             ])
-            ->assertSessionHasErrors(['permissions.0']);
+            ->assertSessionHasErrors(['permissions']);
     }
 
     // -------------------------------------------------------------------------
-    // Test 10: Password change requires current_password
+    // Test 10: Super Admin can reset another user's password
     // -------------------------------------------------------------------------
 
-    public function test_password_change_requires_current_password(): void
+    public function test_super_admin_can_reset_another_users_password_without_current_password(): void
     {
         $superAdmin = $this->userWithRole('Super Admin');
         $target = $this->userWithRole('Doctor');
@@ -189,6 +189,31 @@ class UserRoleAuthorizationTest extends TestCase
                 'password_confirmation' => 'NewSecureP@ss1!',
                 // current_password intentionally omitted
             ])
-            ->assertSessionHasErrors(['current_password']);
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success', 'User updated.');
+
+        $this->assertTrue(Hash::check('NewSecureP@ss1!', $target->fresh()->password));
+    }
+
+    public function test_password_reset_rejects_mismatched_confirmation(): void
+    {
+        $superAdmin = $this->userWithRole('Super Admin');
+        $target = $this->userWithRole('Doctor');
+        $originalPassword = $target->password;
+
+        $this->actingAs($superAdmin)
+            ->put("/admin/users/{$target->id}", [
+                'name' => $target->name,
+                'username' => $target->username,
+                'email' => $target->email,
+                'roles' => ['Doctor'],
+                'is_active' => true,
+                'password' => 'NewSecureP@ss1!',
+                'password_confirmation' => 'DifferentSecureP@ss1!',
+            ])
+            ->assertSessionHasErrors(['password'])
+            ->assertSessionMissing('success');
+
+        $this->assertSame($originalPassword, $target->fresh()->password);
     }
 }

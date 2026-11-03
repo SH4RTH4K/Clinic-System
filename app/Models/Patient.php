@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -15,9 +16,25 @@ class Patient extends Model
 
     protected $guarded = [];
 
+    protected $appends = ['patient_identifier'];
+
+    public function numberingProfile(): BelongsTo
+    {
+        return $this->belongsTo(PatientNumberingProfile::class, 'patient_numbering_profile_id');
+    }
+
     public function visits(): HasMany
     {
         return $this->hasMany(Visit::class);
+    }
+
+    public function getPatientIdentifierAttribute(): string
+    {
+        if ($this->patient_code) {
+            return $this->patient_code;
+        }
+
+        return (string) $this->patient_no.(string) $this->patient_series;
     }
 
     public function getActivitylogOptions(): LogOptions
@@ -25,7 +42,8 @@ class Patient extends Model
         return LogOptions::defaults()
             ->logOnly([
                 // Safe identifying fields — clinical free-text (known_allergies) excluded.
-                'patient_no', 'patient_series', 'name', 'guardian_name',
+                'patient_no', 'patient_series', 'patient_code', 'patient_category', 'patient_numbering_profile_id',
+                'name', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
                 'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'address',
                 'blood_group', 'referred_by',
             ])

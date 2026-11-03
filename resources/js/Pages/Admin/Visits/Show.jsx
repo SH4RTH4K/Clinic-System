@@ -1,10 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import StatusBadge from '@/Components/StatusBadge';
+import usePermission from '@/Components/usePermission';
 import { formatAgeSummary } from '@/Utils/ageHelpers';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Show({ visit }) {
+    const can = usePermission();
+    const canUpdate = can('visits.update');
     const timingMap = {
         morning: 'সকাল (Morning)',
         noon: 'দুপুর (Noon)',
@@ -18,15 +21,15 @@ export default function Show({ visit }) {
             <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 <PageHeader
                     title={`Visit #${visit.id} – ${visit.patient?.name}`}
-                    subtitle={`Patient ID: ${visit.patient?.patient_no}${visit.patient?.patient_series || ''} • Visit Date: ${visit.visit_date}`}
+                    subtitle={`Patient ID: ${visit.patient?.patient_identifier || `${visit.patient?.patient_no}${visit.patient?.patient_series || ''}`} • Visit Date: ${visit.visit_date}`}
                     action={
                         <div className="flex gap-2">
-                            <Link
+                            {canUpdate ? <Link
                                 href={route('admin.visits.edit', visit.id)}
                                 className="px-3.5 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded-md text-xs font-semibold shadow-xs transition"
                             >
                                 Edit Visit
-                            </Link>
+                            </Link> : <button type="button" disabled className="px-3.5 py-2 border border-gray-300 bg-white text-gray-700 rounded-md text-xs font-semibold shadow-xs cursor-not-allowed opacity-50">Edit Visit</button>}
                             <a
                                 href={route('admin.visits.pdf', visit.id)}
                                 target="_blank"

@@ -3,11 +3,14 @@ import PageHeader from '@/Components/PageHeader';
 import FormField from '@/Components/FormField';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { calculateAgeFromDob, calculateDobFromAge } from './ageHelpers';
+import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
-export default function Create({ defaults = {} }) {
+export default function Create({ defaults = {}, fieldConfig = {}, relationshipOptions = [], numberingProfiles = [] }) {
     const { data, setData, post, errors, processing } = useForm({
+        patient_numbering_profile_id: String(numberingProfiles.find((profile) => profile.is_default)?.id || numberingProfiles[0]?.id || ''),
         name: defaults?.name || '',
         guardian_name: '',
+        guardian_relationship: '',
         gender: 'male',
         age_years: '',
         age_months: '',
@@ -19,6 +22,11 @@ export default function Create({ defaults = {} }) {
         known_allergies: '',
         referred_by: '',
     });
+    const field = (key) => fieldConfig[key] || { label: key, visible: true, required: false };
+    const relationshipLabel = getGuardianRelationshipLabel(data.guardian_relationship, '', relationshipOptions);
+    const contactNameLabel = field('guardian_name').label === 'Contact Name' && relationshipLabel
+        ? `${relationshipLabel} Name`
+        : field('guardian_name').label;
 
     const handleAgePartChange = (field, val) => {
         setData((prev) => {
@@ -84,14 +92,44 @@ export default function Create({ defaults = {} }) {
 
                 <div className="bg-white p-6 shadow-xs border border-gray-200 rounded-lg">
                     <form onSubmit={submit} className="space-y-6">
+                        <section className="rounded-lg border border-primary-100 bg-primary-50/40 p-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">Patient category &amp; number</h3>
+                            <p className="mt-1 text-sm text-gray-600">Choose a category. The matching profile will generate this patient's permanent ID.</p>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <FormField label="Patient category / numbering option" id="patient_numbering_profile_id" required error={errors.patient_numbering_profile_id}>
+                                    <select
+                                        id="patient_numbering_profile_id"
+                                        value={data.patient_numbering_profile_id}
+                                        onChange={(event) => setData('patient_numbering_profile_id', event.target.value)}
+                                        className="w-full rounded-md border-gray-300 bg-white text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                        required
+                                    >
+                                        <option value="" disabled>Select a patient category</option>
+                                        {numberingProfiles.map((profile) => (
+                                            <option key={profile.id} value={String(profile.id)}>
+                                                {profile.category} — {profile.name}{profile.is_default ? ' (Default)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </FormField>
+                                <div>
+                                    <span className="mb-1 block text-sm font-medium text-gray-700">Patient ID preview</span>
+                                    <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold tracking-wide text-primary-800">
+                                        {numberingProfiles.find((profile) => String(profile.id) === String(data.patient_numbering_profile_id))?.preview || 'Select a category to preview'}
+                                    </div>
+                                    <p className="mt-1 text-xs text-gray-500">The final sequence is assigned securely when you save.</p>
+                                </div>
+                            </div>
+                        </section>
+
                         {/* Basic Identity Information */}
-                        <div>
+                        {(field('name').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Identity &amp; Demographics
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="md:col-span-2">
-                                    <FormField label="Patient Full Name" id="name" required error={errors.name}>
+                                {field('name').visible && <div className="md:col-span-2" style={{ order: field('name').order }}>
+                                    <FormField label={field('name').label} id="name" required={field('name').required} error={errors.name}>
                                         <input
                                             id="name"
                                             type="text"
@@ -99,46 +137,75 @@ export default function Create({ defaults = {} }) {
                                             onChange={(e) => setData('name', e.target.value)}
                                             className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                             placeholder="Full name of patient"
-                                            required
+                                            required={field('name').required}
                                         />
                                     </FormField>
-                                </div>
+                                </div>}
 
-                                <div className="md:col-span-2">
-                                    <FormField label="Guardian / Father / Spouse Name" id="guardian_name" error={errors.guardian_name}>
+                                {field('guardian_relationship').visible && <div className="md:col-span-2" style={{ order: field('guardian_relationship').order }}>
+                                    <FormField
+                                        label={`${field('guardian_relationship').label}${field('guardian_relationship').required ? '' : ' (Optional)'}`}
+                                        id="guardian_relationship"
+                                        required={field('guardian_relationship').required}
+                                        error={errors.guardian_relationship}
+                                    >
+                                        <select
+                                            id="guardian_relationship"
+                                            value={data.guardian_relationship}
+                                            onChange={(e) => setData('guardian_relationship', e.target.value)}
+                                            className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                            required={field('guardian_relationship').required}
+                                        >
+                                            <option value="">Select relationship (optional)</option>
+                                            {relationshipOptions.map((option) => (
+                                                <option key={option.value} value={option.value}>{option.label}</option>
+                                            ))}
+                                        </select>
+                                    </FormField>
+                                </div>}
+
+                                {field('guardian_name').visible && <div className="md:col-span-2" style={{ order: field('guardian_name').order }}>
+                                    <FormField
+                                        label={contactNameLabel}
+                                        id="guardian_name"
+                                        required={field('guardian_name').required}
+                                        error={errors.guardian_name}
+                                    >
                                         <input
                                             id="guardian_name"
                                             type="text"
                                             value={data.guardian_name}
                                             onChange={(e) => setData('guardian_name', e.target.value)}
                                             className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
-                                            placeholder="e.g. Father's or Spouse's Name"
+                                            placeholder="Enter the person's full name"
+                                            required={field('guardian_name').required}
                                         />
                                     </FormField>
-                                </div>
+                                </div>}
 
-                                <div className="md:col-span-1">
-                                    <FormField label="Gender" id="gender" required error={errors.gender}>
+                                {field('gender').visible && <div className="md:col-span-2" style={{ order: field('gender').order }}>
+                                    <FormField label={field('gender').label} id="gender" required={field('gender').required} error={errors.gender}>
                                         <select
                                             id="gender"
                                             value={data.gender}
                                             onChange={(e) => setData('gender', e.target.value)}
                                             className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                            required={field('gender').required}
                                         >
                                             <option value="male">Male (পুরুষ)</option>
                                             <option value="female">Female (মহিলা)</option>
                                             <option value="other">Other (অন্যান্য)</option>
                                         </select>
                                     </FormField>
-                                </div>
+                                </div>}
 
-                                <div className="md:col-span-2">
+                                {(field('age_years').visible || field('age_months').visible || field('age_days').visible) && <div className="md:col-span-3" style={{ order: field('age_years').order }}>
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                                             Age (বয়স) <span className="text-gray-400 font-normal lowercase">(auto-syncs with Date of Birth)</span>
                                         </label>
                                         <div className="grid grid-cols-3 gap-2">
-                                            <div>
+                                            {field('age_years').visible && <div>
                                                 <div className="relative rounded-md shadow-sm">
                                                     <input
                                                         id="age_years"
@@ -149,16 +216,17 @@ export default function Create({ defaults = {} }) {
                                                         onChange={(e) => handleAgePartChange('age_years', e.target.value)}
                                                         className="w-full pr-12 rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                                         placeholder="0"
+                                                        required={field('age_years').required}
                                                     />
                                                     <span className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-xs text-gray-400">
-                                                        Years
+                                                        {field('age_years').label}
                                                     </span>
                                                 </div>
                                                 {errors.age_years && (
                                                     <p className="text-xs text-red-600 mt-1">{errors.age_years}</p>
                                                 )}
-                                            </div>
-                                            <div>
+                                            </div>}
+                                            {field('age_months').visible && <div>
                                                 <div className="relative rounded-md shadow-sm">
                                                     <input
                                                         id="age_months"
@@ -169,16 +237,17 @@ export default function Create({ defaults = {} }) {
                                                         onChange={(e) => handleAgePartChange('age_months', e.target.value)}
                                                         className="w-full pr-14 rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                                         placeholder="0"
+                                                        required={field('age_months').required}
                                                     />
                                                     <span className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-xs text-gray-400">
-                                                        Months
+                                                        {field('age_months').label}
                                                     </span>
                                                 </div>
                                                 {errors.age_months && (
                                                     <p className="text-xs text-red-600 mt-1">{errors.age_months}</p>
                                                 )}
-                                            </div>
-                                            <div>
+                                            </div>}
+                                            {field('age_days').visible && <div>
                                                 <div className="relative rounded-md shadow-sm">
                                                     <input
                                                         id="age_days"
@@ -189,21 +258,22 @@ export default function Create({ defaults = {} }) {
                                                         onChange={(e) => handleAgePartChange('age_days', e.target.value)}
                                                         className="w-full pr-12 rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                                         placeholder="0"
+                                                        required={field('age_days').required}
                                                     />
                                                     <span className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-xs text-gray-400">
-                                                        Days
+                                                        {field('age_days').label}
                                                     </span>
                                                 </div>
                                                 {errors.age_days && (
                                                     <p className="text-xs text-red-600 mt-1">{errors.age_days}</p>
                                                 )}
-                                            </div>
+                                            </div>}
                                         </div>
                                     </div>
-                                </div>
+                                </div>}
 
-                                <div className="md:col-span-1">
-                                    <FormField label="Date of Birth" id="dob" error={errors.dob} helpText="Auto-syncs Age">
+                                {field('dob').visible && <div className="md:col-span-1" style={{ order: field('dob').order }}>
+                                    <FormField label={field('dob').label} id="dob" required={field('dob').required} error={errors.dob} helpText="Auto-syncs Age">
                                         <input
                                             id="dob"
                                             type="date"
@@ -211,19 +281,20 @@ export default function Create({ defaults = {} }) {
                                             value={data.dob}
                                             onChange={handleDobChange}
                                             className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                            required={field('dob').required}
                                         />
                                     </FormField>
-                                </div>
+                                </div>}
                             </div>
-                        </div>
+                        </div>}
 
                         {/* Contact & Residential Address */}
-                        <div>
+                        {(field('phone').visible || field('referred_by').visible || field('address').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Contact &amp; Residential Location
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="Mobile Phone Number" id="phone" error={errors.phone} helpText="Format: 017XXXXXXXX or +8801XXXXXXXX">
+                                {field('phone').visible && <FormField style={{ order: field('phone').order }} label={field('phone').label} id="phone" required={field('phone').required} error={errors.phone} helpText="Format: 017XXXXXXXX or +8801XXXXXXXX">
                                     <input
                                         id="phone"
                                         type="tel"
@@ -231,10 +302,11 @@ export default function Create({ defaults = {} }) {
                                         onChange={(e) => setData('phone', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                         placeholder="01XXXXXXXXX"
+                                        required={field('phone').required}
                                     />
-                                </FormField>
+                                </FormField>}
 
-                                <FormField label="Referred By" id="referred_by" error={errors.referred_by}>
+                                {field('referred_by').visible && <FormField style={{ order: field('referred_by').order }} label={field('referred_by').label} id="referred_by" required={field('referred_by').required} error={errors.referred_by}>
                                     <input
                                         id="referred_by"
                                         type="text"
@@ -242,11 +314,12 @@ export default function Create({ defaults = {} }) {
                                         onChange={(e) => setData('referred_by', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                         placeholder="Doctor, friend or existing patient"
+                                        required={field('referred_by').required}
                                     />
-                                </FormField>
+                                </FormField>}
 
-                                <div className="md:col-span-2">
-                                    <FormField label="Residential Address / Village &amp; Area" id="address" error={errors.address}>
+                                {field('address').visible && <div className="md:col-span-2" style={{ order: field('address').order }}>
+                                    <FormField label={field('address').label} id="address" required={field('address').required} error={errors.address}>
                                         <textarea
                                             id="address"
                                             rows={3}
@@ -254,24 +327,26 @@ export default function Create({ defaults = {} }) {
                                             onChange={(e) => setData('address', e.target.value)}
                                             className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                             placeholder="House / Road, Village, Post Office, Upazila / Thana, District..."
+                                            required={field('address').required}
                                         />
                                     </FormField>
-                                </div>
+                                </div>}
                             </div>
-                        </div>
+                        </div>}
 
                         {/* Medical Background */}
-                        <div>
+                        {(field('blood_group').visible || field('known_allergies').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Medical Background
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="Blood Group" id="blood_group" error={errors.blood_group}>
+                                {field('blood_group').visible && <FormField style={{ order: field('blood_group').order }} label={field('blood_group').label} id="blood_group" required={field('blood_group').required} error={errors.blood_group}>
                                     <select
                                         id="blood_group"
                                         value={data.blood_group}
                                         onChange={(e) => setData('blood_group', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                        required={field('blood_group').required}
                                     >
                                         <option value="">Unknown / Not Tested</option>
                                         <option value="A+">A Positive (A+)</option>
@@ -283,9 +358,9 @@ export default function Create({ defaults = {} }) {
                                         <option value="AB+">AB Positive (AB+)</option>
                                         <option value="AB-">AB Negative (AB-)</option>
                                     </select>
-                                </FormField>
+                                </FormField>}
 
-                                <FormField label="Known Allergies / Sensitivities" id="known_allergies" error={errors.known_allergies}>
+                                {field('known_allergies').visible && <FormField style={{ order: field('known_allergies').order }} label={field('known_allergies').label} id="known_allergies" required={field('known_allergies').required} error={errors.known_allergies}>
                                     <input
                                         id="known_allergies"
                                         type="text"
@@ -293,10 +368,11 @@ export default function Create({ defaults = {} }) {
                                         onChange={(e) => setData('known_allergies', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                         placeholder="Any known drug, food or chemical allergies"
+                                        required={field('known_allergies').required}
                                     />
-                                </FormField>
+                                </FormField>}
                             </div>
-                        </div>
+                        </div>}
 
                         {/* Form Submission */}
                         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">

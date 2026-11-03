@@ -3,14 +3,21 @@ import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import StatusBadge from '@/Components/StatusBadge';
 import ConfirmDialog from '@/Components/ConfirmDialog';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ doctors = [] }) {
+    const { auth = {} } = usePage().props;
+    const permissions = auth.permissions || [];
+    const isSuperAdmin = (auth.roles || []).includes('Super Admin');
+    const canCreate = isSuperAdmin || permissions.includes('doctors.create');
+    const canView = isSuperAdmin || permissions.includes('doctors.view');
+    const canUpdate = isSuperAdmin || permissions.includes('doctors.update');
+    const canDelete = isSuperAdmin || permissions.includes('doctors.delete');
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const confirmDelete = () => {
-        if (!deleteTarget) return;
+        if (!canDelete || !deleteTarget) return;
         router.delete(route('admin.doctors.destroy', deleteTarget.id), {
             onSuccess: () => setDeleteTarget(null),
         });
@@ -84,16 +91,43 @@ export default function Index({ doctors = [] }) {
             className: 'text-right',
             cell: (doctor) => (
                 <div className="flex justify-end gap-2 text-xs">
-                    <Link
-                        href={route('admin.doctors.edit', doctor.id)}
-                        className="px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded font-medium transition"
-                    >
-                        Edit
-                    </Link>
+                    {canView ? (
+                        <Link
+                            href={route('admin.doctors.show', doctor.id)}
+                            className="px-2.5 py-1 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium transition"
+                        >
+                            View
+                        </Link>
+                    ) : (
+                        <button
+                            type="button"
+                            disabled
+                            className="px-2.5 py-1 text-gray-700 bg-gray-100 rounded font-medium cursor-not-allowed opacity-50"
+                        >
+                            View
+                        </button>
+                    )}
+                    {canUpdate ? (
+                        <Link
+                            href={route('admin.doctors.edit', doctor.id)}
+                            className="px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded font-medium transition"
+                        >
+                            Edit
+                        </Link>
+                    ) : (
+                        <button
+                            type="button"
+                            disabled
+                            className="px-2.5 py-1 text-primary-700 bg-primary-50 rounded font-medium cursor-not-allowed opacity-50"
+                        >
+                            Edit
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => setDeleteTarget(doctor)}
-                        className="px-2.5 py-1 text-red-700 bg-red-50 hover:bg-red-100 rounded font-medium transition"
+                        disabled={!canDelete}
+                        className="px-2.5 py-1 text-red-700 bg-red-50 rounded font-medium transition enabled:hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Delete
                     </button>
@@ -109,14 +143,22 @@ export default function Index({ doctors = [] }) {
                 <PageHeader
                     title="Doctors"
                     subtitle="Manage clinic physicians, qualifications, chamber contact, and public profiles"
-                    action={
+                    action={canCreate ? (
                         <Link
                             href={route('admin.doctors.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"
                         >
                             + Add Doctor
                         </Link>
-                    }
+                    ) : (
+                        <button
+                            type="button"
+                            disabled
+                            className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-semibold shadow-xs cursor-not-allowed opacity-50"
+                        >
+                            + Add Doctor
+                        </button>
+                    )}
                 />
 
                 <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-4">

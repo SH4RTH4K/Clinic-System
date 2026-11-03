@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import PrescriptionConfigModal from '@/Components/PrescriptionConfigModal';
+import usePermission from '@/Components/usePermission';
 import { calculateAgeFromDob, calculateDobFromAge, formatAgeSummary } from '@/Utils/ageHelpers';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
@@ -15,6 +16,7 @@ export default function Edit({
     allFood = [],
     prescriptionConfig = {},
 }) {
+    const canView = usePermission()('visits.view');
     const visitDate = visit.visit_date || new Date().toISOString().split('T')[0];
     let initialAgeYears = visit.age_at_visit ?? '';
     let initialAgeMonths = visit.age_months ?? '';
@@ -53,7 +55,7 @@ export default function Edit({
 
     // ── Patient async combobox ────────────────────────────────────────────────
     const initialLabel = visit.patient
-        ? `${visit.patient.patient_no}${visit.patient.patient_series || ''} – ${visit.patient.name}`
+        ? `${visit.patient.patient_identifier || `${visit.patient.patient_no}${visit.patient.patient_series || ''}`} – ${visit.patient.name}`
         : '';
     const [patientQuery, setPatientQuery] = useState(initialLabel);
     const [patientResults, setPatientResults] = useState([]);
@@ -107,7 +109,7 @@ export default function Edit({
             age_days: d,
             patient_dob: dob,
         }));
-        setPatientQuery(`${p.patient_no}${p.patient_series || ''} – ${p.name}`);
+        setPatientQuery(`${p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`} – ${p.name}`);
         setPatientResults([]);
         setShowDropdown(false);
     };
@@ -342,26 +344,26 @@ export default function Edit({
                     subtitle={`Visit Date: ${visit.visit_date} • Status: ${visit.status}`}
                     action={
                         <div className="flex items-center gap-2">
-                            <Link
+                            {canView ? <Link
                                 href={route('admin.visits.index')}
                                 className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold shadow-xs transition"
                             >
                                 &larr; Back to Visits
-                            </Link>
-                            <Link
+                            </Link> : <button type="button" disabled className="px-3 py-1.5 border border-gray-300 bg-white text-gray-700 rounded-lg text-xs font-semibold shadow-xs cursor-not-allowed opacity-50">&larr; Back to Visits</button>}
+                            {canView ? <Link
                                 href={route('admin.visits.show', visit.id)}
                                 className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold shadow-xs transition"
                             >
                                 View Details
-                            </Link>
-                            <a
+                            </Link> : <button type="button" disabled className="px-3 py-1.5 border border-gray-300 bg-white text-gray-700 rounded-lg text-xs font-semibold shadow-xs cursor-not-allowed opacity-50">View Details</button>}
+                            {canView ? <a
                                 href={route('admin.visits.pdf', visit.id)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-3.5 py-1.5 bg-primary-700 hover:bg-primary-800 text-white rounded-lg text-xs font-bold shadow-xs transition inline-flex items-center gap-1.5"
                             >
                                 <span>🖨</span> Print PDF
-                            </a>
+                            </a> : <button type="button" disabled className="px-3.5 py-1.5 bg-primary-700 text-white rounded-lg text-xs font-bold shadow-xs cursor-not-allowed opacity-50">Print PDF</button>}
                         </div>
                     }
                 />
@@ -415,7 +417,7 @@ export default function Edit({
                                                             {selectedPatient.name}
                                                         </h4>
                                                         <span className="bg-emerald-200/80 text-emerald-900 text-xs px-2 py-0.5 rounded-md font-mono font-bold">
-                                                            ID: {selectedPatient.patient_no}{selectedPatient.patient_series || ''}
+                                                            ID: {selectedPatient.patient_identifier || `${selectedPatient.patient_no}${selectedPatient.patient_series || ''}`}
                                                         </span>
                                                     </div>
                                                     <div className="text-xs text-gray-600 flex items-center gap-3 mt-1 flex-wrap">
@@ -477,7 +479,7 @@ export default function Edit({
                                                                 </span>
                                                             </div>
                                                             <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                                                                {p.patient_no}{p.patient_series || ''}
+                                                                {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
                                                             </span>
                                                         </li>
                                                     ))}

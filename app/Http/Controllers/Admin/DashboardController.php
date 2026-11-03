@@ -76,7 +76,7 @@ class DashboardController extends Controller
             'recent_requests' => AppointmentRequest::latest()
                 ->limit(5)
                 ->get(['id', 'name', 'phone', 'preferred_date', 'preferred_time', 'status', 'created_at']),
-            'recent_visits' => Visit::with('patient:id,name,patient_no,patient_series')
+            'recent_visits' => Visit::with('patient:id,name,patient_no,patient_series,patient_code')
                 ->latest('visit_date')
                 ->latest('id')
                 ->limit(5)

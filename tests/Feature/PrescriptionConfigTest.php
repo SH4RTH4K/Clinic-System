@@ -120,6 +120,97 @@ class PrescriptionConfigTest extends TestCase
         $response2->assertForbidden();
     }
 
+    public function test_create_permission_allows_adding_prescription_options(): void
+    {
+        Role::findByName('Receptionist')->givePermissionTo('prescription_options.create');
+        $config = ClinicSetting::defaultPrescriptionConfig();
+        $config['timing_options'][] = [
+            'key' => 'evening',
+            'label_en' => 'Evening',
+            'label_bn' => null,
+        ];
+
+        $this->actingAs($this->userWithRole('Receptionist'))
+            ->putJson(route('admin.prescription_options.update'), $config)
+            ->assertOk();
+
+        $this->assertTrue(collect(ClinicSetting::first()->getPrescriptionConfig()['timing_options'])
+            ->contains('key', 'evening'));
+    }
+
+    public function test_update_permission_allows_editing_but_not_adding_prescription_options(): void
+    {
+        Role::findByName('Receptionist')->givePermissionTo('prescription_options.update');
+        $config = ClinicSetting::defaultPrescriptionConfig();
+        $config['timing_options'][0]['label_en'] = 'Morning dose';
+
+        $this->actingAs($this->userWithRole('Receptionist'))
+            ->putJson(route('admin.prescription_options.update'), $config)
+            ->assertOk();
+
+        $this->assertSame(
+            'Morning dose',
+            ClinicSetting::first()->getPrescriptionConfig()['timing_options'][0]['label_en'],
+        );
+
+        $config['timing_options'][] = ['key' => 'evening', 'label_en' => 'Evening', 'label_bn' => null];
+
+        $this->actingAs($this->userWithRole('Receptionist'))
+            ->putJson(route('admin.prescription_options.update'), $config)
+            ->assertForbidden();
+    }
+
+    public function test_delete_permission_allows_removing_prescription_options(): void
+    {
+        Role::findByName('Receptionist')->givePermissionTo('prescription_options.delete');
+        $config = ClinicSetting::defaultPrescriptionConfig();
+        array_pop($config['timing_options']);
+
+        $this->actingAs($this->userWithRole('Receptionist'))
+            ->putJson(route('admin.prescription_options.update'), $config)
+            ->assertOk();
+
+        $this->assertCount(
+            count(ClinicSetting::defaultPrescriptionConfig()['timing_options']) - 1,
+            ClinicSetting::first()->getPrescriptionConfig()['timing_options'],
+        );
+    }
+
+    public function test_clinic_settings_permission_cannot_bypass_prescription_option_permissions(): void
+    {
+        Role::findByName('Receptionist')->givePermissionTo('clinic_settings.update');
+        $existingConfig = ClinicSetting::defaultPrescriptionConfig();
+        ClinicSetting::create([
+            'clinic_name_en' => 'Test Clinic',
+            'phone' => '01700000000',
+            'address' => 'Dhaka',
+            'patient_no_series' => 'A',
+            'patient_no_next' => 1,
+            'doctor_name' => '',
+            'doctor_credentials' => '',
+            'prescription_config' => $existingConfig,
+        ]);
+
+        $changedConfig = $existingConfig;
+        $changedConfig['timing_options'][0]['label_en'] = 'Changed without prescription permission';
+
+        $this->actingAs($this->userWithRole('Receptionist'))
+            ->put(route('admin.settings.update'), [
+                'clinic_name_en' => 'Updated Clinic',
+                'phone' => '01700000000',
+                'address' => 'Dhaka',
+                'patient_no_series' => 'A',
+                'patient_no_next' => 1,
+                'prescription_config' => $changedConfig,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            'Morning',
+            ClinicSetting::first()->getPrescriptionConfig()['timing_options'][0]['label_en'],
+        );
+    }
+
     public function test_super_admin_can_view_dedicated_prescription_options_page(): void
     {
         $admin = $this->userWithRole('Super Admin');

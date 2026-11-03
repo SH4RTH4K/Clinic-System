@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Doctor;
+use App\Models\FoodRestriction;
+use App\Models\PatientNumberingProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -84,6 +88,89 @@ class SettingsAuditAuthorizationTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_doctor_can_view_settings_when_granted_view_permission(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('clinic_settings.view');
+
+        $this->actingAs($this->userWithRole('Doctor'))
+            ->get('/admin/settings')
+            ->assertOk();
+    }
+
+    public function test_doctor_can_view_administration_pages_when_granted_module_permissions(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo([
+            'doctors.view',
+            'prescription_options.view',
+        ]);
+
+        $doctor = $this->userWithRole('Doctor');
+
+        $this->actingAs($doctor)->get(route('admin.doctors.index'))->assertOk();
+        $this->actingAs($doctor)->get(route('admin.prescription_options.edit'))->assertOk();
+    }
+
+    public function test_doctor_profile_details_require_and_accept_the_doctors_view_permission(): void
+    {
+        $this->withoutVite();
+        $doctorProfile = Doctor::create([
+            'name' => 'Dr. Test Profile',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $user = $this->userWithRole('Doctor');
+
+        $this->actingAs($user)
+            ->get(route('admin.doctors.show', $doctorProfile))
+            ->assertForbidden();
+
+        Role::findByName('Doctor')->givePermissionTo('doctors.view');
+
+        $this->actingAs($user)
+            ->get(route('admin.doctors.show', $doctorProfile))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Doctors/Show')
+                ->where('doctor.name', 'Dr. Test Profile'));
+    }
+
+    public function test_doctor_can_update_settings_when_granted_update_permission(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('clinic_settings.update');
+
+        $this->actingAs($this->userWithRole('Doctor'))
+            ->put('/admin/settings', [
+                'clinic_name_en' => 'Doctor Updated Clinic',
+                'phone' => '01700000000',
+                'address' => 'Dhaka',
+                'patient_no_series' => 'A',
+                'patient_no_next' => 1,
+            ])
+            ->assertRedirectContains('settings');
+
+        $this->assertDatabaseHas('clinic_settings', [
+            'clinic_name_en' => 'Doctor Updated Clinic',
+        ]);
+    }
+
+    public function test_general_and_clinic_settings_permissions_do_not_grant_each_other(): void
+    {
+        $doctor = $this->userWithRole('Doctor');
+        $profile = PatientNumberingProfile::factory()->create();
+        Role::findByName('Doctor')->givePermissionTo('clinic_settings.update');
+
+        $this->actingAs($doctor)
+            ->put(route('admin.general_settings.profiles.update', $profile), [])
+            ->assertForbidden();
+
+        $receptionist = $this->userWithRole('Receptionist');
+        Role::findByName('Receptionist')->givePermissionTo('general_settings.update');
+
+        $this->actingAs($receptionist)
+            ->put(route('admin.settings.update'), [])
+            ->assertForbidden();
+    }
+
     public function test_receptionist_cannot_update_settings(): void
     {
         $this->actingAs($this->userWithRole('Receptionist'))
@@ -113,6 +200,15 @@ class SettingsAuditAuthorizationTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_symptom_medicine_map_import_requires_create_permission(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('symptom_medicine_map.view');
+
+        $this->actingAs($this->userWithRole('Doctor'))
+            ->post(route('admin.symptom_medicine_map.import'), [])
+            ->assertForbidden();
+    }
+
     // -------------------------------------------------------------------------
     // Test 5: Doctor cannot delete a food restriction
     // -------------------------------------------------------------------------
@@ -132,6 +228,83 @@ class SettingsAuditAuthorizationTest extends TestCase
         $this->actingAs($doctor)
             ->delete('/admin/food_restrictions/1')
             ->assertStatus(403);
+    }
+
+    public function test_settings_create_permission_only_allows_creating_food_restrictions(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('settings.create');
+        $doctor = $this->userWithRole('Doctor');
+
+        $this->actingAs($doctor)
+            ->post(route('admin.food_restrictions.store'), [
+                'text_en' => 'No sugar',
+                'text_bn' => 'চিনি নিষেধ',
+            ])
+            ->assertRedirect(route('admin.food_restrictions.index'));
+
+        $foodRestriction = FoodRestriction::firstOrFail();
+
+        $this->actingAs($doctor)
+            ->put(route('admin.food_restrictions.update', $foodRestriction), [
+                'text_en' => 'No sweets',
+                'text_bn' => 'মিষ্টি নিষেধ',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($doctor)
+            ->delete(route('admin.food_restrictions.destroy', $foodRestriction))
+            ->assertForbidden();
+    }
+
+    public function test_settings_update_permission_only_allows_editing_food_restrictions(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('settings.update');
+        $foodRestriction = FoodRestriction::create([
+            'text_en' => 'No sugar',
+            'text_bn' => 'চিনি নিষেধ',
+        ]);
+        $doctor = $this->userWithRole('Doctor');
+
+        $this->actingAs($doctor)
+            ->put(route('admin.food_restrictions.update', $foodRestriction), [
+                'text_en' => 'No sweets',
+                'text_bn' => 'মিষ্টি নিষেধ',
+            ])
+            ->assertRedirect(route('admin.food_restrictions.index'));
+
+        $this->actingAs($doctor)
+            ->post(route('admin.food_restrictions.store'), [
+                'text_en' => 'No salt',
+                'text_bn' => 'লবণ নিষেধ',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($doctor)
+            ->delete(route('admin.food_restrictions.destroy', $foodRestriction))
+            ->assertForbidden();
+    }
+
+    public function test_settings_delete_permission_only_allows_deleting_food_restrictions(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('settings.delete');
+        $foodRestriction = FoodRestriction::create([
+            'text_en' => 'No sugar',
+            'text_bn' => 'চিনি নিষেধ',
+        ]);
+        $doctor = $this->userWithRole('Doctor');
+
+        $this->actingAs($doctor)
+            ->delete(route('admin.food_restrictions.destroy', $foodRestriction))
+            ->assertRedirect(route('admin.food_restrictions.index'));
+
+        $this->assertDatabaseMissing('food_restrictions', ['id' => $foodRestriction->id]);
+
+        $this->actingAs($doctor)
+            ->post(route('admin.food_restrictions.store'), [
+                'text_en' => 'No salt',
+                'text_bn' => 'লবণ নিষেধ',
+            ])
+            ->assertForbidden();
     }
 
     // -------------------------------------------------------------------------

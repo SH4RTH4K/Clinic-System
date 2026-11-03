@@ -1,6 +1,8 @@
 import Modal from '@/Components/Modal';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import { usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -11,6 +13,14 @@ export default function PrescriptionConfigModal({
     onConfigSaved = () => {},
     inline = false,
 }) {
+    const { auth = {} } = usePage().props;
+    const permissions = auth.permissions || [];
+    const isSuperAdmin = (auth.roles || []).includes('Super Admin');
+    const canCreate = isSuperAdmin || permissions.includes('prescription_options.create');
+    const canUpdate = isSuperAdmin || permissions.includes('prescription_options.update');
+    const canDelete = isSuperAdmin || permissions.includes('prescription_options.delete');
+    const canSave = canCreate || canUpdate || canDelete;
+
     const defaultConfig = {
         timing_options: [
             { key: 'morning', label_en: 'Morning', label_bn: 'সকাল' },
@@ -72,6 +82,7 @@ export default function PrescriptionConfigModal({
     const [saving, setSaving] = useState(false);
     const [savedNotice, setSavedNotice] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [pendingDelete, setPendingDelete] = useState(null);
 
     const clearAllEdits = () => {
         setEditingTimingIndex(null);
@@ -88,6 +99,7 @@ export default function PrescriptionConfigModal({
     const [editingTimingData, setEditingTimingData] = useState({ key: '', label_en: '', label_bn: '' });
 
     const addTiming = (e) => {
+        if (!canCreate) return;
         if (e && e.preventDefault) e.preventDefault();
         if (!newTiming.key || !newTiming.label_en) return;
         const normalizedKey = newTiming.key.toLowerCase().trim().replace(/\s+/g, '_');
@@ -107,6 +119,7 @@ export default function PrescriptionConfigModal({
     };
 
     const removeTiming = (keyToRemove) => {
+        if (!canDelete) return;
         if (config.timing_options.length <= 1) {
             setErrorMsg('At least one timing option must remain.');
             return;
@@ -119,12 +132,14 @@ export default function PrescriptionConfigModal({
     };
 
     const startEditingTiming = (index) => {
+        if (!canUpdate) return;
         clearAllEdits();
         setEditingTimingIndex(index);
         setEditingTimingData({ ...config.timing_options[index] });
     };
 
     const saveEditingTiming = () => {
+        if (!canUpdate) return;
         if (editingTimingIndex === null) return;
         const { key, label_en, label_bn } = editingTimingData;
         if (!key || !label_en) {
@@ -159,6 +174,7 @@ export default function PrescriptionConfigModal({
     const [editingMealRelationData, setEditingMealRelationData] = useState({ key: '', label_en: '', label_bn: '' });
 
     const addMealRelation = (e) => {
+        if (!canCreate) return;
         if (e && e.preventDefault) e.preventDefault();
         if (!newMealRelation.key || !newMealRelation.label_en) return;
         const normalizedKey = newMealRelation.key.toLowerCase().trim().replace(/\s+/g, '_');
@@ -178,6 +194,7 @@ export default function PrescriptionConfigModal({
     };
 
     const removeMealRelation = (keyToRemove) => {
+        if (!canDelete) return;
         if ((config.meal_relations || []).length <= 1) {
             setErrorMsg('At least one meal relation must remain.');
             return;
@@ -190,12 +207,14 @@ export default function PrescriptionConfigModal({
     };
 
     const startEditingMealRelation = (index) => {
+        if (!canUpdate) return;
         clearAllEdits();
         setEditingMealRelationIndex(index);
         setEditingMealRelationData({ ...config.meal_relations[index] });
     };
 
     const saveEditingMealRelation = () => {
+        if (!canUpdate) return;
         if (editingMealRelationIndex === null) return;
         const { key, label_en, label_bn } = editingMealRelationData;
         if (!key || !label_en) {
@@ -230,6 +249,7 @@ export default function PrescriptionConfigModal({
     const [editingDoseUnitData, setEditingDoseUnitData] = useState({ key: '', label_en: '', label_bn: '' });
 
     const addDoseUnit = (e) => {
+        if (!canCreate) return;
         if (e && e.preventDefault) e.preventDefault();
         if (!newDoseUnit.key || !newDoseUnit.label_en) return;
         const normalizedKey = newDoseUnit.key.toLowerCase().trim().replace(/\s+/g, '_');
@@ -249,6 +269,7 @@ export default function PrescriptionConfigModal({
     };
 
     const removeDoseUnit = (keyToRemove) => {
+        if (!canDelete) return;
         if (config.dose_units.length <= 1) {
             setErrorMsg('At least one dose unit must remain.');
             return;
@@ -261,12 +282,14 @@ export default function PrescriptionConfigModal({
     };
 
     const startEditingDoseUnit = (index) => {
+        if (!canUpdate) return;
         clearAllEdits();
         setEditingDoseUnitIndex(index);
         setEditingDoseUnitData({ ...config.dose_units[index] });
     };
 
     const saveEditingDoseUnit = () => {
+        if (!canUpdate) return;
         if (editingDoseUnitIndex === null) return;
         const { key, label_en, label_bn } = editingDoseUnitData;
         if (!key || !label_en) {
@@ -312,6 +335,7 @@ export default function PrescriptionConfigModal({
     const [editingInstructionText, setEditingInstructionText] = useState('');
 
     const addInstruction = (e) => {
+        if (!canCreate) return;
         if (e && e.preventDefault) e.preventDefault();
         if (!newInstruction.trim()) return;
         if (config.dilution_instructions.includes(newInstruction.trim())) {
@@ -327,6 +351,7 @@ export default function PrescriptionConfigModal({
     };
 
     const removeInstruction = (indexToRemove) => {
+        if (!canDelete) return;
         setConfig((prev) => ({
             ...prev,
             dilution_instructions: prev.dilution_instructions.filter((_, i) => i !== indexToRemove),
@@ -335,12 +360,14 @@ export default function PrescriptionConfigModal({
     };
 
     const startEditingInstruction = (index) => {
+        if (!canUpdate) return;
         clearAllEdits();
         setEditingInstructionIndex(index);
         setEditingInstructionText(config.dilution_instructions[index] || '');
     };
 
     const saveEditingInstruction = () => {
+        if (!canUpdate) return;
         if (editingInstructionIndex === null) return;
         const trimmed = editingInstructionText.trim();
         if (!trimmed) {
@@ -370,6 +397,7 @@ export default function PrescriptionConfigModal({
     const [editingDurationDays, setEditingDurationDays] = useState('');
 
     const addDurationPreset = (e) => {
+        if (!canCreate) return;
         if (e && e.preventDefault) e.preventDefault();
         const days = parseInt(newDuration, 10);
         if (isNaN(days) || days < 1 || days > 365) return;
@@ -387,6 +415,7 @@ export default function PrescriptionConfigModal({
     };
 
     const removeDurationPreset = (daysToRemove) => {
+        if (!canDelete) return;
         setConfig((prev) => ({
             ...prev,
             duration_presets: prev.duration_presets.filter((d) => d !== daysToRemove),
@@ -394,13 +423,36 @@ export default function PrescriptionConfigModal({
         if (editingDurationIndex !== null) clearAllEdits();
     };
 
+    const requestDelete = (type, value, label) => {
+        if (!canDelete) return;
+        setPendingDelete({ type, value, label });
+    };
+
+    const confirmDelete = () => {
+        if (!canDelete || !pendingDelete) return;
+
+        const { type, value } = pendingDelete;
+        const removeOption = {
+            timing: removeTiming,
+            mealRelation: removeMealRelation,
+            doseUnit: removeDoseUnit,
+            instruction: removeInstruction,
+            duration: removeDurationPreset,
+        }[type];
+
+        removeOption(value);
+        setPendingDelete(null);
+    };
+
     const startEditingDuration = (index) => {
+        if (!canUpdate) return;
         clearAllEdits();
         setEditingDurationIndex(index);
         setEditingDurationDays(String(config.duration_presets[index]));
     };
 
     const saveEditingDuration = () => {
+        if (!canUpdate) return;
         if (editingDurationIndex === null) return;
         const days = parseInt(editingDurationDays, 10);
         if (isNaN(days) || days < 1 || days > 365) {
@@ -427,6 +479,7 @@ export default function PrescriptionConfigModal({
 
     // ── Save to Backend ──────────────────────────────────────────────────────
     const saveConfiguration = () => {
+        if (!canSave) return;
         setSaving(true);
         setErrorMsg('');
         setSavedNotice(false);
@@ -619,6 +672,7 @@ export default function PrescriptionConfigModal({
                                             <button
                                                 type="button"
                                                 onClick={() => startEditingTiming(idx)}
+                                                disabled={!canUpdate}
                                                 className="text-gray-500 hover:text-primary-700 font-medium px-2 py-1 rounded hover:bg-gray-100 transition cursor-pointer flex items-center gap-1"
                                                 title="Edit option"
                                             >
@@ -629,7 +683,8 @@ export default function PrescriptionConfigModal({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => removeTiming(t.key)}
+                                                onClick={() => requestDelete('timing', t.key, t.label_en)}
+                                                disabled={!canDelete}
                                                 className="text-gray-400 hover:text-red-600 font-bold px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
                                                 title="Delete option"
                                             >
@@ -674,6 +729,7 @@ export default function PrescriptionConfigModal({
                             <button
                                 type="button"
                                 onClick={addTiming}
+                                disabled={!canCreate}
                                 className="px-3 py-1 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs font-semibold shadow-xs transition cursor-pointer"
                             >
                                 + Add Timing
@@ -781,6 +837,7 @@ export default function PrescriptionConfigModal({
                                                 <button
                                                     type="button"
                                                     onClick={() => startEditingMealRelation(idx)}
+                                                    disabled={!canUpdate}
                                                     className="text-gray-500 hover:text-primary-700 font-medium px-2 py-1 rounded hover:bg-gray-100 transition cursor-pointer flex items-center gap-1"
                                                     title="Edit relation"
                                                 >
@@ -791,7 +848,8 @@ export default function PrescriptionConfigModal({
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeMealRelation(m.key)}
+                                                    onClick={() => requestDelete('mealRelation', m.key, m.label_en)}
+                                                    disabled={!canDelete}
                                                     className="text-gray-400 hover:text-red-600 font-bold px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
                                                     title="Delete relation"
                                                 >
@@ -836,6 +894,7 @@ export default function PrescriptionConfigModal({
                                 <button
                                     type="button"
                                     onClick={addMealRelation}
+                                    disabled={!canCreate}
                                     className="px-3 py-1 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs font-semibold shadow-xs transition cursor-pointer"
                                 >
                                     + Add Relation
@@ -939,6 +998,7 @@ export default function PrescriptionConfigModal({
                                                 <button
                                                     type="button"
                                                     onClick={() => startEditingDoseUnit(idx)}
+                                                    disabled={!canUpdate}
                                                     className="text-gray-500 hover:text-primary-700 font-medium px-2 py-1 rounded hover:bg-gray-100 transition cursor-pointer flex items-center gap-1"
                                                     title="Edit unit"
                                                 >
@@ -949,7 +1009,8 @@ export default function PrescriptionConfigModal({
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeDoseUnit(u.key)}
+                                                    onClick={() => requestDelete('doseUnit', u.key, u.label_en)}
+                                                    disabled={!canDelete}
                                                     className="text-gray-400 hover:text-red-600 font-bold px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
                                                     title="Delete unit"
                                                 >
@@ -994,6 +1055,7 @@ export default function PrescriptionConfigModal({
                                 <button
                                     type="button"
                                     onClick={addDoseUnit}
+                                    disabled={!canCreate}
                                     className="px-3 py-1 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs font-semibold shadow-xs transition cursor-pointer"
                                 >
                                     + Add Unit
@@ -1056,6 +1118,7 @@ export default function PrescriptionConfigModal({
                                             <button
                                                 type="button"
                                                 onClick={() => startEditingInstruction(idx)}
+                                                disabled={!canUpdate}
                                                 className="text-gray-500 hover:text-primary-700 font-medium px-2 py-1 rounded hover:bg-gray-100 transition cursor-pointer flex items-center gap-1"
                                                 title="Edit template"
                                             >
@@ -1066,7 +1129,8 @@ export default function PrescriptionConfigModal({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => removeInstruction(idx)}
+                                                onClick={() => requestDelete('instruction', idx, inst)}
+                                                disabled={!canDelete}
                                                 className="text-gray-400 hover:text-red-600 font-bold px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
                                                 title="Delete template"
                                             >
@@ -1091,6 +1155,7 @@ export default function PrescriptionConfigModal({
                         <button
                             type="button"
                             onClick={addInstruction}
+                            disabled={!canCreate}
                             className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs font-semibold shadow-xs transition shrink-0 cursor-pointer"
                         >
                             + Add Template
@@ -1131,6 +1196,7 @@ export default function PrescriptionConfigModal({
                                             <button
                                                 type="button"
                                                 onClick={saveEditingDuration}
+                                                disabled={!canUpdate}
                                                 className="text-emerald-700 hover:text-emerald-800 font-bold px-1.5 py-0.5 rounded hover:bg-emerald-100 cursor-pointer"
                                                 title="Save"
                                             >
@@ -1151,6 +1217,7 @@ export default function PrescriptionConfigModal({
                                             <button
                                                 type="button"
                                                 onClick={() => startEditingDuration(idx)}
+                                                disabled={!canUpdate}
                                                 className="text-gray-400 hover:text-primary-600 transition cursor-pointer"
                                                 title="Edit preset"
                                             >
@@ -1160,7 +1227,8 @@ export default function PrescriptionConfigModal({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => removeDurationPreset(d)}
+                                                onClick={() => requestDelete('duration', d, `${d} days`)}
+                                                disabled={!canDelete}
                                                 className="text-gray-400 hover:text-red-600 font-bold ml-0.5 cursor-pointer"
                                                 title="Remove preset"
                                             >
@@ -1188,6 +1256,7 @@ export default function PrescriptionConfigModal({
                         <button
                             type="button"
                             onClick={addDurationPreset}
+                            disabled={!canCreate}
                             className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs font-semibold shadow-xs transition cursor-pointer"
                         >
                             + Add Preset
@@ -1203,6 +1272,7 @@ export default function PrescriptionConfigModal({
                                 min="1"
                                 max="365"
                                 value={config.default_duration_days}
+                                disabled={!canUpdate}
                                 onChange={(e) => setConfig({ ...config, default_duration_days: parseInt(e.target.value, 10) || 7 })}
                                 className="w-full rounded text-xs border-gray-300 text-center"
                             />
@@ -1215,6 +1285,7 @@ export default function PrescriptionConfigModal({
                                 min="0.1"
                                 max="100"
                                 value={config.default_dose_qty}
+                                disabled={!canUpdate}
                                 onChange={(e) => setConfig({ ...config, default_dose_qty: parseFloat(e.target.value) || 5 })}
                                 className="w-full rounded text-xs border-gray-300 text-center"
                             />
@@ -1223,6 +1294,7 @@ export default function PrescriptionConfigModal({
                             <label className="block text-xs font-medium text-gray-700 mb-1">Default Dose Unit</label>
                             <select
                                 value={config.default_dose_unit}
+                                disabled={!canUpdate}
                                 onChange={(e) => setConfig({ ...config, default_dose_unit: e.target.value })}
                                 className="w-full rounded text-xs border-gray-300"
                             >
@@ -1244,10 +1316,19 @@ export default function PrescriptionConfigModal({
                         Cancel
                     </SecondaryButton>
                 )}
-                <PrimaryButton onClick={saveConfiguration} disabled={saving}>
+                <PrimaryButton onClick={saveConfiguration} disabled={!canSave || saving}>
                     {saving ? 'Saving Changes...' : 'Save Configuration'}
                 </PrimaryButton>
             </div>
+            <ConfirmDialog
+                isOpen={Boolean(pendingDelete)}
+                title="Delete prescription option?"
+                message={`Remove ${pendingDelete?.label ?? 'this option'} from the pending configuration? Save Configuration afterward to apply the change.`}
+                confirmLabel="Delete option"
+                isDestructive
+                onConfirm={confirmDelete}
+                onCancel={() => setPendingDelete(null)}
+            />
         </div>
     );
 

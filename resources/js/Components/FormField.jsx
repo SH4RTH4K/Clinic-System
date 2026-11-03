@@ -8,10 +8,11 @@ export default function FormField({
     required = false,
     helpText,
     className = '',
+    style,
     children,
 }) {
     return (
-        <div className={`space-y-1.5 ${className}`}>
+        <div className={`space-y-1.5 ${className}`} style={style}>
             {label && (
                 <div className="flex items-center justify-between">
                     <InputLabel htmlFor={id} value={label} />

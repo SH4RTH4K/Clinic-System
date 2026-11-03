@@ -3,9 +3,11 @@ import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import Pagination from '@/Components/Pagination';
 import StatusBadge from '@/Components/StatusBadge';
+import usePermission from '@/Components/usePermission';
 import { Head, useForm, router } from '@inertiajs/react';
 
 export default function Index({ requests, filters = {} }) {
+    const canUpdate = usePermission()('appointments.update');
     const { data, setData, get } = useForm({ status: filters.status || '' });
 
     const onFilter = (e) => {
@@ -14,6 +16,7 @@ export default function Index({ requests, filters = {} }) {
     };
 
     const updateStatus = (id, newStatus) => {
+        if (!canUpdate) return;
         router.put(
             route('admin.appointment_requests.update', id),
             { status: newStatus },
@@ -22,6 +25,7 @@ export default function Index({ requests, filters = {} }) {
     };
 
     const convertToPatient = (id) => {
+        if (!canUpdate) return;
         router.post(route('admin.appointment_requests.convert', id));
     };
 
@@ -71,8 +75,9 @@ export default function Index({ requests, filters = {} }) {
                     <StatusBadge status={req.status} />
                     <select
                         value={req.status}
+                        disabled={!canUpdate}
                         onChange={(e) => updateStatus(req.id, e.target.value)}
-                        className="text-[11px] py-0.5 px-1.5 rounded border-gray-300 text-gray-700 focus:border-primary-500 focus:ring-primary-500 bg-white"
+                        className="text-[11px] py-0.5 px-1.5 rounded border-gray-300 text-gray-700 focus:border-primary-500 focus:ring-primary-500 bg-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <option value="pending">Pending</option>
                         <option value="contacted">Contacted</option>
@@ -90,7 +95,8 @@ export default function Index({ requests, filters = {} }) {
                     <button
                         type="button"
                         onClick={() => convertToPatient(req.id)}
-                        className="px-2.5 py-1 text-primary-800 bg-primary-50 hover:bg-primary-100 rounded font-medium transition shadow-xs"
+                        disabled={!canUpdate}
+                        className="px-2.5 py-1 text-primary-800 bg-primary-50 rounded font-medium transition shadow-xs enabled:hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Convert to Patient
                     </button>

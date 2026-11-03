@@ -4,10 +4,15 @@ import DataTable from '@/Components/DataTable';
 import Pagination from '@/Components/Pagination';
 import StatusBadge from '@/Components/StatusBadge';
 import ConfirmDialog from '@/Components/ConfirmDialog';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ symptoms, filters = {} }) {
+    const { auth = {} } = usePage().props;
+    const permissions = auth.permissions || [];
+    const canCreate = permissions.includes('symptoms.create');
+    const canUpdate = permissions.includes('symptoms.update');
+    const canDelete = permissions.includes('symptoms.delete');
     const { data, setData, get } = useForm({ search: filters.search || '' });
     const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -17,7 +22,7 @@ export default function Index({ symptoms, filters = {} }) {
     };
 
     const confirmDelete = () => {
-        if (!deleteTarget) return;
+        if (!canDelete || !deleteTarget) return;
         router.delete(route('admin.symptoms.destroy', deleteTarget.id), {
             onSuccess: () => setDeleteTarget(null),
         });
@@ -44,16 +49,23 @@ export default function Index({ symptoms, filters = {} }) {
             className: 'text-right',
             cell: (s) => (
                 <div className="flex justify-end gap-2 text-xs">
-                    <Link
-                        href={route('admin.symptoms.edit', s.id)}
-                        className="px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded font-medium transition"
-                    >
-                        Edit
-                    </Link>
+                    {canUpdate ? (
+                        <Link
+                            href={route('admin.symptoms.edit', s.id)}
+                            className="px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded font-medium transition"
+                        >
+                            Edit
+                        </Link>
+                    ) : (
+                        <button type="button" disabled className="px-2.5 py-1 text-primary-700 bg-primary-50 rounded font-medium cursor-not-allowed opacity-50">
+                            Edit
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => setDeleteTarget(s)}
-                        className="px-2.5 py-1 text-red-700 bg-red-50 hover:bg-red-100 rounded font-medium transition"
+                        disabled={!canDelete}
+                        className="px-2.5 py-1 text-red-700 bg-red-50 rounded font-medium transition enabled:hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Delete
                     </button>
@@ -69,14 +81,18 @@ export default function Index({ symptoms, filters = {} }) {
                 <PageHeader
                     title="Symptoms"
                     subtitle="Manage homeopathic symptoms dictionary and repertory entries"
-                    action={
+                    action={canCreate ? (
                         <Link
                             href={route('admin.symptoms.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"
                         >
                             + New Symptom
                         </Link>
-                    }
+                    ) : (
+                        <button type="button" disabled className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-semibold shadow-xs cursor-not-allowed opacity-50">
+                            + New Symptom
+                        </button>
+                    )}
                 />
 
                 <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-4 space-y-4">

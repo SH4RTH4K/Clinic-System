@@ -3,14 +3,19 @@ import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import StatusBadge from '@/Components/StatusBadge';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import usePermission from '@/Components/usePermission';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ users = [] }) {
+    const can = usePermission();
+    const canCreate = can('users.create');
+    const canUpdate = can('users.update');
+    const canDelete = can('users.delete');
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const confirmDelete = () => {
-        if (!deleteTarget) return;
+        if (!canDelete || !deleteTarget) return;
         router.delete(route('admin.users.destroy', deleteTarget.id), {
             onSuccess: () => setDeleteTarget(null),
         });
@@ -67,16 +72,17 @@ export default function Index({ users = [] }) {
             className: 'text-right',
             cell: (user) => (
                 <div className="flex justify-end gap-2 text-xs">
-                    <Link
+                    {canUpdate ? <Link
                         href={route('admin.users.edit', user.id)}
                         className="px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded font-medium transition"
                     >
                         Edit
-                    </Link>
+                    </Link> : <button type="button" disabled className="px-2.5 py-1 text-primary-700 bg-primary-50 rounded font-medium cursor-not-allowed opacity-50">Edit</button>}
                     <button
                         type="button"
                         onClick={() => setDeleteTarget(user)}
-                        className="px-2.5 py-1 text-red-700 bg-red-50 hover:bg-red-100 rounded font-medium transition"
+                        disabled={!canDelete}
+                        className="px-2.5 py-1 text-red-700 bg-red-50 rounded font-medium transition enabled:hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Delete
                     </button>
@@ -92,14 +98,18 @@ export default function Index({ users = [] }) {
                 <PageHeader
                     title="Staff &amp; User Accounts"
                     subtitle="Manage clinic staff access, login credentials, and assigned roles"
-                    action={
+                    action={canCreate ? (
                         <Link
                             href={route('admin.users.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"
                         >
                             + Create User
                         </Link>
-                    }
+                    ) : (
+                        <button type="button" disabled className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-semibold shadow-xs cursor-not-allowed opacity-50">
+                            + Create User
+                        </button>
+                    )}
                 />
 
                 <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-4">

@@ -35,7 +35,7 @@ class VisitController extends Controller
     {
         $patient = null;
         if ($request->patient_id) {
-            $patient = Patient::select('id', 'patient_no', 'patient_series', 'name', 'age_years', 'age_months', 'age_days', 'dob', 'gender')
+            $patient = Patient::select('id', 'patient_no', 'patient_series', 'patient_code', 'patient_category', 'name', 'age_years', 'age_months', 'age_days', 'dob', 'gender')
                 ->find($request->patient_id);
         }
 

@@ -2,10 +2,17 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import StatusBadge from '@/Components/StatusBadge';
+import usePermission from '@/Components/usePermission';
 import { Head, Link } from '@inertiajs/react';
 import { formatAgeSummary } from './ageHelpers';
+import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
-export default function Show({ patient }) {
+export default function Show({ patient, relationshipOptions = [] }) {
+    const can = usePermission();
+    const canVisitView = can('visits.view');
+    const canPatientUpdate = can('patients.update');
+    const canVisitCreate = can('visits.create');
+
     const visitColumns = [
         {
             header: 'Visit Date',
@@ -43,20 +50,20 @@ export default function Show({ patient }) {
             className: 'text-right',
             cell: (v) => (
                 <div className="flex justify-end gap-2 text-xs">
-                    <Link
-                        href={route('admin.visits.show', v.id)}
-                        className="px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded font-medium transition"
-                    >
-                        View Visit
-                    </Link>
-                    <a
-                        href={route('admin.visits.pdf', v.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium transition"
-                    >
-                        PDF
-                    </a>
+                    {canVisitView ? (
+                        <Link href={route('admin.visits.show', v.id)} className="px-2.5 py-1 text-primary-700 bg-primary-50 hover:bg-primary-100 rounded font-medium transition">
+                            View Visit
+                        </Link>
+                    ) : (
+                        <button type="button" disabled className="px-2.5 py-1 text-primary-700 bg-primary-50 rounded font-medium cursor-not-allowed opacity-50">View Visit</button>
+                    )}
+                    {canVisitView ? (
+                        <a href={route('admin.visits.pdf', v.id)} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium transition">
+                            PDF
+                        </a>
+                    ) : (
+                        <button type="button" disabled className="px-2.5 py-1 text-gray-700 bg-gray-100 rounded font-medium cursor-not-allowed opacity-50">PDF</button>
+                    )}
                 </div>
             ),
         },
@@ -68,21 +75,21 @@ export default function Show({ patient }) {
             <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 <PageHeader
                     title={`Patient: ${patient.name}`}
-                    subtitle={`Patient ID: ${patient.patient_no}${patient.patient_series || ''} • Registered: ${new Date(patient.created_at).toLocaleDateString()}`}
+                    subtitle={`Patient ID: ${patient.patient_identifier || `${patient.patient_no}${patient.patient_series || ''}`} • Registered: ${new Date(patient.created_at).toLocaleDateString()}`}
                     action={
                         <div className="flex gap-2">
-                            <Link
+                            {canPatientUpdate ? <Link
                                 href={route('admin.patients.edit', patient.id)}
                                 className="px-3.5 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-md shadow-xs transition"
                             >
                                 Edit Patient
-                            </Link>
-                            <Link
+                            </Link> : <button type="button" disabled className="px-3.5 py-2 border border-gray-300 bg-white text-gray-700 text-xs font-semibold rounded-md shadow-xs cursor-not-allowed opacity-50">Edit Patient</button>}
+                            {canVisitCreate ? <Link
                                 href={route('admin.visits.create', { patient_id: patient.id })}
                                 className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-md shadow-xs transition"
                             >
                                 + New Visit / Prescription
-                            </Link>
+                            </Link> : <button type="button" disabled className="px-4 py-2 bg-primary-600 text-white text-xs font-semibold rounded-md shadow-xs cursor-not-allowed opacity-50">+ New Visit / Prescription</button>}
                         </div>
                     }
                 />
@@ -96,7 +103,7 @@ export default function Show({ patient }) {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
                         <div className="space-y-2">
                             <div><span className="text-gray-400 font-medium">Full Name:</span> <strong className="text-gray-900 block text-sm">{patient.name}</strong></div>
-                            <div><span className="text-gray-400 font-medium">Guardian / Spouse:</span> <span className="text-gray-800 block">{patient.guardian_name || '—'}</span></div>
+                            <div><span className="text-gray-400 font-medium">{getGuardianRelationshipLabel(patient.guardian_relationship, patient.guardian_relationship_custom, relationshipOptions) || 'Guardian / Spouse'} Name:</span> <span className="text-gray-800 block">{patient.guardian_name || '—'}</span></div>
                             <div><span className="text-gray-400 font-medium">Gender:</span> <span className="text-gray-800 capitalize block">{patient.gender}</span></div>
                         </div>
 

@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(PatientNumberingProfileSeeder::class);
+
         // 1. Roles and Permissions
         $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map', 'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs'];
         $actions = ['view', 'create', 'update', 'delete', 'export', 'amend'];
@@ -25,6 +27,20 @@ class DatabaseSeeder extends Seeder
             foreach ($actions as $action) {
                 // Not all modules need all actions, but we can create them all and assign specifically
                 Permission::firstOrCreate(['name' => "{$module}.{$action}"]);
+            }
+        }
+
+        $featurePermissions = [
+            'doctors' => ['view', 'create', 'update', 'delete'],
+            'prescription_options' => ['view', 'create', 'update', 'delete'],
+            'clinic_settings' => ['view', 'update'],
+            'general_settings' => ['view', 'create', 'update', 'delete'],
+            'patient_config' => ['view', 'create', 'update', 'order', 'delete'],
+        ];
+
+        foreach ($featurePermissions as $feature => $featureActions) {
+            foreach ($featureActions as $action) {
+                Permission::firstOrCreate(['name' => "{$feature}.{$action}", 'guard_name' => 'web']);
             }
         }
 

@@ -4,12 +4,18 @@ import PageHeader from '@/Components/PageHeader';
 import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import usePermission from '@/Components/usePermission';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { formatAgeSummary } from './ageHelpers';
+import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
-export default function Index({ patients, filters = {} }) {
+export default function Index({ patients, filters = {}, relationshipOptions = [] }) {
+    const can = usePermission();
+    const canCreate = can('patients.create');
+    const canUpdate = can('patients.update');
+    const canDelete = can('patients.delete');
     const { data, setData, get } = useForm({
         search: filters.search || '',
     });
@@ -23,7 +29,7 @@ export default function Index({ patients, filters = {} }) {
     };
 
     const confirmDelete = () => {
-        if (!deleteId) return;
+        if (!canDelete || !deleteId) return;
         setIsDeleting(true);
         router.delete(route('admin.patients.destroy', deleteId), {
             preserveScroll: true,
@@ -40,7 +46,7 @@ export default function Index({ patients, filters = {} }) {
             label: 'Patient ID',
             render: (p) => (
                 <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-                    {p.patient_no} {p.patient_series}
+                    {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
                 </span>
             ),
         },
@@ -51,7 +57,7 @@ export default function Index({ patients, filters = {} }) {
                 <div>
                     <span className="font-semibold text-gray-900">{p.name}</span>
                     {p.guardian_name && (
-                        <span className="block text-xs text-gray-500">C/O {p.guardian_name}</span>
+                        <span className="block text-xs text-gray-500">{getGuardianRelationshipLabel(p.guardian_relationship, p.guardian_relationship_custom, relationshipOptions) || 'C/O'} {p.guardian_name}</span>
                     )}
                 </div>
             ),
@@ -85,16 +91,23 @@ export default function Index({ patients, filters = {} }) {
                     >
                         View
                     </Link>
-                    <Link
-                        href={route('admin.patients.edit', p.id)}
-                        className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition"
-                    >
-                        Edit
-                    </Link>
+                    {canUpdate ? (
+                        <Link
+                            href={route('admin.patients.edit', p.id)}
+                            className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition"
+                        >
+                            Edit
+                        </Link>
+                    ) : (
+                        <button type="button" disabled className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 cursor-not-allowed opacity-50">
+                            Edit
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => setDeleteId(p.id)}
-                        className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition"
+                        disabled={!canDelete}
+                        className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 transition enabled:hover:bg-rose-50 enabled:hover:border-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Delete
                     </button>
@@ -116,7 +129,7 @@ export default function Index({ patients, filters = {} }) {
                 <PageHeader
                     title="Patients"
                     subtitle="Register and manage patient health records"
-                    actions={
+                    actions={canCreate ? (
                         <Link href={route('admin.patients.create')}>
                             <PrimaryButton className="gap-1.5">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,7 +138,14 @@ export default function Index({ patients, filters = {} }) {
                                 <span>New Patient</span>
                             </PrimaryButton>
                         </Link>
-                    }
+                    ) : (
+                            <PrimaryButton disabled className="gap-1.5">
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                <span>New Patient</span>
+                            </PrimaryButton>
+                        )}
                 />
 
                 {/* Search Bar */}

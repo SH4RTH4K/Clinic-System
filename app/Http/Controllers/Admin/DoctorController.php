@@ -19,6 +19,11 @@ class DoctorController extends Controller
         return Inertia::render('Admin/Doctors/Index', ['doctors' => $doctors]);
     }
 
+    public function show(Doctor $doctor): Response
+    {
+        return Inertia::render('Admin/Doctors/Show', ['doctor' => $doctor]);
+    }
+
     public function create(): Response
     {
         return Inertia::render('Admin/Doctors/Create');

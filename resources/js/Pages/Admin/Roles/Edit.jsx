@@ -1,50 +1,64 @@
+import AccessControlNavigation from '@/Components/AccessControlNavigation';
+import FormField from '@/Components/FormField';
+import PageHeader from '@/Components/PageHeader';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 
-export default function Edit({ role, permissions }) {
-    const { data, setData, put, errors, processing } = useForm({
-        name: role.name,
-        permissions: role.permissions.map(p => p.name)
-    });
+export default function Edit({ role }) {
+    const { data, setData, put, errors, processing } = useForm({ name: role.name });
 
-    const submit = (e) => {
-        e.preventDefault();
+    const submit = (event) => {
+        event.preventDefault();
         put(route('admin.roles.update', role.id));
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Edit Role</h2>}>
-            <Head title="Edit Role" />
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                        {errors.error && <div className="text-red-500 mb-4">{errors.error}</div>}
-                        <form onSubmit={submit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium">Role Name</label>
-                                <input type="text" value={data.name} onChange={e => setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required />
-                                {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Permissions</label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {permissions.map(perm => (
-                                        <div key={perm.id}>
-                                            <label className="inline-flex items-center">
-                                                <input type="checkbox" value={perm.name} checked={data.permissions.includes(perm.name)} onChange={e => {
-                                                    if (e.target.checked) setData('permissions', [...data.permissions, perm.name]);
-                                                    else setData('permissions', data.permissions.filter(p => p !== perm.name));
-                                                }} className="rounded border-gray-300 shadow-sm" />
-                                                <span className="ml-2 text-sm">{perm.name}</span>
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <button type="submit" disabled={processing} className="bg-blue-500 text-white px-4 py-2 rounded">Update</button>
-                        </form>
+        <AuthenticatedLayout>
+            <Head title={`Edit ${role.name} Role`} />
+            <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+                <PageHeader
+                    title="Edit role"
+                    subtitle="Update the role name here. Manage its permissions separately from the Permissions page."
+                />
+                <AccessControlNavigation active="roles" />
+
+                <form onSubmit={submit} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                    <div className="space-y-5 p-6">
+                        <div>
+                            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-800">Role details</h2>
+                            <p className="mt-1 text-sm text-gray-500">Changing the name does not change staff assignments or permissions.</p>
+                        </div>
+                        <div className="max-w-xl">
+                            <FormField id="name" label="Role name" error={errors.name} required>
+                                <input
+                                    id="name"
+                                    type="text"
+                                    value={data.name}
+                                    onChange={(event) => setData('name', event.target.value)}
+                                    maxLength={255}
+                                    autoComplete="off"
+                                    className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                    required
+                                />
+                            </FormField>
+                        </div>
                     </div>
-                </div>
+                    <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+                        <Link
+                            href={route('admin.roles.index')}
+                            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                            Cancel
+                        </Link>
+                        <button
+                            type="submit"
+                            disabled={processing}
+                            className="rounded-md bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {processing ? 'Saving...' : 'Save role'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </AuthenticatedLayout>
     );

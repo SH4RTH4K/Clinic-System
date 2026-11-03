@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import PrescriptionConfigModal from '@/Components/PrescriptionConfigModal';
+import usePermission from '@/Components/usePermission';
 import { calculateAgeFromDob, calculateDobFromAge, formatAgeSummary } from '@/Utils/ageHelpers';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
@@ -17,6 +18,7 @@ export default function Create({
     defaultFood = [],
     prescriptionConfig = {},
 }) {
+    const canCreatePatient = usePermission()('patients.create');
     const defaultDoctorId = doctors.length > 0 ? doctors[0].id : '';
     const initialVisitDate = new Date().toISOString().split('T')[0];
 
@@ -58,7 +60,7 @@ export default function Create({
 
     // ── Patient async combobox ────────────────────────────────────────────────
     const initialPatientLabel = patient
-        ? `${patient.patient_no}${patient.patient_series || ''} – ${patient.name}`
+        ? `${patient.patient_identifier || `${patient.patient_no}${patient.patient_series || ''}`} – ${patient.name}`
         : '';
     const [patientQuery, setPatientQuery] = useState(initialPatientLabel);
     const [patientResults, setPatientResults] = useState([]);
@@ -165,7 +167,7 @@ export default function Create({
             age_days: d,
             patient_dob: dob,
         }));
-        setPatientQuery(`${p.patient_no}${p.patient_series || ''} – ${p.name}`);
+        setPatientQuery(`${p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`} – ${p.name}`);
         setPatientResults([]);
         setShowDropdown(false);
     };
@@ -495,7 +497,7 @@ export default function Create({
                                                             {selectedPatient.name}
                                                         </h4>
                                                         <span className="bg-emerald-200/80 text-emerald-900 text-xs px-2 py-0.5 rounded-md font-mono font-bold">
-                                                            ID: {selectedPatient.patient_no}{selectedPatient.patient_series || ''}
+                                                            ID: {selectedPatient.patient_identifier || `${selectedPatient.patient_no}${selectedPatient.patient_series || ''}`}
                                                         </span>
                                                     </div>
                                                     <div className="text-xs text-gray-600 flex items-center gap-3 mt-1 flex-wrap">
@@ -557,7 +559,7 @@ export default function Create({
                                                                 </span>
                                                             </div>
                                                             <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                                                                {p.patient_no}{p.patient_series || ''}
+                                                                {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
                                                             </span>
                                                         </li>
                                                     ))}
@@ -567,13 +569,15 @@ export default function Create({
                                             {!data.patient_id && patientQuery.length >= 2 && !showDropdown && (
                                                 <div className="flex items-center justify-between text-xs mt-1.5">
                                                     <span className="text-amber-600 font-medium">Click a patient from the list above to select.</span>
-                                                    <Link
+                                                    {canCreatePatient ? <Link
                                                         href={route('admin.patients.create')}
                                                         target="_blank"
                                                         className="text-primary-600 hover:text-primary-800 font-bold underline"
                                                     >
                                                         + Register New Patient
-                                                    </Link>
+                                                    </Link> : <button type="button" disabled className="text-primary-600 font-bold underline cursor-not-allowed opacity-50">
+                                                        + Register New Patient
+                                                    </button>}
                                                 </div>
                                             )}
                                         </div>

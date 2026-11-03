@@ -38,7 +38,6 @@ class UpdateUserRequest extends FormRequest
 
         // Only validate password fields when a new password is being set.
         if ($this->filled('password')) {
-            $rules['current_password'] = ['required', 'current_password'];
             $rules['password'] = ['required', 'confirmed', Password::defaults()];
         }
 

@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import usePermission from '@/Components/usePermission';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -65,7 +66,7 @@ function buildInitialDays(saved) {
     return base;
 }
 
-function VisitingHoursBuilder({ schedule, onScheduleChange }) {
+function VisitingHoursBuilder({ schedule, onScheduleChange, canUpdate }) {
     const { mode, days } = schedule;
 
     const setMode = (nextMode) => onScheduleChange({ ...schedule, mode: nextMode });
@@ -137,6 +138,7 @@ function VisitingHoursBuilder({ schedule, onScheduleChange }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => addSlot(day)}
+                                                    disabled={!canUpdate}
                                                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-lg font-bold text-blue-600 transition hover:bg-blue-100"
                                                 >
                                                     +
@@ -174,6 +176,7 @@ function VisitingHoursBuilder({ schedule, onScheduleChange }) {
                                                     <button
                                                         type="button"
                                                         onClick={() => addSlot(day)}
+                                                        disabled={!canUpdate}
                                                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-lg font-bold text-blue-600 transition hover:bg-blue-100"
                                                     >
                                                         +
@@ -183,6 +186,7 @@ function VisitingHoursBuilder({ schedule, onScheduleChange }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => removeSlot(day, index)}
+                                                    disabled={!canUpdate}
                                                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-500 transition hover:bg-red-50 hover:text-red-500"
                                                 >
                                                     x
@@ -201,6 +205,9 @@ function VisitingHoursBuilder({ schedule, onScheduleChange }) {
 }
 
 export default function Edit({ settings }) {
+    const can = usePermission();
+    const canUpdate = can('clinic_settings.update');
+    const canViewPrescriptionOptions = can('prescription_options.view');
     const savedSchedule = settings?.visiting_hours_schedule;
     const initialMode = savedSchedule
         ? (isOldFormat(savedSchedule) ? 'selected_hours' : (savedSchedule.mode || 'selected_hours'))
@@ -218,8 +225,6 @@ export default function Edit({ settings }) {
         phone: settings?.phone || '',
         address: settings?.address || '',
         visiting_hours: settings?.visiting_hours || '',
-        patient_no_series: settings?.patient_no_series || '',
-        patient_no_next: settings?.patient_no_next || 1,
         footer_text: settings?.footer_text || '',
         developer_name: settings?.developer_name || '',
         developer_link: settings?.developer_link || '',
@@ -228,6 +233,7 @@ export default function Edit({ settings }) {
 
     const submit = (event) => {
         event.preventDefault();
+        if (!canUpdate) return;
         put(route('admin.settings.update'));
     };
 
@@ -237,6 +243,7 @@ export default function Edit({ settings }) {
             <div className="mx-auto max-w-5xl px-4 py-8">
                 <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <form onSubmit={submit}>
+                        <fieldset disabled={!canUpdate} className="contents">
                         <div className="border-b p-6">
                             <h3 className="mb-4 text-base font-bold text-gray-700">General Information</h3>
                             <div className="grid grid-cols-2 gap-4">
@@ -280,15 +287,8 @@ export default function Edit({ settings }) {
                             <VisitingHoursBuilder
                                 schedule={data.visiting_hours_schedule}
                                 onScheduleChange={(value) => setData('visiting_hours_schedule', value)}
+                                canUpdate={canUpdate}
                             />
-                        </div>
-
-                        <div className="border-b p-6">
-                            <h3 className="mb-4 text-base font-bold text-gray-700">Patient Numbering</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <InputField label="Patient No. Series Prefix" value={data.patient_no_series} onChange={(event) => setData('patient_no_series', event.target.value)} />
-                                <InputField label="Next Patient Number" type="number" value={data.patient_no_next} onChange={(event) => setData('patient_no_next', event.target.value)} />
-                            </div>
                         </div>
 
                         <div className="border-b p-6">
@@ -303,12 +303,13 @@ export default function Edit({ settings }) {
                         <div className="p-6">
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={!canUpdate || processing}
                                 className="rounded-md bg-primary-600 px-8 py-2.5 font-semibold text-white shadow transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
                             >
                                 {processing ? 'Saving...' : 'Save Settings'}
                             </button>
                         </div>
+                        </fieldset>
                     </form>
                 </div>
 
@@ -322,12 +323,14 @@ export default function Edit({ settings }) {
                             Manage dosage units, meal relations, timing options, dilution instruction templates, and duration presets.
                         </p>
                     </div>
-                    <Link
+                    {canViewPrescriptionOptions ? <Link
                         href={route('admin.prescription_options.edit')}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-primary-600 text-white hover:bg-primary-700 transition shadow-xs shrink-0 self-start sm:self-auto"
                     >
                         Configure Prescription Options →
-                    </Link>
+                    </Link> : <button type="button" disabled className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-primary-600 text-white shadow-xs shrink-0 self-start sm:self-auto cursor-not-allowed opacity-50">
+                        Configure Prescription Options â†’
+                    </button>}
                 </div>
             </div>
         </AuthenticatedLayout>

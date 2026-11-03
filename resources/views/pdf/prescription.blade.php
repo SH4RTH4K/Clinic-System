@@ -155,7 +155,7 @@
     <table class="patient-table">
         <tr>
             <td style="width: 50%;">
-                <strong>Patient No:</strong> {{ $visit->patient->patient_no }} {{ $visit->patient->patient_series }} &nbsp;|&nbsp;
+                <strong>Patient No:</strong> {{ $visit->patient->patient_identifier }} &nbsp;|&nbsp;
                 <strong>Name:</strong> {{ $visit->patient->name }} <br>
                 <strong>Age:</strong> {{ $visit->age_summary ?? ($visit->age_at_visit ? $visit->age_at_visit . ' Y' : 'N/A') }} &nbsp;|&nbsp;
                 <strong>Gender:</strong> {{ ucfirst($visit->patient->gender ?? 'N/A') }}
