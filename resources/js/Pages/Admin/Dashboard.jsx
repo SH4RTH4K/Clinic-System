@@ -43,8 +43,6 @@ const statCards = [
         bg: 'bg-indigo-50',
         route: 'admin.doctors.index',
         permission: 'doctors.view',
-        metaKey: 'total_medicines',
-        metaLabel: 'medicines listed',
     },
 ];
 
@@ -108,9 +106,11 @@ function StatCard({ card, metrics }) {
                     {card.label.charAt(0)}
                 </span>
             </div>
-            <p className="mt-4 text-sm text-slate-600">
-                <span className="font-semibold text-slate-900">{card.metaKey ? (metrics[card.metaKey] ?? 0) : (metrics[card.key] ?? 0)}</span> {card.metaLabel}
-            </p>
+            {card.metaLabel && (
+                <p className="mt-4 text-sm text-slate-600">
+                    <span className="font-semibold text-slate-900">{card.metaKey ? (metrics[card.metaKey] ?? 0) : (metrics[card.key] ?? 0)}</span> {card.metaLabel}
+                </p>
+            )}
         </PermissionLink>
     );
 }
