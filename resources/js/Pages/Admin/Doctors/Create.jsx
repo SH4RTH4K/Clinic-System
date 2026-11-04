@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DoctorForm from '@/Pages/Admin/Doctors/DoctorForm';
 import { Head, useForm } from '@inertiajs/react';
 
-export default function Create() {
+export default function Create({ doctorAccounts = [], canManageDoctorAccounts = false }) {
     const { data, setData, post, processing, errors, progress } = useForm({
         name: '',
         name_bn: '',
@@ -37,6 +37,7 @@ export default function Create() {
         social_website: '',
         is_active: true,
         sort_order: 0,
+        user_id: '',
         photo: null,
     });
 
@@ -59,6 +60,8 @@ export default function Create() {
                             progress={progress}
                             onSubmit={submit}
                             submitLabel="Save Doctor"
+                            doctorAccounts={doctorAccounts}
+                            canManageDoctorAccounts={canManageDoctorAccounts}
                         />
                     </div>
                 </div>

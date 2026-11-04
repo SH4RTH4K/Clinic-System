@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import PrescriptionConfigModal from '@/Components/PrescriptionConfigModal';
+import RepertoryReferenceReview from '@/Components/RepertoryReferenceReview';
 import usePermission from '@/Components/usePermission';
 import { calculateAgeFromDob, calculateDobFromAge, formatAgeSummary } from '@/Utils/ageHelpers';
 import { Head, useForm, Link } from '@inertiajs/react';
@@ -9,12 +10,12 @@ import axios from 'axios';
 
 export default function Edit({
     visit,
-    doctors = [],
     symptoms = [],
     medicines = [],
     allAdvice = [],
     allFood = [],
     prescriptionConfig = {},
+    canFinalize = false,
 }) {
     const canView = usePermission()('visits.view');
     const visitDate = visit.visit_date || new Date().toISOString().split('T')[0];
@@ -32,9 +33,8 @@ export default function Edit({
         initialDob = calculateDobFromAge(initialAgeYears, initialAgeMonths, initialAgeDays, visitDate);
     }
 
-    const { data, setData, put, processing, errors, transform } = useForm({
+    const { data, setData, post, put, processing, errors, transform } = useForm({
         patient_id: visit.patient_id || '',
-        doctor_id: visit.doctor_id || (doctors.length > 0 ? doctors[0].id : ''),
         visit_date: visitDate,
         age_at_visit: initialAgeYears,
         age_months: initialAgeMonths,
@@ -45,17 +45,18 @@ export default function Edit({
         diagnosis_notes: visit.diagnosis_notes || '',
         follow_up_date: visit.follow_up_date || '',
         status: visit.status || 'draft',
+        amendment_reason: '',
         symptoms: visit.symptoms ? visit.symptoms.map((s) => s.id) : [],
         prescription_items: visit.prescription_items || [],
         advice_items: visit.advice_items ? visit.advice_items.map((a) => a.id) : [],
         food_restrictions: visit.food_restrictions ? visit.food_restrictions.map((f) => f.id) : [],
     });
 
-    const [selectedPatient, setSelectedPatient] = useState(visit.patient || null);
+    const [selectedPatient, setSelectedPatient] = useState(visit.patient ? { ...visit.patient, ...(visit.patient_snapshot || {}) } : null);
 
     // ── Patient async combobox ────────────────────────────────────────────────
     const initialLabel = visit.patient
-        ? `${visit.patient.patient_identifier || `${visit.patient.patient_no}${visit.patient.patient_series || ''}`} – ${visit.patient.name}`
+        ? `${visit.patient_snapshot?.patient_identifier || visit.patient.patient_identifier || `${visit.patient.patient_no}${visit.patient.patient_series || ''}`} – ${visit.patient_snapshot?.name || visit.patient.name}`
         : '';
     const [patientQuery, setPatientQuery] = useState(initialLabel);
     const [patientResults, setPatientResults] = useState([]);
@@ -184,6 +185,7 @@ export default function Edit({
     // ─────────────────────────────────────────────────────────────────────────
 
     const [suggestions, setSuggestions] = useState([]);
+    const [pendingRepertorySuggestion, setPendingRepertorySuggestion] = useState(null);
     const [symptomFilter, setSymptomFilter] = useState('');
     const [showSymptomsSection, setShowSymptomsSection] = useState(true);
 
@@ -211,7 +213,7 @@ export default function Edit({
         }
     }, [prescriptionConfig]);
 
-    const addPrescriptionRow = (medicine_id = '') => {
+    const addPrescriptionRow = (medicine_id = '', reviewedDetails = null) => {
         const defaultDoseQty = config?.default_dose_qty ?? 5;
         const defaultDoseUnit = config?.default_dose_unit || (config?.dose_units?.[0]?.key ?? 'drops');
         const defaultDuration = config?.default_duration_days ?? 7;
@@ -223,12 +225,12 @@ export default function Edit({
             ...data.prescription_items,
             {
                 medicine_id,
-                timing: defaultTiming,
-                before_after: 'after',
-                dose_qty: defaultDoseQty,
-                dose_unit: defaultDoseUnit,
-                dilution_note: config?.dilution_instructions?.[0] || 'with half a cup of water',
-                duration_days: defaultDuration,
+                timing: reviewedDetails?.timing ?? defaultTiming,
+                before_after: reviewedDetails?.before_after ?? 'after',
+                dose_qty: reviewedDetails?.dose_qty ?? defaultDoseQty,
+                dose_unit: reviewedDetails?.dose_unit ?? defaultDoseUnit,
+                dilution_note: reviewedDetails?.dilution_note ?? config?.dilution_instructions?.[0] ?? 'with half a cup of water',
+                duration_days: reviewedDetails?.duration_days ?? defaultDuration,
             },
         ]);
     };
@@ -284,11 +286,31 @@ export default function Edit({
 
     const submit = (e, statusToSet) => {
         if (e) e.preventDefault();
-        const finalStatus = statusToSet || data.status || 'draft';
-        transform((formValues) => ({
-            ...formValues,
-            status: finalStatus,
-        }));
+        const isFinalizedVisit = visit.status === 'finalized';
+        const isFinalizingDraft = !isFinalizedVisit && statusToSet === 'finalized';
+
+        if (isFinalizingDraft) {
+            transform((formValues) => {
+                const payload = { ...formValues };
+                delete payload.status;
+                delete payload.amendment_reason;
+
+                return payload;
+            });
+            post(route('admin.visits.finalize_draft', visit.id));
+
+            return;
+        }
+
+        transform((formValues) => {
+            const payload = { ...formValues, status: isFinalizedVisit ? 'finalized' : 'draft' };
+
+            if (!isFinalizedVisit) {
+                delete payload.amendment_reason;
+            }
+
+            return payload;
+        });
         put(route('admin.visits.update', visit.id));
     };
 
@@ -437,7 +459,9 @@ export default function Edit({
                                             <button
                                                 type="button"
                                                 onClick={clearPatient}
-                                                className="text-xs text-red-600 hover:text-red-800 font-bold px-3 py-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 transition cursor-pointer shadow-2xs"
+                                                disabled={visit.status === 'finalized'}
+                                                title={visit.status === 'finalized' ? 'Patient identity is locked for finalized visits.' : undefined}
+                                                className="text-xs text-red-600 hover:text-red-800 font-bold px-3 py-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 transition cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 ✕ Change
                                             </button>
@@ -499,20 +523,11 @@ export default function Edit({
                                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
                                             Treating Doctor (চিকিৎসক)
                                         </label>
-                                        <select
-                                            value={data.doctor_id}
-                                            onChange={(e) => setData('doctor_id', e.target.value)}
-                                            className="w-full rounded-lg border-gray-300 shadow-xs text-xs font-semibold text-gray-800 py-2 focus:border-primary-500 focus:ring-primary-500"
-                                        >
-                                            <option value="">-- No specific doctor --</option>
-                                            {doctors.map((d) => (
-                                                <option key={d.id} value={d.id}>
-                                                    {d.name} {d.credentials ? `(${d.credentials})` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.doctor_id && (
-                                            <p className="text-xs text-red-600 mt-1">{errors.doctor_id}</p>
+                                        <p className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-800">
+                                            {visit.doctor?.name || 'Not assigned'}
+                                        </p>
+                                        {!visit.doctor && (
+                                            <p className="mt-1 text-xs text-amber-700">This draft has no linked Doctor and cannot be finalized until its responsibility is reviewed.</p>
                                         )}
                                     </div>
 
@@ -707,7 +722,7 @@ export default function Edit({
                     </div>
 
                     {/* ════════════════════════════════════════════════════════════════
-                        STEP 3: Repertory Symptoms & Intelligent Suggestions
+                        STEP 3: Repertory Symptom References
                     ════════════════════════════════════════════════════════════════ */}
                     <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
                         <div
@@ -719,7 +734,7 @@ export default function Edit({
                                     3
                                 </span>
                                 <h3 className="text-sm font-bold text-gray-900">
-                                    Homeopathic Repertory Symptoms &amp; Remedy Suggestions
+                                    Homeopathic Repertory Reference Consultation
                                 </h3>
                                 <span className="bg-primary-50 text-primary-700 font-bold text-xs px-2 py-0.5 rounded-full border border-primary-200">
                                     {data.symptoms.length} selected
@@ -735,7 +750,7 @@ export default function Edit({
                             <div className="p-5 space-y-4">
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                                     <p className="text-xs text-gray-600">
-                                        Select symptoms to view repertory medicine suggestions that match the totality of symptoms.
+                                        Select up to 10 symptoms to consult approved repertory references. Matches do not establish effectiveness or patient suitability.
                                     </p>
                                     <div className="w-full sm:w-64">
                                         <input
@@ -769,14 +784,15 @@ export default function Edit({
                                                         type="checkbox"
                                                         value={s.id}
                                                         checked={isSelected}
+                                                        disabled={!isSelected && data.symptoms.length >= 10}
                                                         onChange={(e) => {
-                                                            if (e.target.checked) {
+                                                            if (e.target.checked && data.symptoms.length < 10) {
                                                                 setData('symptoms', [...data.symptoms, s.id]);
                                                             } else {
                                                                 setData('symptoms', data.symptoms.filter((id) => id !== s.id));
                                                             }
                                                         }}
-                                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5"
+                                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 disabled:cursor-not-allowed disabled:opacity-40"
                                                     />
                                                     <span className="truncate">
                                                         {s.name_en} {s.name_bn && `(${s.name_bn})`}
@@ -791,10 +807,10 @@ export default function Edit({
                                     <div className="bg-emerald-50/80 border border-emerald-300 p-4 rounded-xl space-y-2.5 shadow-xs">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                                                <span>⚡</span> Repertory Remedy Suggestions (Click to Add to Rx)
+                                                <span>⚡</span> Approved repertory references
                                             </h4>
                                             <span className="text-[11px] text-emerald-700 font-semibold">
-                                                Matched by symptoms totality
+                                                Reference matches only · assess independently
                                             </span>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -802,18 +818,19 @@ export default function Edit({
                                                 <button
                                                     type="button"
                                                     key={sugg.medicine_id}
-                                                    onClick={() => addPrescriptionRow(sugg.medicine_id)}
+                                                    onClick={() => setPendingRepertorySuggestion(sugg)}
                                                     className="inline-flex items-center gap-2 bg-white border border-emerald-300 text-emerald-950 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 hover:border-emerald-400 transition shadow-2xs cursor-pointer"
                                                 >
-                                                    <span>+ {sugg.medicine_name}</span>
+                                                    <span>Review {sugg.medicine_name}</span>
                                                     <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-extrabold border border-emerald-200">
-                                                        {sugg.match_score} match
+                                                        {sugg.reference_match_count} reference {sugg.reference_match_count === 1 ? 'match' : 'matches'}
                                                     </span>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
                                 )}
+                                <p className="text-xs text-slate-600">Repertory references are not proof of clinical effectiveness or suitability and must not replace established medical treatment. No patient-specific treatment rule is applied.</p>
                             </div>
                         )}
                     </div>
@@ -864,7 +881,7 @@ export default function Edit({
                                     </div>
                                     <div className="text-sm font-bold text-gray-700">No medicines added yet</div>
                                     <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                                        Click below to add a homeopathic remedy or pick from the repertory suggestions above.
+                                        Add a medicine manually or review an approved repertory reference above. Any prescription remains the prescriber's independent decision.
                                     </p>
                                     <button
                                         type="button"
@@ -1312,12 +1329,31 @@ export default function Edit({
                             )}
                         </div>
 
+                        {visit.status === 'finalized' && (
+                            <div className="space-y-2">
+                                <label htmlFor="amendment_reason" className="block text-xs font-bold uppercase tracking-wider text-gray-500">
+                                    Amendment reason
+                                </label>
+                                <textarea
+                                    id="amendment_reason"
+                                    value={data.amendment_reason}
+                                    onChange={(event) => setData('amendment_reason', event.target.value)}
+                                    rows={3}
+                                    maxLength={2000}
+                                    required
+                                    className="w-full rounded-lg border border-gray-300 text-sm focus:border-primary-500 focus:ring-primary-500"
+                                    placeholder="Explain why this finalized clinical record needs correction."
+                                />
+                                {errors.amendment_reason && <p className="text-xs text-red-600">{errors.amendment_reason}</p>}
+                            </div>
+                        )}
+
                         {/* Submit Actions */}
                         <div className="flex items-center gap-3 self-end lg:self-center">
                             <button
                                 type="button"
                                 onClick={(e) => submit(e, 'draft')}
-                                disabled={processing}
+                                disabled={processing || visit.status === 'finalized'}
                                 className="px-5 py-2.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-xs shadow-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                             >
                                 <span>💾</span>
@@ -1326,11 +1362,12 @@ export default function Edit({
                             <button
                                 type="button"
                                 onClick={(e) => submit(e, 'finalized')}
-                                disabled={processing}
+                                disabled={processing || (visit.status === 'draft' && !canFinalize)}
+                                title={visit.status === 'draft' && !canFinalize ? 'Requires visits.finalize permission and an active linked doctor profile.' : undefined}
                                 className="px-6 py-2.5 bg-primary-700 hover:bg-primary-800 text-white font-extrabold rounded-xl text-xs shadow-sm transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer disabled:opacity-50 flex items-center gap-2 tracking-wide"
                             >
                                 <span>✓</span>
-                                {processing ? 'Saving...' : 'Finalize & Update Visit (সম্পূর্ণ করুন)'}
+                                {processing ? 'Saving...' : visit.status === 'finalized' ? 'Save Amendment' : 'Finalize & Update Visit'}
                             </button>
                         </div>
                     </div>
@@ -1343,6 +1380,19 @@ export default function Edit({
                 initialConfig={config}
                 onConfigSaved={(newCfg) => setConfig(newCfg)}
             />
+            {pendingRepertorySuggestion && (
+                <RepertoryReferenceReview
+                    key={pendingRepertorySuggestion.medicine_id}
+                    suggestion={pendingRepertorySuggestion}
+                    medicines={medicines}
+                    config={config}
+                    onCancel={() => setPendingRepertorySuggestion(null)}
+                    onAdd={(reviewedDetails) => {
+                        addPrescriptionRow(reviewedDetails.medicine_id, reviewedDetails);
+                        setPendingRepertorySuggestion(null);
+                    }}
+                />
+            )}
         </AuthenticatedLayout>
     );
 }

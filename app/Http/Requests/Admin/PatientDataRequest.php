@@ -43,6 +43,7 @@ abstract class PatientDataRequest extends FormRequest
             'known_allergies' => ['string', 'max:1000'],
         ];
         $rules = [];
+        $canViewClinicalRecords = $this->user()?->can('clinical_records.view') === true;
 
         if ($this->isMethod('post')) {
             $rules['patient_numbering_profile_id'] = [
@@ -54,6 +55,10 @@ abstract class PatientDataRequest extends FormRequest
         }
 
         foreach ($fieldRules as $field => $rulesForField) {
+            if (in_array($field, ['blood_group', 'known_allergies'], true) && ! $canViewClinicalRecords) {
+                continue;
+            }
+
             if (! $config[$field]['visible']) {
                 continue;
             }

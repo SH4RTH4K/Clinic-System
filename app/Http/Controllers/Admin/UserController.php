@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -30,7 +34,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(StoreUserRequest $request)
+    public function store(StoreUserRequest $request): RedirectResponse
     {
         // Prevent a Super Admin role assignment by non-Super-Admins.
         // (authorize() in the Form Request already enforces Super Admin only,
@@ -42,17 +46,24 @@ class UserController extends Controller
             abort(403, 'Only Super Admin may assign the Super Admin role.');
         }
 
-        $user = User::create([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-            'is_active' => $request->boolean('is_active', true),
-            'must_change_password' => true,
-        ]);
+        $roles = $request->validated('roles');
 
-        $user->syncRoles($request->roles);
+        DB::transaction(function () use ($request, $roles): void {
+            $superAdminRole = $this->lockSuperAdminRole();
+            $this->lockActiveSuperAdminActor($request->user()->id, $superAdminRole);
+
+            $user = User::create([
+                'name' => $request->name,
+                'username' => $request->username,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'password' => Hash::make($request->password),
+                'is_active' => $request->boolean('is_active', true),
+                'must_change_password' => true,
+            ]);
+
+            $user->syncRoles($roles);
+        });
 
         return redirect()->route('admin.users.index')->with('success', 'User created.');
     }
@@ -67,61 +78,111 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(UpdateUserRequest $request, User $user)
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        // Guard: prevent removing/replacing Super Admin role unless actor is Super Admin.
-        if (
-            in_array('Super Admin', $request->roles, true) === false
-            && $user->hasRole('Super Admin')
-            && ! $request->user()->hasRole('Super Admin')
-        ) {
-            abort(403, 'Only Super Admin may change the Super Admin role.');
-        }
+        $roles = $request->validated('roles');
+        $errorField = DB::transaction(function () use ($request, $user, $roles): ?string {
+            $superAdminRole = $this->lockSuperAdminRole();
+            $this->lockActiveSuperAdminActor($request->user()->id, $superAdminRole);
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $isActiveSuperAdmin = $lockedUser->is_active && $lockedUser->hasRole($superAdminRole);
+            $removesSuperAdminRole = ! in_array($superAdminRole->name, $roles, true);
+            $deactivatesSuperAdmin = ! $request->boolean('is_active', true);
 
-        // Guard: cannot strip Super Admin from the last Super Admin.
-        if ($user->hasRole('Super Admin') && ! in_array('Super Admin', $request->roles, true)) {
-            $superAdminCount = User::role('Super Admin')->count();
-            if ($superAdminCount <= 1) {
-                return back()->withErrors(['roles' => 'Cannot remove the last Super Admin.']);
+            if ($isActiveSuperAdmin && ($removesSuperAdminRole || $deactivatesSuperAdmin)) {
+                $activeSuperAdmins = $this->lockActiveSuperAdmins($superAdminRole);
+
+                if ($activeSuperAdmins->count() <= 1) {
+                    return $removesSuperAdminRole ? 'roles' : 'is_active';
+                }
             }
-        }
 
-        // Guard: cannot deactivate the last Super Admin.
-        if ($user->hasRole('Super Admin') && ! $request->boolean('is_active', true)) {
-            $superAdminCount = User::role('Super Admin')->count();
-            if ($superAdminCount <= 1) {
-                return back()->withErrors(['is_active' => 'Cannot deactivate the last Super Admin.']);
+            $lockedUser->update([
+                'name' => $request->name,
+                'username' => $request->username,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'is_active' => $request->boolean('is_active', true),
+            ]);
+
+            if ($request->filled('password')) {
+                $lockedUser->update([
+                    'password' => Hash::make($request->password),
+                    'must_change_password' => true,
+                ]);
             }
+
+            $lockedUser->syncRoles($roles);
+
+            return null;
+        });
+
+        if ($errorField === 'roles') {
+            return back()->withErrors(['roles' => 'Cannot remove the last Super Admin.']);
         }
 
-        $user->update([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
-
-        if ($request->filled('password')) {
-            $user->update(['password' => Hash::make($request->password)]);
+        if ($errorField === 'is_active') {
+            return back()->withErrors(['is_active' => 'Cannot deactivate the last Super Admin.']);
         }
-
-        $user->syncRoles($request->roles);
 
         return redirect()->route('admin.users.index')->with('success', 'User updated.');
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user): RedirectResponse
     {
-        if ($user->hasRole('Super Admin')) {
-            $superAdminCount = User::role('Super Admin')->count();
-            if ($superAdminCount <= 1) {
-                return back()->withErrors(['error' => 'Cannot delete the last Super Admin.']);
+        $mayDelete = DB::transaction(function () use ($request, $user): bool {
+            $superAdminRole = $this->lockSuperAdminRole();
+            $this->lockActiveSuperAdminActor($request->user()->id, $superAdminRole);
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedUser->is_active && $lockedUser->hasRole($superAdminRole)) {
+                $activeSuperAdmins = $this->lockActiveSuperAdmins($superAdminRole);
+
+                if ($activeSuperAdmins->count() <= 1) {
+                    return false;
+                }
             }
+
+            $lockedUser->delete();
+
+            return true;
+        });
+
+        if (! $mayDelete) {
+            return back()->withErrors(['error' => 'Cannot delete the last Super Admin.']);
         }
 
-        $user->delete();
-
         return redirect()->route('admin.users.index')->with('success', 'User deleted.');
+    }
+
+    private function lockSuperAdminRole(): Role
+    {
+        return Role::query()
+            ->where('name', 'Super Admin')
+            ->where('guard_name', 'web')
+            ->lockForUpdate()
+            ->firstOrFail();
+    }
+
+    private function lockActiveSuperAdminActor(int $actorId, Role $superAdminRole): User
+    {
+        $actor = User::query()->whereKey($actorId)->lockForUpdate()->firstOrFail();
+
+        abort_unless($actor->is_active && $actor->hasRole($superAdminRole), 403);
+
+        return $actor;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function lockActiveSuperAdmins(Role $superAdminRole): Collection
+    {
+        return User::query()
+            ->role($superAdminRole)
+            ->where('is_active', true)
+            ->orderBy('users.id')
+            ->lockForUpdate()
+            ->get(['users.id']);
     }
 }

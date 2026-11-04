@@ -52,6 +52,8 @@ class LoginRequest extends FormRequest
 
         if (! Auth::user()->is_active) {
             Auth::logout();
+            $this->session()->invalidate();
+            $this->session()->regenerateToken();
 
             throw ValidationException::withMessages([
                 'username' => 'Your account is inactive. Please contact the administrator.',

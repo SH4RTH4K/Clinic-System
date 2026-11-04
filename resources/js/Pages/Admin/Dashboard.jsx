@@ -6,6 +6,7 @@ const statCards = [
     {
         key: 'total_patients',
         label: 'Total Patients',
+        access: 'patients',
         accent: 'text-blue-700',
         bg: 'bg-blue-50',
         route: 'admin.patients.index',
@@ -16,6 +17,7 @@ const statCards = [
     {
         key: 'todays_visits',
         label: "Today's Visits",
+        access: 'visits',
         accent: 'text-emerald-700',
         bg: 'bg-emerald-50',
         route: 'admin.visits.index',
@@ -26,6 +28,7 @@ const statCards = [
     {
         key: 'pending_requests',
         label: 'Pending Requests',
+        access: 'appointments',
         accent: 'text-rose-700',
         bg: 'bg-rose-50',
         route: 'admin.appointment_requests.index',
@@ -35,6 +38,7 @@ const statCards = [
     {
         key: 'active_doctors',
         label: 'Active Doctors',
+        access: 'doctors',
         accent: 'text-indigo-700',
         bg: 'bg-indigo-50',
         route: 'admin.doctors.index',
@@ -112,6 +116,7 @@ function StatCard({ card, metrics }) {
 }
 
 export default function Dashboard({
+    access = {},
     metrics = {},
     appointment_status = {},
     weekly_visits = [],
@@ -120,6 +125,7 @@ export default function Dashboard({
     recent_requests = [],
     recent_visits = [],
 }) {
+    const visibleStatCards = statCards.filter((card) => access[card.access]);
     const maxWeeklyVisits = Math.max(...weekly_visits.map((day) => day.total), 1);
     const appointmentTotal = appointmentStatuses.reduce((total, item) => total + (appointment_status[item.key] ?? 0), 0);
 
@@ -147,12 +153,13 @@ export default function Dashboard({
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {statCards.map((card) => (
+                    {visibleStatCards.map((card) => (
                         <StatCard key={card.key} card={card} metrics={metrics} />
                     ))}
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {(access.visits || access.appointments) && <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    {access.visits && (
                     <section className="rounded-lg bg-white p-6 shadow-sm lg:col-span-2">
                         <div className="flex items-center justify-between">
                             <div>
@@ -181,7 +188,9 @@ export default function Dashboard({
                             ))}
                         </div>
                     </section>
+                    )}
 
+                    {access.appointments && (
                     <section className="rounded-lg bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
@@ -211,9 +220,12 @@ export default function Dashboard({
                             })}
                         </div>
                     </section>
+                    )}
                 </div>
+                }
 
-                <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                {(access.appointments || access.visits || access.top_medicines) && <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    {access.appointments && (
                     <section className="rounded-lg bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-slate-900">Recent Requests</h3>
@@ -240,7 +252,9 @@ export default function Dashboard({
                             )}
                         </div>
                     </section>
+                    )}
 
+                    {access.visits && (
                     <section className="rounded-lg bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-slate-900">Recent Visits</h3>
@@ -253,10 +267,14 @@ export default function Dashboard({
                                 <div key={visit.id} className="border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <PermissionLink permission="visits.view" href={route('admin.visits.show', visit.id)} className="font-semibold text-slate-900 hover:text-blue-700">
-                                                {visit.patient?.name ?? 'Unknown patient'}
-                                            </PermissionLink>
-                                            <p className="text-sm text-slate-500">{formatPatientNo(visit.patient)} - {formatDate(visit.visit_date)}</p>
+                                            {access.patients ? (
+                                                <PermissionLink permission="visits.view" href={route('admin.visits.show', visit.id)} className="font-semibold text-slate-900 hover:text-blue-700">
+                                                    {visit.patient?.name ?? 'Unknown patient'}
+                                                </PermissionLink>
+                                            ) : (
+                                                <p className="font-semibold text-slate-900">Patient details restricted</p>
+                                            )}
+                                            <p className="text-sm text-slate-500">{access.patients ? formatPatientNo(visit.patient) : 'Visit'} - {formatDate(visit.visit_date)}</p>
                                         </div>
                                         <StatusPill status={visit.status} />
                                     </div>
@@ -267,7 +285,9 @@ export default function Dashboard({
                             )}
                         </div>
                     </section>
+                    )}
 
+                    {access.top_medicines && (
                     <section className="rounded-lg bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
@@ -297,9 +317,12 @@ export default function Dashboard({
                             )}
                         </div>
                     </section>
+                    )}
                 </div>
+                }
 
-                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                {(access.visits || access.medicines || access.appointments) && <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {access.visits && (
                     <div className="rounded-lg bg-white p-5 shadow-sm">
                         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Visit Status</p>
                         <div className="mt-4 flex items-center justify-between gap-4">
@@ -314,17 +337,23 @@ export default function Dashboard({
                             </div>
                         </div>
                     </div>
+                    )}
+                    {access.medicines && (
                     <PermissionLink permission="medicines.view" href={route('admin.medicines.index')} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Medicines</p>
                         <p className="mt-4 text-3xl font-bold text-slate-900">{metrics.active_medicines ?? 0}</p>
                         <p className="text-sm text-slate-500">active of {metrics.total_medicines ?? 0} total</p>
                     </PermissionLink>
+                    )}
+                    {access.appointments && (
                     <PermissionLink permission="appointments.view" href={route('admin.appointment_requests.index', { status: 'pending' })} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Next Action</p>
                         <p className="mt-4 text-lg font-bold text-slate-900">Follow up pending requests</p>
                         <p className="text-sm text-slate-500">{metrics.pending_requests ?? 0} waiting now</p>
                     </PermissionLink>
+                    )}
                 </div>
+                }
             </div>
         </AuthenticatedLayout>
     );

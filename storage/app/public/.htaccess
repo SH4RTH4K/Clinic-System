@@ -1,0 +1,9 @@
+# Public uploads are served as data only. Never execute uploaded scripts.
+Options -ExecCGI -Includes -Indexes
+
+<FilesMatch "(?i)\.(php([0-9]+)?|phtml|phar|cgi|pl|py|sh|shtml)$">
+    Require all denied
+    SetHandler default-handler
+</FilesMatch>
+
+RemoveHandler .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .cgi .pl .py .sh .shtml

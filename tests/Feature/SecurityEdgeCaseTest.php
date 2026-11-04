@@ -32,7 +32,7 @@ class SecurityEdgeCaseTest extends TestCase
         parent::setUp();
 
         $modules = [
-            'patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map',
+            'patients', 'visits', 'clinical_records', 'medicines', 'symptoms', 'symptom_medicine_map',
             'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs',
         ];
         $actions = ['view', 'create', 'update', 'delete', 'export', 'amend'];
@@ -52,7 +52,7 @@ class SecurityEdgeCaseTest extends TestCase
 
         $doctor->givePermissionTo([
             'patients.view', 'patients.create', 'patients.update', 'patients.delete',
-            'visits.view', 'visits.create', 'visits.update', 'visits.delete',
+            'visits.view', 'visits.create', 'visits.update', 'visits.delete', 'clinical_records.view',
         ]);
     }
 

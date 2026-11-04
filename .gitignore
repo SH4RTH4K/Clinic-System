@@ -2,6 +2,7 @@
 .DS_Store
 .env
 .env.*
+!.env.production.example
 .env.backup
 .env.production
 .phpactor.json
@@ -20,6 +21,8 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/fonts/*
+!/storage/fonts/NotoSansBengali-Regular.ttf
 /storage/logs/
 /storage/pail
 /vendor

@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\SymptomController;
 use App\Http\Controllers\Admin\SymptomMedicineMapController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VisitController;
+use App\Http\Controllers\Admin\VisitDraftController;
 use Illuminate\Support\Facades\Route;
 
 // Users (Super Admin only)
@@ -88,16 +89,44 @@ Route::middleware(['auth', 'permission:symptoms.delete'])
     ->group(fn () => Route::resource('symptoms', SymptomController::class)->only(['destroy']));
 
 // Visits
-Route::middleware(['auth', 'permission:visits.create'])
-    ->group(fn () => Route::resource('visits', VisitController::class)->only(['create', 'store']));
-Route::middleware(['auth', 'permission:visits.view'])->group(function () {
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.create'])
+    ->get('visits/draft', [VisitDraftController::class, 'show'])
+    ->name('visits.draft.show')
+    ->middleware('cache.headers:private;no_store');
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.create'])
+    ->put('visits/draft', [VisitDraftController::class, 'update'])
+    ->name('visits.draft.update');
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.create'])
+    ->delete('visits/draft', [VisitDraftController::class, 'destroy'])
+    ->name('visits.draft.destroy');
+
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.create'])
+    ->group(function () {
+        Route::get('visits/create', [VisitController::class, 'create'])
+            ->name('visits.create')
+            ->middleware('cache.headers:private;no_store');
+        Route::resource('visits', VisitController::class)->only(['store']);
+    });
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.finalize'])
+    ->post('visits/finalize', [VisitController::class, 'finalize'])
+    ->name('visits.finalize');
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.finalize'])
+    ->post('visits/{visit}/finalize', [VisitController::class, 'finalize'])
+    ->name('visits.finalize_draft');
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.view', 'permission:visits.cancel'])
+    ->post('visits/{visit}/cancel-prescription', [VisitController::class, 'cancelPrescription'])
+    ->name('visits.cancel_prescription');
+Route::middleware(['auth', 'clinical_record_access:visits.view'])->group(function () {
     Route::get('visits/suggestions', [VisitController::class, 'suggestions'])->name('visits.suggestions');
-    Route::get('visits/{visit}/pdf', [VisitController::class, 'pdf'])->name('visits.pdf');
     Route::resource('visits', VisitController::class)->only(['index', 'show']);
 });
-Route::middleware(['auth', 'permission:visits.update'])
+Route::middleware(['auth', 'clinical_record_access:visits.export'])
+    ->get('visits/{visit}/pdf', [VisitController::class, 'pdf'])
+    ->name('visits.pdf')
+    ->middleware('cache.headers:private;no_store');
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.update|visits.amend'])
     ->group(fn () => Route::resource('visits', VisitController::class)->only(['edit', 'update']));
-Route::middleware(['auth', 'permission:visits.delete'])
+Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visits.delete'])
     ->group(fn () => Route::resource('visits', VisitController::class)->only(['destroy']));
 
 // Symptom-Medicine Map
@@ -106,15 +135,25 @@ Route::middleware(['auth', 'permission:symptom_medicine_map.create'])
 Route::middleware(['auth', 'permission:symptom_medicine_map.view'])->group(function () {
     Route::resource('symptom_medicine_map', SymptomMedicineMapController::class)->only(['index']);
 });
+Route::middleware(['auth', 'permission:symptom_medicine_map.update'])
+    ->post('symptom_medicine_map/{symptom_medicine_map}/submit-review', [SymptomMedicineMapController::class, 'submitForReview'])->name('symptom_medicine_map.submit_review');
+Route::middleware(['auth', 'permission:symptom_medicine_map.review'])
+    ->post('symptom_medicine_map/{symptom_medicine_map}/review', [SymptomMedicineMapController::class, 'review'])->name('symptom_medicine_map.review');
+Route::middleware(['auth', 'permission:symptom_medicine_map.update'])
+    ->post('symptom_medicine_map/{mapping}/restore', [SymptomMedicineMapController::class, 'restore'])->name('symptom_medicine_map.restore');
+Route::middleware(['auth', 'permission:symptom_medicine_map.update|symptom_medicine_map.review'])
+    ->group(fn () => Route::resource('symptom_medicine_map', SymptomMedicineMapController::class)->only(['edit', 'update']));
 Route::middleware(['auth', 'permission:symptom_medicine_map.create'])
-    ->post('symptom_medicine_map/import', [SymptomMedicineMapController::class, 'import'])->name('symptom_medicine_map.import');
+    ->post('symptom_medicine_map/import', [SymptomMedicineMapController::class, 'previewImport'])->name('symptom_medicine_map.import');
+Route::middleware(['auth', 'permission:symptom_medicine_map.create'])
+    ->post('symptom_medicine_map/import/confirm', [SymptomMedicineMapController::class, 'confirmImport'])->name('symptom_medicine_map.import.confirm');
 Route::middleware(['auth', 'permission:symptom_medicine_map.delete'])
     ->group(fn () => Route::resource('symptom_medicine_map', SymptomMedicineMapController::class)->only(['destroy']));
 
 // Clinic settings
-Route::middleware(['auth', 'role_or_permission:Super Admin|clinic_settings.view'])
+Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.view'])
     ->get('settings', [ClinicSettingController::class, 'edit'])->name('settings.edit');
-Route::middleware(['auth', 'role_or_permission:Super Admin|clinic_settings.update'])
+Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.update'])
     ->put('settings', [ClinicSettingController::class, 'update'])->name('settings.update');
 
 // General settings
@@ -171,11 +210,17 @@ Route::middleware(['auth', 'permission:settings.view'])
     });
 
 // Reports
-Route::middleware(['auth', 'permission:reports.view'])
+Route::middleware([
+    'auth',
+    'permission:clinical_records.view',
+    'permission:patients.view',
+    'permission:visits.view',
+    'permission:reports.view',
+])
     ->group(fn () => Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'));
 
 // Activity Logs
-Route::middleware(['auth', 'permission:activity_logs.view'])
+Route::middleware(['auth', 'permission:activity_logs.view', 'role:Super Admin'])
     ->group(fn () => Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity_logs.index'));
 
 // Appointments

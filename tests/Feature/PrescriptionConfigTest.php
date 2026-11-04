@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ClinicSetting;
+use App\Models\Doctor;
 use App\Models\Medicine;
 use App\Models\Patient;
 use App\Models\User;
@@ -23,7 +24,7 @@ class PrescriptionConfigTest extends TestCase
         parent::setUp();
 
         $modules = [
-            'patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map',
+            'patients', 'visits', 'clinical_records', 'medicines', 'symptoms', 'symptom_medicine_map',
             'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs',
         ];
         $actions = ['view', 'create', 'update', 'delete', 'export', 'amend'];
@@ -42,6 +43,7 @@ class PrescriptionConfigTest extends TestCase
         $doctor->givePermissionTo([
             'patients.view', 'patients.create', 'patients.update',
             'visits.view', 'visits.create', 'visits.update', 'visits.delete',
+            'clinical_records.view',
             'medicines.view', 'symptoms.view',
         ]);
         $receptionist->givePermissionTo([
@@ -203,7 +205,7 @@ class PrescriptionConfigTest extends TestCase
                 'patient_no_next' => 1,
                 'prescription_config' => $changedConfig,
             ])
-            ->assertRedirect();
+            ->assertForbidden();
 
         $this->assertSame(
             'Morning',
@@ -266,9 +268,17 @@ class PrescriptionConfigTest extends TestCase
     public function test_prescription_config_is_passed_to_visit_create_and_edit_screens(): void
     {
         $doctor = $this->userWithRole('Doctor');
+        $doctorProfile = Doctor::query()->create([
+            'name' => 'Configuration Test Doctor',
+            'user_id' => $doctor->id,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
         $patient = Patient::factory()->create();
         $visit = Visit::factory()->create([
             'patient_id' => $patient->id,
+            'doctor_id' => $doctorProfile->id,
+            'created_by' => $doctor->id,
             'status' => 'draft',
         ]);
 

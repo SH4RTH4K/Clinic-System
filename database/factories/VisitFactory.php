@@ -36,6 +36,9 @@ class VisitFactory extends Factory
     /** Create a finalized visit. */
     public function finalized(): static
     {
-        return $this->state(['status' => 'finalized']);
+        return $this->state([
+            'status' => 'finalized',
+            'prescription_status' => 'finalized',
+        ]);
     }
 }

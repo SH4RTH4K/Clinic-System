@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreDoctorRequest;
+use App\Http\Requests\Admin\UpdateDoctorRequest;
 use App\Models\Doctor;
+use App\Models\User;
+use App\Models\Visit;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,19 +31,24 @@ class DoctorController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Doctors/Create');
+        $canManageDoctorAccounts = request()->user()->hasRole('Super Admin');
+
+        return Inertia::render('Admin/Doctors/Create', [
+            'canManageDoctorAccounts' => $canManageDoctorAccounts,
+            'doctorAccounts' => $canManageDoctorAccounts ? $this->availableDoctorAccounts() : [],
+        ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreDoctorRequest $request): RedirectResponse
     {
-        $validated = $this->validateDoctor($request);
+        $validated = $request->validated();
 
         if ($request->hasFile('photo')) {
             $validated['photo_path'] = $request->file('photo')->store('doctors', 'public');
         }
 
         unset($validated['photo']);
-        $validated['is_active'] = $request->boolean('is_active');
+        $validated['is_active'] = $validated['is_active'] ?? false;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
         Doctor::create($validated);
@@ -48,81 +58,100 @@ class DoctorController extends Controller
 
     public function edit(Doctor $doctor): Response
     {
-        return Inertia::render('Admin/Doctors/Edit', ['doctor' => $doctor]);
+        $canManageDoctorAccounts = request()->user()->hasRole('Super Admin');
+
+        return Inertia::render('Admin/Doctors/Edit', [
+            'doctor' => $doctor,
+            'canManageDoctorAccounts' => $canManageDoctorAccounts,
+            'doctorAccounts' => $canManageDoctorAccounts ? $this->availableDoctorAccounts($doctor) : [],
+        ]);
     }
 
-    public function update(Request $request, Doctor $doctor): RedirectResponse
+    public function update(UpdateDoctorRequest $request, Doctor $doctor): RedirectResponse
     {
-        $validated = $this->validateDoctor($request);
-
-        if ($request->hasFile('photo')) {
-            if ($doctor->photo_path) {
-                Storage::disk('public')->delete($doctor->photo_path);
-            }
-
-            $validated['photo_path'] = $request->file('photo')->store('doctors', 'public');
-        }
+        $validated = $request->validated();
+        $newPhotoPath = $request->hasFile('photo')
+            ? $request->file('photo')->store('doctors', 'public')
+            : null;
 
         unset($validated['photo']);
-        $validated['is_active'] = $request->boolean('is_active');
-        $validated['sort_order'] = $validated['sort_order'] ?? 0;
+        if ($newPhotoPath !== null) {
+            $validated['photo_path'] = $newPhotoPath;
+        }
 
-        $doctor->update($validated);
+        $wasUpdated = DB::transaction(function () use ($doctor, $validated): bool {
+            $lockedDoctor = Doctor::query()->lockForUpdate()->findOrFail($doctor->id);
+
+            if (array_key_exists('user_id', $validated)
+                && (string) $validated['user_id'] !== (string) $lockedDoctor->user_id
+                && Visit::withTrashed()->where('doctor_id', $lockedDoctor->id)->exists()) {
+                return false;
+            }
+
+            $lockedDoctor->update($validated);
+
+            return true;
+        });
+
+        if (! $wasUpdated) {
+            if ($newPhotoPath !== null) {
+                Storage::disk('public')->delete($newPhotoPath);
+            }
+
+            return back()->withErrors([
+                'user_id' => 'This Doctor has visit history. Changing the linked account requires a separately approved handover process.',
+            ]);
+        }
+
+        if ($newPhotoPath !== null && $doctor->photo_path !== null) {
+            Storage::disk('public')->delete($doctor->photo_path);
+        }
 
         return redirect()->route('admin.doctors.index')->with('success', 'Doctor updated successfully.');
     }
 
     public function destroy(Doctor $doctor): RedirectResponse
     {
+        $deleted = DB::transaction(function () use ($doctor): bool {
+            $lockedDoctor = Doctor::query()->lockForUpdate()->findOrFail($doctor->id);
+
+            if (Visit::withTrashed()->where('doctor_id', $lockedDoctor->id)->exists()) {
+                return false;
+            }
+
+            $lockedDoctor->delete();
+
+            return true;
+        });
+
+        if (! $deleted) {
+            return back()->withErrors([
+                'doctor' => 'This Doctor has visit history. Deactivate the profile instead to preserve clinical authorship.',
+            ]);
+        }
+
         if ($doctor->photo_path) {
             Storage::disk('public')->delete($doctor->photo_path);
         }
-
-        $doctor->delete();
 
         return back()->with('success', 'Doctor deleted.');
     }
 
     /**
-     * @return array<string, mixed>
+     * @return Collection<int, User>
      */
-    private function validateDoctor(Request $request): array
+    private function availableDoctorAccounts(?Doctor $doctor = null): Collection
     {
-        return $request->validate([
-            'name' => 'required|string|max:255',
-            'name_bn' => 'nullable|string|max:255',
-            'credentials' => 'nullable|string|max:255',
-            'credentials_bn' => 'nullable|string|max:255',
-            'specialty' => 'nullable|string|max:255',
-            'specialty_bn' => 'nullable|string|max:255',
-            'bio' => 'nullable|string',
-            'bio_bn' => 'nullable|string',
-            'govt_reg_no' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:50',
-            'appointment_phone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:255',
-            'hero_title_1' => 'nullable|string|max:255',
-            'hero_title_2' => 'nullable|string|max:255',
-            'hero_title_3' => 'nullable|string|max:255',
-            'hero_subtitle' => 'nullable|string|max:255',
-            'hero_description' => 'nullable|string',
-            'hero_title_1_bn' => 'nullable|string|max:255',
-            'hero_title_2_bn' => 'nullable|string|max:255',
-            'hero_title_3_bn' => 'nullable|string|max:255',
-            'hero_subtitle_bn' => 'nullable|string|max:255',
-            'hero_description_bn' => 'nullable|string',
-            'social_facebook' => 'nullable|url|max:255',
-            'social_twitter' => 'nullable|url|max:255',
-            'social_youtube' => 'nullable|url|max:255',
-            'social_instagram' => 'nullable|url|max:255',
-            'social_linkedin' => 'nullable|url|max:255',
-            'social_whatsapp' => 'nullable|string|max:255',
-            'social_tiktok' => 'nullable|url|max:255',
-            'social_telegram' => 'nullable|url|max:255',
-            'social_website' => 'nullable|url|max:255',
-            'is_active' => 'boolean',
-            'sort_order' => 'nullable|integer|min:0',
-            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-        ]);
+        return User::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($doctor): void {
+                $query->whereDoesntHave('doctorProfile');
+
+                if ($doctor !== null) {
+                    $query->orWhereHas('doctorProfile', fn ($profileQuery) => $profileQuery->whereKey($doctor->id));
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'username']);
     }
 }

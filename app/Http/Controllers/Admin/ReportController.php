@@ -11,6 +11,13 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
+        abort_unless(
+            $request->user()?->can('clinical_records.view')
+                && $request->user()?->can('patients.view')
+                && $request->user()?->can('visits.view'),
+            403,
+        );
+
         $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
@@ -20,7 +27,9 @@ class ReportController extends Controller
         $startDate = $request->start_date ?? now()->subDays(30)->toDateString();
         $endDate = $request->end_date ?? now()->toDateString();
 
-        $visits = Visit::with('patient')
+        $visits = Visit::query()
+            ->select(['id', 'patient_id', 'visit_date', 'chief_complaint', 'status'])
+            ->with('patient:id,name,phone,patient_no,patient_series,patient_code')
             ->whereDate('visit_date', '>=', $startDate)
             ->whereDate('visit_date', '<=', $endDate)
             ->orderBy('visit_date', 'desc')

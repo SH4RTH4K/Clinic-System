@@ -15,7 +15,18 @@ function Field({ label, error, children }) {
     );
 }
 
-export default function DoctorForm({ data, setData, errors, processing, progress, onSubmit, submitLabel, doctor = null }) {
+export default function DoctorForm({
+    data,
+    setData,
+    errors,
+    processing,
+    progress,
+    onSubmit,
+    submitLabel,
+    doctor = null,
+    doctorAccounts = [],
+    canManageDoctorAccounts = false,
+}) {
     const photoUrl = doctor?.photo_path ? `/storage/${doctor.photo_path}` : null;
 
     return (
@@ -88,6 +99,26 @@ export default function DoctorForm({ data, setData, errors, processing, progress
                                 className={inputClass}
                             />
                         </Field>
+
+                        {canManageDoctorAccounts && (
+                            <Field label="Linked staff account" error={errors.user_id}>
+                                <select
+                                    value={data.user_id}
+                                    onChange={(event) => setData('user_id', event.target.value)}
+                                    className={inputClass}
+                                >
+                                    <option value="">No linked account</option>
+                                    {doctorAccounts.map((account) => (
+                                        <option key={account.id} value={account.id}>
+                                            {account.name} ({account.username})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Linking identifies the prescriber. The account must also have the visits.finalize permission.
+                                </p>
+                            </Field>
+                        )}
 
                         <Field label="Sort Order" error={errors.sort_order}>
                             <input

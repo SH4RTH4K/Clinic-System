@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Doctor extends Model
 {
@@ -44,9 +45,15 @@ class Doctor extends Model
         'social_website',
         'is_active',
         'sort_order',
+        'user_id',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

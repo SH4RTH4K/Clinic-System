@@ -193,6 +193,11 @@ class UserRoleAuthorizationTest extends TestCase
             ->assertSessionHas('success', 'User updated.');
 
         $this->assertTrue(Hash::check('NewSecureP@ss1!', $target->fresh()->password));
+        $this->assertTrue($target->fresh()->must_change_password);
+
+        $this->actingAs($target->fresh())
+            ->get('/admin/patients')
+            ->assertRedirect(route('profile.edit'));
     }
 
     public function test_password_reset_rejects_mismatched_confirmation(): void

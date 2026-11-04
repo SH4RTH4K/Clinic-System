@@ -10,15 +10,20 @@ class ProductionHardeningTest extends TestCase
     use RefreshDatabase;
 
     // -------------------------------------------------------------------------
-    // Test 1: storage/.htaccess exists in the repository
+    // Test 1: upload protection ships from Laravel's public storage source
     // -------------------------------------------------------------------------
 
     public function test_storage_htaccess_file_exists(): void
     {
         $this->assertFileExists(
-            public_path('storage/.htaccess'),
-            'public/storage/.htaccess must exist to block PHP execution in the upload directory.'
+            storage_path('app/public/.htaccess'),
+            'storage/app/public/.htaccess must ship with the public disk and storage link.'
         );
+
+        $content = file_get_contents(storage_path('app/public/.htaccess'));
+        $this->assertStringContainsString('Require all denied', $content);
+        $this->assertStringContainsString('SetHandler default-handler', $content);
+        $this->assertStringContainsString('Options -ExecCGI', $content);
     }
 
     // -------------------------------------------------------------------------
@@ -61,21 +66,20 @@ class ProductionHardeningTest extends TestCase
 
         $content = file_get_contents($path);
 
-        // The key line must not contain a real base64-encoded key — it should be a blank placeholder.
-        $this->assertDoesNotMatchRegularExpression(
-            '/^APP_KEY\s*=\s*base64:/m',
+        // Secret fields remain blank placeholders and are filled only on the server.
+        $this->assertMatchesRegularExpression(
+            '/^APP_KEY\s*=\s*$/m',
             $content,
-            '.env.production.example must not contain a real APP_KEY value.'
+            '.env.production.example must not contain an APP_KEY.'
         );
+        $this->assertMatchesRegularExpression('/^DB_PASSWORD\s*=\s*$/m', $content);
+        $this->assertMatchesRegularExpression('/^MAIL_PASSWORD\s*=\s*$/m', $content);
 
-        // Must have APP_DEBUG=false
+        $this->assertStringContainsString('APP_ENV=production', $content);
         $this->assertStringContainsString('APP_DEBUG=false', $content);
-
-        // Must have SESSION_SECURE_COOKIE=true
         $this->assertStringContainsString('SESSION_SECURE_COOKIE=true', $content);
-
-        // Must have SESSION_ENCRYPT=true
         $this->assertStringContainsString('SESSION_ENCRYPT=true', $content);
+        $this->assertStringContainsString('DB_CONNECTION=mysql', $content);
     }
 
     // -------------------------------------------------------------------------
@@ -91,6 +95,18 @@ class ProductionHardeningTest extends TestCase
         $content = file_get_contents($path);
         $this->assertStringContainsString('mysqldump', $content, 'DEPLOYMENT.md must document the MySQL backup cron.');
         $this->assertStringContainsString('composer install --no-dev', $content);
+        $this->assertStringContainsString('PHP 8.3', $content);
+        $this->assertStringNotContainsString('YOUR_DB_PASSWORD', $content);
+    }
+
+    public function test_bengali_fonts_are_available_to_the_frontend_and_pdf_renderer(): void
+    {
+        $this->assertFileExists(public_path('fonts/NotoSansBengali-Regular.ttf'));
+        $this->assertFileExists(storage_path('fonts/NotoSansBengali-Regular.ttf'));
+        $this->assertStringContainsString(
+            "url('/fonts/NotoSansBengali-Regular.ttf')",
+            file_get_contents(resource_path('css/fonts.css'))
+        );
     }
 
     // -------------------------------------------------------------------------

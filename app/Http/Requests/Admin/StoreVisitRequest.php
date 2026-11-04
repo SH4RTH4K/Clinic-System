@@ -10,7 +10,9 @@ class StoreVisitRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('visits.create');
+        return $this->user()?->is_active === true
+            && $this->user()?->can('clinical_records.view') === true
+            && $this->user()?->can('visits.create') === true;
     }
 
     /**
@@ -28,7 +30,7 @@ class StoreVisitRequest extends FormRequest
 
         return [
             'patient_id' => 'required|exists:patients,id',
-            'doctor_id' => 'nullable|exists:doctors,id',
+            'doctor_id' => ['prohibited'],
             'visit_date' => 'required|date|before_or_equal:today',
             'age_at_visit' => 'nullable|integer|min:0|max:150',
             'age_months' => 'nullable|integer|min:0|max:11',
@@ -38,7 +40,6 @@ class StoreVisitRequest extends FormRequest
             'bp_symptoms_notes' => 'nullable|string|max:5000',
             'diagnosis_notes' => 'nullable|string|max:5000',
             'follow_up_date' => 'nullable|date|after_or_equal:visit_date',
-            'status' => 'required|in:draft,finalized',
             'symptoms' => 'nullable|array',
             'symptoms.*' => 'integer|exists:symptoms,id',
             'advice_items' => 'nullable|array',

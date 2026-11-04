@@ -33,6 +33,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
+                'importResults' => fn () => $request->session()->get('importResults'),
             ],
             'auth' => [
                 'user' => $request->user(),

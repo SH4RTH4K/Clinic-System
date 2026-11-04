@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Doctor;
 use App\Models\Medicine;
 use App\Models\Patient;
 use App\Models\User;
@@ -21,7 +22,7 @@ class VisitIntegrityTest extends TestCase
     {
         parent::setUp();
 
-        $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map',
+        $modules = ['patients', 'visits', 'clinical_records', 'medicines', 'symptoms', 'symptom_medicine_map',
             'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs'];
         $actions = ['view', 'create', 'update', 'delete', 'export', 'amend'];
 
@@ -39,6 +40,7 @@ class VisitIntegrityTest extends TestCase
         $doctor->givePermissionTo([
             'patients.view', 'patients.create',
             'visits.view', 'visits.create', 'visits.update', 'visits.delete',
+            'clinical_records.view',
         ]);
     }
 
@@ -59,12 +61,20 @@ class VisitIntegrityTest extends TestCase
         return Patient::factory()->create();
     }
 
-    private function makeVisit(string $status = 'draft'): Visit
+    private function makeVisit(string $status = 'draft', ?User $doctorUser = null): Visit
     {
         $patient = $this->makePatient();
+        $doctor = $doctorUser === null ? null : Doctor::query()->create([
+            'name' => 'Assigned Test Doctor',
+            'user_id' => $doctorUser->id,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
 
         return Visit::factory()->create([
             'patient_id' => $patient->id,
+            'doctor_id' => $doctor?->id,
+            'created_by' => $doctorUser?->id,
             'status' => $status,
         ]);
     }
@@ -168,10 +178,10 @@ class VisitIntegrityTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // Test 6: Super Admin can update a finalized visit (has visits.amend)
+    // Test 6: Super Admin cannot amend a finalized visit without being its responsible Doctor
     // -------------------------------------------------------------------------
 
-    public function test_super_admin_can_update_finalized_visit(): void
+    public function test_super_admin_cannot_amend_a_finalized_visit_without_doctor_responsibility(): void
     {
         $visit = $this->makeVisit('finalized');
 
@@ -181,8 +191,11 @@ class VisitIntegrityTest extends TestCase
                 'visit_date' => now()->toDateString(),
                 'chief_complaint' => 'Amended complaint',
                 'status' => 'finalized',
+                'amendment_reason' => 'Correcting a documented transcription error.',
             ])
-            ->assertRedirect(route('admin.visits.show', $visit->id));
+            ->assertForbidden();
+
+        $this->assertNotSame('Amended complaint', $visit->fresh()->chief_complaint);
     }
 
     // -------------------------------------------------------------------------
@@ -191,9 +204,10 @@ class VisitIntegrityTest extends TestCase
 
     public function test_doctor_can_update_draft_visit(): void
     {
-        $visit = $this->makeVisit('draft');
+        $doctor = $this->userWithRole('Doctor');
+        $visit = $this->makeVisit('draft', $doctor);
 
-        $this->actingAs($this->userWithRole('Doctor'))
+        $this->actingAs($doctor)
             ->put("/admin/visits/{$visit->id}", [
                 'patient_id' => $visit->patient_id,
                 'visit_date' => now()->toDateString(),
@@ -307,9 +321,10 @@ class VisitIntegrityTest extends TestCase
 
     public function test_update_visit_updates_age_components(): void
     {
-        $visit = $this->makeVisit('draft');
+        $doctor = $this->userWithRole('Doctor');
+        $visit = $this->makeVisit('draft', $doctor);
 
-        $response = $this->actingAs($this->userWithRole('Doctor'))
+        $response = $this->actingAs($doctor)
             ->put("/admin/visits/{$visit->id}", [
                 'patient_id' => $visit->patient_id,
                 'visit_date' => now()->toDateString(),

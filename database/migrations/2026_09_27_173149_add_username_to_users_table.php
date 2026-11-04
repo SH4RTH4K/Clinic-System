@@ -8,15 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('users', 'username')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            $table->string('username')->unique()->after('name');
+            $table->string('username')->nullable()->after('name');
         });
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('username');
-        });
+        throw new RuntimeException(
+            'Username identities cannot be safely removed. Use a forward migration instead of rolling back this migration.'
+        );
     }
 };

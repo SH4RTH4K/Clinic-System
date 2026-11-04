@@ -1,25 +1,30 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import PrescriptionConfigModal from '@/Components/PrescriptionConfigModal';
+import RepertoryReferenceReview from '@/Components/RepertoryReferenceReview';
 import usePermission from '@/Components/usePermission';
 import { calculateAgeFromDob, calculateDobFromAge, formatAgeSummary } from '@/Utils/ageHelpers';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-const DRAFT_KEY = 'hcs_visit_draft';
+const AUTH_SESSION_CHANNEL = 'hcs-auth-session';
 
 export default function Create({
     patient = null,
-    doctors = [],
+    responsibleDoctor = null,
     symptoms = [],
     medicines = [],
     defaultAdvice = [],
     defaultFood = [],
     prescriptionConfig = {},
+    hasSavedDraft = false,
+    draftOwnerToken = '',
+    canFinalize = false,
 }) {
+    const { auth = {} } = usePage().props;
+    const currentUserId = auth.user?.id;
     const canCreatePatient = usePermission()('patients.create');
-    const defaultDoctorId = doctors.length > 0 ? doctors[0].id : '';
     const initialVisitDate = new Date().toISOString().split('T')[0];
 
     let initialAgeYears = patient ? (patient.age_years ?? '') : '';
@@ -38,7 +43,6 @@ export default function Create({
 
     const { data, setData, post, processing, errors, transform } = useForm({
         patient_id: patient ? patient.id : '',
-        doctor_id: defaultDoctorId,
         visit_date: initialVisitDate,
         age_at_visit: initialAgeYears,
         age_months: initialAgeMonths,
@@ -55,7 +59,8 @@ export default function Create({
         food_restrictions: defaultFood.map((f) => f.id),
     });
 
-    const [hasDraftNotice, setHasDraftNotice] = useState(false);
+    const [hasDraftNotice, setHasDraftNotice] = useState(Boolean(hasSavedDraft && !patient));
+    const [draftDecisionMade, setDraftDecisionMade] = useState(!hasSavedDraft || Boolean(patient));
     const [selectedPatient, setSelectedPatient] = useState(patient || null);
 
     // ── Patient async combobox ────────────────────────────────────────────────
@@ -67,58 +72,116 @@ export default function Create({
     const [showDropdown, setShowDropdown] = useState(false);
     const searchTimeout = useRef(null);
 
-    // Check for existing local draft on mount
+    // Notify other open tabs when the signed-in account changes.
     useEffect(() => {
-        try {
-            const savedDraft = localStorage.getItem(DRAFT_KEY);
-            if (savedDraft && !patient) {
-                setHasDraftNotice(true);
-            }
-        } catch (e) {
-            // Ignore storage errors
+        if (!('BroadcastChannel' in window)) {
+            return undefined;
         }
-    }, [patient]);
 
-    const restoreDraft = () => {
+        const channel = new BroadcastChannel(AUTH_SESSION_CHANNEL);
+        const handleMessage = (event) => {
+            const message = event.data ?? {};
+            const signedInUserChanged = message.type === 'identity'
+                && String(message.userId) !== String(currentUserId);
+
+            if (message.type === 'logout' || signedInUserChanged) {
+                window.location.replace(route('login'));
+            }
+        };
+
+        channel.addEventListener('message', handleMessage);
+        channel.postMessage({ type: 'identity', userId: currentUserId });
+
+        return () => {
+            channel.removeEventListener('message', handleMessage);
+            channel.close();
+        };
+    }, [currentUserId]);
+
+    useEffect(() => {
+        const reloadFromServerWhenRestored = (event) => {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        };
+
+        window.addEventListener('pageshow', reloadFromServerWhenRestored);
+
+        return () => window.removeEventListener('pageshow', reloadFromServerWhenRestored);
+    }, []);
+
+    const restoreDraft = async () => {
         try {
-            const savedDraft = localStorage.getItem(DRAFT_KEY);
-            if (savedDraft) {
-                const parsed = JSON.parse(savedDraft);
-                if (parsed.patientQuery) {
-                    setPatientQuery(parsed.patientQuery);
-                }
-                if (parsed.selectedPatient) {
-                    setSelectedPatient(parsed.selectedPatient);
-                }
-                setData((prev) => ({
-                    ...prev,
-                    ...parsed,
-                }));
+            const response = await axios.get(route('admin.visits.draft.show'), {
+                headers: { 'X-Visit-Draft-Owner': draftOwnerToken },
+            });
+            const savedDraft = response.data.draft;
+
+            if (!savedDraft?.payload) {
                 setHasDraftNotice(false);
+                setDraftDecisionMade(true);
+                return;
             }
-        } catch (e) {
-            console.error('Failed to restore draft', e);
+
+            const savedPayload = { ...(savedDraft.payload || {}) };
+            delete savedPayload.doctor_id;
+            setData((previous) => ({ ...previous, ...savedPayload }));
+            setSelectedPatient(savedDraft.patient || null);
+            setPatientQuery(savedDraft.patient
+                ? `${savedDraft.patient.patient_identifier || `${savedDraft.patient.patient_no}${savedDraft.patient.patient_series || ''}`} – ${savedDraft.patient.name}`
+                : '');
+            setHasDraftNotice(false);
+            setDraftDecisionMade(true);
+        } catch (error) {
+            if ([401, 403].includes(error.response?.status)) {
+                window.location.replace(route('login'));
+            }
         }
     };
 
-    const discardDraft = () => {
+    const discardDraft = async () => {
         try {
-            localStorage.removeItem(DRAFT_KEY);
+            await axios.delete(route('admin.visits.draft.destroy'), {
+                data: { owner_token: draftOwnerToken },
+            });
+        } catch (error) {
+            if ([401, 403].includes(error.response?.status)) {
+                window.location.replace(route('login'));
+            }
+        } finally {
             setHasDraftNotice(false);
-        } catch (e) {}
+            setDraftDecisionMade(true);
+        }
     };
 
-    // Autosave to localStorage on changes (debounced)
+    // Autosave drafts to the authenticated user's encrypted server-side record.
     useEffect(() => {
+        const hasDraftContent = Boolean(
+            data.patient_id
+            || String(data.chief_complaint ?? '').trim()
+            || String(data.bp_symptoms_notes ?? '').trim()
+            || String(data.diagnosis_notes ?? '').trim()
+            || data.prescription_items.length
+            || data.symptoms.length
+        );
+
+        if (!draftDecisionMade || !hasDraftContent) {
+            return undefined;
+        }
+
         const timer = setTimeout(() => {
-            if (data.chief_complaint || data.prescription_items.length > 0 || data.patient_id) {
-                try {
-                    localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, patientQuery, selectedPatient }));
-                } catch (e) {}
-            }
-        }, 1000);
+            axios.put(route('admin.visits.draft.update'), {
+                owner_token: draftOwnerToken,
+                payload: data,
+            }).catch((error) => {
+                if ([401, 403].includes(error.response?.status)) {
+                    window.location.replace(route('login'));
+                }
+            });
+        }, 1500);
+
         return () => clearTimeout(timer);
-    }, [data, patientQuery, selectedPatient]);
+    }, [data, draftDecisionMade, draftOwnerToken]);
 
     const handlePatientSearch = (value) => {
         setPatientQuery(value);
@@ -243,6 +306,7 @@ export default function Create({
 
     // Repertory suggestions
     const [suggestions, setSuggestions] = useState([]);
+    const [pendingRepertorySuggestion, setPendingRepertorySuggestion] = useState(null);
     const [symptomFilter, setSymptomFilter] = useState('');
     const [showSymptomsSection, setShowSymptomsSection] = useState(true);
 
@@ -270,7 +334,7 @@ export default function Create({
         }
     }, [prescriptionConfig]);
 
-    const addPrescriptionRow = (medicine_id = '') => {
+    const addPrescriptionRow = (medicine_id = '', reviewedDetails = null) => {
         const defaultDoseQty = config?.default_dose_qty ?? 5;
         const defaultDoseUnit = config?.default_dose_unit || (config?.dose_units?.[0]?.key ?? 'drops');
         const defaultDuration = config?.default_duration_days ?? 7;
@@ -282,12 +346,12 @@ export default function Create({
             ...data.prescription_items,
             {
                 medicine_id,
-                timing: defaultTiming,
-                before_after: 'after',
-                dose_qty: defaultDoseQty,
-                dose_unit: defaultDoseUnit,
-                dilution_note: config?.dilution_instructions?.[0] || 'with half a cup of water',
-                duration_days: defaultDuration,
+                timing: reviewedDetails?.timing ?? defaultTiming,
+                before_after: reviewedDetails?.before_after ?? 'after',
+                dose_qty: reviewedDetails?.dose_qty ?? defaultDoseQty,
+                dose_unit: reviewedDetails?.dose_unit ?? defaultDoseUnit,
+                dilution_note: reviewedDetails?.dilution_note ?? config?.dilution_instructions?.[0] ?? 'with half a cup of water',
+                duration_days: reviewedDetails?.duration_days ?? defaultDuration,
             },
         ]);
     };
@@ -345,17 +409,20 @@ export default function Create({
 
     const submit = (e, statusToSet) => {
         if (e) e.preventDefault();
-        const finalStatus = statusToSet || data.status || 'draft';
-        transform((formValues) => ({
-            ...formValues,
-            status: finalStatus,
-        }));
-        post(route('admin.visits.store'), {
-            onSuccess: () => {
-                try {
-                    localStorage.removeItem(DRAFT_KEY);
-                } catch (e) {}
-            },
+        const isFinalizing = statusToSet === 'finalized';
+        transform((formValues) => {
+            const payload = { ...formValues, status: 'draft' };
+
+            delete payload.doctor_id;
+
+            if (isFinalizing) {
+                delete payload.status;
+            }
+
+            return payload;
+        });
+        post(route(isFinalizing ? 'admin.visits.finalize' : 'admin.visits.store'), {
+            onSuccess: () => setDraftDecisionMade(true),
         });
     };
 
@@ -420,13 +487,13 @@ export default function Create({
                     }
                 />
 
-                {/* Unsaved Local Draft Notification */}
+                {/* Server-side draft notification */}
                 {hasDraftNotice && (
                     <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                         <div className="flex items-center gap-2.5 text-sm text-amber-900">
                             <span className="text-xl">⚠️</span>
                             <div>
-                                <strong>Unsaved Draft Found:</strong> You have an unsaved consultation draft from a previous session.
+                                <strong>Saved consultation draft found:</strong> You have an encrypted draft linked to your account.
                             </div>
                         </div>
                         <div className="flex gap-2 shrink-0">
@@ -594,20 +661,11 @@ export default function Create({
                                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
                                             Treating Doctor (চিকিৎসক)
                                         </label>
-                                        <select
-                                            value={data.doctor_id}
-                                            onChange={(e) => setData('doctor_id', e.target.value)}
-                                            className="w-full rounded-lg border-gray-300 shadow-xs text-xs font-semibold text-gray-800 py-2 focus:border-primary-500 focus:ring-primary-500"
-                                        >
-                                            <option value="">-- No specific doctor --</option>
-                                            {doctors.map((d) => (
-                                                <option key={d.id} value={d.id}>
-                                                    {d.name} {d.credentials ? `(${d.credentials})` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.doctor_id && (
-                                            <p className="text-xs text-red-600 mt-1">{errors.doctor_id}</p>
+                                        <p className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-800">
+                                            {responsibleDoctor?.name || 'Not assigned'}
+                                        </p>
+                                        {!responsibleDoctor && (
+                                            <p className="mt-1 text-xs text-amber-700">This draft has no linked Doctor and cannot be finalized until its responsibility is reviewed.</p>
                                         )}
                                     </div>
 
@@ -802,7 +860,7 @@ export default function Create({
                     </div>
 
                     {/* ════════════════════════════════════════════════════════════════
-                        STEP 3: Repertory Symptoms & Intelligent Suggestions
+                        STEP 3: Repertory Symptom References
                     ════════════════════════════════════════════════════════════════ */}
                     <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
                         <div
@@ -814,7 +872,7 @@ export default function Create({
                                     3
                                 </span>
                                 <h3 className="text-sm font-bold text-gray-900">
-                                    Homeopathic Repertory Symptoms &amp; Remedy Suggestions
+                                    Homeopathic Repertory Reference Consultation
                                 </h3>
                                 <span className="bg-primary-50 text-primary-700 font-bold text-xs px-2 py-0.5 rounded-full border border-primary-200">
                                     {data.symptoms.length} selected
@@ -830,7 +888,7 @@ export default function Create({
                             <div className="p-5 space-y-4">
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                                     <p className="text-xs text-gray-600">
-                                        Select symptoms to view repertory medicine suggestions that match the patient's totality of symptoms.
+                                        Select up to 10 symptoms to consult approved repertory references. Matches do not establish effectiveness or patient suitability.
                                     </p>
                                     <div className="w-full sm:w-64">
                                         <input
@@ -865,14 +923,15 @@ export default function Create({
                                                         type="checkbox"
                                                         value={s.id}
                                                         checked={isSelected}
+                                                        disabled={!isSelected && data.symptoms.length >= 10}
                                                         onChange={(e) => {
-                                                            if (e.target.checked) {
+                                                            if (e.target.checked && data.symptoms.length < 10) {
                                                                 setData('symptoms', [...data.symptoms, s.id]);
                                                             } else {
                                                                 setData('symptoms', data.symptoms.filter((id) => id !== s.id));
                                                             }
                                                         }}
-                                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5"
+                                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 disabled:cursor-not-allowed disabled:opacity-40"
                                                     />
                                                     <span className="truncate">
                                                         {s.name_en} {s.name_bn && `(${s.name_bn})`}
@@ -888,10 +947,10 @@ export default function Create({
                                     <div className="bg-emerald-50/80 border border-emerald-300 p-4 rounded-xl space-y-2.5 shadow-xs">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                                                <span>⚡</span> Repertory Remedy Suggestions (Click to Add to Rx)
+                                                <span>⚡</span> Approved repertory references
                                             </h4>
                                             <span className="text-[11px] text-emerald-700 font-semibold">
-                                                Matched by symptoms totality
+                                                Reference matches only · assess independently
                                             </span>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -899,18 +958,19 @@ export default function Create({
                                                 <button
                                                     type="button"
                                                     key={sugg.medicine_id}
-                                                    onClick={() => addPrescriptionRow(sugg.medicine_id)}
+                                                    onClick={() => setPendingRepertorySuggestion(sugg)}
                                                     className="inline-flex items-center gap-2 bg-white border border-emerald-300 text-emerald-950 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 hover:border-emerald-400 transition shadow-2xs cursor-pointer"
                                                 >
-                                                    <span>+ {sugg.medicine_name}</span>
+                                                    <span>Review {sugg.medicine_name}</span>
                                                     <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-extrabold border border-emerald-200">
-                                                        {sugg.match_score} match
+                                                        {sugg.reference_match_count} reference {sugg.reference_match_count === 1 ? 'match' : 'matches'}
                                                     </span>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
                                 )}
+                                <p className="text-xs text-slate-600">Repertory references are not proof of clinical effectiveness or suitability and must not replace established medical treatment. No patient-specific treatment rule is applied.</p>
                             </div>
                         )}
                     </div>
@@ -961,7 +1021,7 @@ export default function Create({
                                     </div>
                                     <div className="text-sm font-bold text-gray-700">No medicines added yet</div>
                                     <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                                        Click below to add a homeopathic remedy or pick from the repertory suggestions above.
+                                        Add a medicine manually or review an approved repertory reference above. Any prescription remains the prescriber's independent decision.
                                     </p>
                                     <button
                                         type="button"
@@ -1424,8 +1484,9 @@ export default function Create({
                             <button
                                 type="button"
                                 onClick={(e) => submit(e, 'finalized')}
-                                disabled={processing}
-                                className="px-6 py-2.5 bg-primary-700 hover:bg-primary-800 text-white font-extrabold rounded-xl text-xs shadow-sm transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer disabled:opacity-50 flex items-center gap-2 tracking-wide"
+                                disabled={processing || !canFinalize}
+                                title={!canFinalize ? 'Requires visits.finalize permission and an active linked doctor profile.' : undefined}
+                                className="px-6 py-2.5 bg-primary-700 hover:bg-primary-800 text-white font-extrabold rounded-xl text-xs shadow-sm transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 tracking-wide"
                             >
                                 <span>✓</span>
                                 {processing ? 'Saving...' : 'Finalize & Save Visit (সম্পূর্ণ করুন)'}
@@ -1441,6 +1502,19 @@ export default function Create({
                 initialConfig={config}
                 onConfigSaved={(newCfg) => setConfig(newCfg)}
             />
+            {pendingRepertorySuggestion && (
+                <RepertoryReferenceReview
+                    key={pendingRepertorySuggestion.medicine_id}
+                    suggestion={pendingRepertorySuggestion}
+                    medicines={medicines}
+                    config={config}
+                    onCancel={() => setPendingRepertorySuggestion(null)}
+                    onAdd={(reviewedDetails) => {
+                        addPrescriptionRow(reviewedDetails.medicine_id, reviewedDetails);
+                        setPendingRepertorySuggestion(null);
+                    }}
+                />
+            )}
         </AuthenticatedLayout>
     );
 }

@@ -22,7 +22,7 @@ class DesignHardeningTest extends TestCase
     {
         parent::setUp();
 
-        $modules = ['patients', 'visits', 'settings', 'doctors'];
+        $modules = ['patients', 'visits', 'clinical_records', 'settings', 'doctors'];
         $actions = ['view', 'create', 'update', 'delete'];
 
         foreach ($modules as $module) {
@@ -32,6 +32,7 @@ class DesignHardeningTest extends TestCase
         }
 
         $superAdmin = Role::firstOrCreate(['name' => 'Super Admin']);
+        Role::firstOrCreate(['name' => 'Doctor']);
         $superAdmin->givePermissionTo(Permission::all());
 
         ClinicSetting::create([
@@ -115,9 +116,14 @@ class DesignHardeningTest extends TestCase
         $response->assertSee('H-12345');
     }
 
-    public function test_visit_creation_persists_treating_doctor_id(): void
+    public function test_visit_creation_uses_authenticated_doctor_and_starts_as_a_draft(): void
     {
-        $admin = $this->createSuperAdmin();
+        $doctorUser = User::factory()->create([
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
+        $doctorUser->assignRole('Doctor');
+        $doctorUser->givePermissionTo(['clinical_records.view', 'visits.create']);
 
         $patient = Patient::create([
             'patient_no' => 101,
@@ -133,6 +139,7 @@ class DesignHardeningTest extends TestCase
             'credentials' => 'BHMS (DU)',
             'is_active' => true,
             'sort_order' => 1,
+            'user_id' => $doctorUser->id,
         ]);
 
         $medicine = Medicine::create([
@@ -144,7 +151,6 @@ class DesignHardeningTest extends TestCase
 
         $payload = [
             'patient_id' => $patient->id,
-            'doctor_id' => $doctor->id,
             'visit_date' => now()->toDateString(),
             'age_at_visit' => 35,
             'chief_complaint' => 'Chronic lower back pain',
@@ -162,13 +168,15 @@ class DesignHardeningTest extends TestCase
             ],
         ];
 
-        $response = $this->actingAs($admin)->post(route('admin.visits.store'), $payload);
+        $response = $this->actingAs($doctorUser)->post(route('admin.visits.store'), $payload);
         $response->assertRedirect(route('admin.visits.index'));
 
         $this->assertDatabaseHas('visits', [
             'patient_id' => $patient->id,
             'doctor_id' => $doctor->id,
             'chief_complaint' => 'Chronic lower back pain',
+            'created_by' => $doctorUser->id,
+            'status' => 'draft',
         ]);
     }
 

@@ -31,11 +31,14 @@ class DatabaseSeeder extends Seeder
         }
 
         $featurePermissions = [
+            'visits' => ['finalize', 'cancel', 'cancel_other'],
+            'clinical_records' => ['view'],
             'doctors' => ['view', 'create', 'update', 'delete'],
             'prescription_options' => ['view', 'create', 'update', 'delete'],
             'clinic_settings' => ['view', 'update'],
             'general_settings' => ['view', 'create', 'update', 'delete'],
             'patient_config' => ['view', 'create', 'update', 'order', 'delete'],
+            'symptom_medicine_map' => ['review'],
         ];
 
         foreach ($featurePermissions as $feature => $featureActions) {
@@ -50,15 +53,31 @@ class DatabaseSeeder extends Seeder
         $accountant = Role::firstOrCreate(['name' => 'Accountant']);
 
         // Give Super Admin all permissions
-        $superAdmin->givePermissionTo(Permission::all());
+        $superAdmin->givePermissionTo(Permission::whereNotIn('name', [
+            'visits.finalize',
+            'visits.cancel',
+            'visits.cancel_other',
+            'clinical_records.view',
+            'medicines.create',
+            'medicines.update',
+            'medicines.delete',
+            'symptoms.create',
+            'symptoms.update',
+            'symptoms.delete',
+            'symptom_medicine_map.create',
+            'symptom_medicine_map.update',
+            'symptom_medicine_map.delete',
+            'symptom_medicine_map.review',
+        ])->get());
 
         // Doctor permissions
         $doctor->givePermissionTo([
-            'patients.view', 'patients.create', 'patients.update', 'patients.delete',
-            'visits.view', 'visits.create', 'visits.update', 'visits.delete',
-            'medicines.view', 'medicines.create', 'medicines.update', 'medicines.delete',
-            'symptoms.view', 'symptoms.create', 'symptoms.update', 'symptoms.delete',
-            'symptom_medicine_map.view', 'symptom_medicine_map.create', 'symptom_medicine_map.update', 'symptom_medicine_map.delete',
+            'patients.view', 'patients.create', 'patients.update',
+            'visits.view', 'visits.create', 'visits.update',
+            'clinical_records.view',
+            'medicines.view',
+            'symptoms.view',
+            'symptom_medicine_map.view',
             'appointments.view', 'appointments.update',
             'reports.view', 'reports.export',
         ]);
@@ -66,9 +85,6 @@ class DatabaseSeeder extends Seeder
         // Receptionist permissions
         $receptionist->givePermissionTo([
             'patients.view', 'patients.create', 'patients.update',
-            'visits.view',
-            'medicines.view',
-            'symptoms.view',
             'appointments.view', 'appointments.create', 'appointments.update', 'appointments.delete',
         ]);
 

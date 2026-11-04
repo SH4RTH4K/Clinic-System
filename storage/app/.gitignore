@@ -1,4 +1,6 @@
 *
 !private/
 !public/
+public/**
+!public/.htaccess
 !.gitignore

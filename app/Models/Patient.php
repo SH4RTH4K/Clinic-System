@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Patient extends Model
 {
@@ -40,15 +40,16 @@ class Patient extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly([
-                // Safe identifying fields — clinical free-text (known_allergies) excluded.
-                'patient_no', 'patient_series', 'patient_code', 'patient_category', 'patient_numbering_profile_id',
-                'name', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
-                'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'address',
-                'blood_group', 'referred_by',
-            ])
-            ->logOnlyDirty()
-            ->dontLogEmptyChanges();
+            ->logOnly([])
+            ->setDescriptionForEvent(fn (string $eventName): string => $this->privacySafeActivityDescription($eventName));
+    }
+
+    private function privacySafeActivityDescription(string $eventName): string
+    {
+        $changedFields = array_values(array_diff(array_keys($this->getDirty()), ['created_at', 'updated_at']));
+        $fieldSummary = $changedFields === [] ? '' : ' fields: '.implode(', ', $changedFields);
+
+        return 'patient.'.$eventName.$fieldSummary;
     }
 
     public function getAgeSummaryAttribute(): string

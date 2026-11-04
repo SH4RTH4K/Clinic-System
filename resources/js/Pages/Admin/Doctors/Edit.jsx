@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DoctorForm from '@/Pages/Admin/Doctors/DoctorForm';
 import { Head, useForm } from '@inertiajs/react';
 
-export default function Edit({ doctor }) {
+export default function Edit({ doctor, doctorAccounts = [], canManageDoctorAccounts = false }) {
     const { data, setData, post, processing, errors, progress } = useForm({
         _method: 'put',
         name: doctor.name || '',
@@ -38,6 +38,7 @@ export default function Edit({ doctor }) {
         social_website: doctor.social_website || '',
         is_active: Boolean(doctor.is_active),
         sort_order: doctor.sort_order ?? 0,
+        user_id: doctor.user_id || '',
         photo: null,
     });
 
@@ -61,6 +62,8 @@ export default function Edit({ doctor }) {
                             onSubmit={submit}
                             submitLabel="Update Doctor"
                             doctor={doctor}
+                            doctorAccounts={doctorAccounts}
+                            canManageDoctorAccounts={canManageDoctorAccounts}
                         />
                     </div>
                 </div>

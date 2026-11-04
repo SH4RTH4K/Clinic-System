@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\ClinicSetting;
+use App\Models\User;
 use App\Models\Visit;
+use App\Services\Admin\VisitAuthorizationService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,13 +15,11 @@ class UpdateVisitRequest extends FormRequest
     {
         /** @var Visit $visit */
         $visit = $this->route('visit');
+        $user = $this->user();
 
-        // Finalized visits require the elevated 'visits.amend' permission
-        if ($visit && $visit->status === 'finalized') {
-            return $this->user()->can('visits.amend');
-        }
-
-        return $this->user()->can('visits.update');
+        return $user instanceof User
+            && $visit instanceof Visit
+            && app(VisitAuthorizationService::class)->canEdit($user, $visit);
     }
 
     /**
@@ -27,6 +27,8 @@ class UpdateVisitRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var Visit $visit */
+        $visit = $this->route('visit');
         $settings = ClinicSetting::first();
         $timingKeys = $settings
             ? collect($settings->getPrescriptionConfig()['timing_options'] ?? [])->pluck('key')->filter()->all()
@@ -36,8 +38,10 @@ class UpdateVisitRequest extends FormRequest
         }
 
         return [
-            'patient_id' => 'required|exists:patients,id',
-            'doctor_id' => 'nullable|exists:doctors,id',
+            'patient_id' => $visit->status === 'finalized'
+                ? ['required', 'integer', Rule::in([$visit->patient_id])]
+                : 'required|exists:patients,id',
+            'doctor_id' => ['prohibited'],
             'visit_date' => 'required|date|before_or_equal:today',
             'age_at_visit' => 'nullable|integer|min:0|max:150',
             'age_months' => 'nullable|integer|min:0|max:11',
@@ -47,7 +51,10 @@ class UpdateVisitRequest extends FormRequest
             'bp_symptoms_notes' => 'nullable|string|max:5000',
             'diagnosis_notes' => 'nullable|string|max:5000',
             'follow_up_date' => 'nullable|date|after_or_equal:visit_date',
-            'status' => 'required|in:draft,finalized',
+            'status' => ['required', Rule::in([$visit->status])],
+            'amendment_reason' => $visit->status === 'finalized'
+                ? ['required', 'string', 'min:10', 'max:2000']
+                : ['prohibited'],
             'symptoms' => 'nullable|array',
             'symptoms.*' => 'integer|exists:symptoms,id',
             'advice_items' => 'nullable|array',

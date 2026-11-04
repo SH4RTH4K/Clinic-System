@@ -23,7 +23,7 @@ class SettingsAuditAuthorizationTest extends TestCase
 
         // Mirrors the seeder: create all module.action permissions.
         $modules = [
-            'patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map',
+            'patients', 'visits', 'clinical_records', 'medicines', 'symptoms', 'symptom_medicine_map',
             'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs',
         ];
         $actions = ['view', 'create', 'update', 'delete', 'export'];
@@ -44,6 +44,7 @@ class SettingsAuditAuthorizationTest extends TestCase
         $doctor->givePermissionTo([
             'patients.view', 'patients.create', 'patients.update', 'patients.delete',
             'visits.view', 'visits.create', 'visits.update', 'visits.delete',
+            'clinical_records.view',
             'medicines.view',
             'symptoms.view',
             'settings.view',
@@ -88,13 +89,13 @@ class SettingsAuditAuthorizationTest extends TestCase
             ->assertStatus(403);
     }
 
-    public function test_doctor_can_view_settings_when_granted_view_permission(): void
+    public function test_doctor_cannot_view_clinic_settings_even_when_granted_view_permission(): void
     {
         Role::findByName('Doctor')->givePermissionTo('clinic_settings.view');
 
         $this->actingAs($this->userWithRole('Doctor'))
             ->get('/admin/settings')
-            ->assertOk();
+            ->assertForbidden();
     }
 
     public function test_doctor_can_view_administration_pages_when_granted_module_permissions(): void
@@ -134,7 +135,7 @@ class SettingsAuditAuthorizationTest extends TestCase
                 ->where('doctor.name', 'Dr. Test Profile'));
     }
 
-    public function test_doctor_can_update_settings_when_granted_update_permission(): void
+    public function test_doctor_cannot_update_clinic_settings_even_when_granted_update_permission(): void
     {
         Role::findByName('Doctor')->givePermissionTo('clinic_settings.update');
 
@@ -146,11 +147,9 @@ class SettingsAuditAuthorizationTest extends TestCase
                 'patient_no_series' => 'A',
                 'patient_no_next' => 1,
             ])
-            ->assertRedirectContains('settings');
+            ->assertForbidden();
 
-        $this->assertDatabaseHas('clinic_settings', [
-            'clinic_name_en' => 'Doctor Updated Clinic',
-        ]);
+        $this->assertDatabaseMissing('clinic_settings', ['clinic_name_en' => 'Doctor Updated Clinic']);
     }
 
     public function test_general_and_clinic_settings_permissions_do_not_grant_each_other(): void
@@ -337,14 +336,14 @@ class SettingsAuditAuthorizationTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // Test 9: Accountant can view reports (reports.view still works)
+    // Test 9: Accountant cannot view clinical reports without chart permission
     // -------------------------------------------------------------------------
 
-    public function test_accountant_can_view_reports(): void
+    public function test_accountant_without_clinical_chart_permission_cannot_view_reports(): void
     {
         $this->actingAs($this->userWithRole('Accountant'))
             ->get('/admin/reports')
-            ->assertStatus(200);
+            ->assertStatus(403);
     }
 
     // -------------------------------------------------------------------------

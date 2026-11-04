@@ -9,7 +9,9 @@ import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
 export default function Show({ patient, relationshipOptions = [] }) {
     const can = usePermission();
-    const canVisitView = can('visits.view');
+    const canViewClinicalRecords = can('clinical_records.view');
+    const canVisitView = canViewClinicalRecords && can('visits.view');
+    const canVisitExport = can('visits.export');
     const canPatientUpdate = can('patients.update');
     const canVisitCreate = can('visits.create');
 
@@ -57,7 +59,7 @@ export default function Show({ patient, relationshipOptions = [] }) {
                     ) : (
                         <button type="button" disabled className="px-2.5 py-1 text-primary-700 bg-primary-50 rounded font-medium cursor-not-allowed opacity-50">View Visit</button>
                     )}
-                    {canVisitView ? (
+                    {canVisitExport ? (
                         <a href={route('admin.visits.pdf', v.id)} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium transition">
                             PDF
                         </a>
@@ -110,7 +112,7 @@ export default function Show({ patient, relationshipOptions = [] }) {
                         <div className="space-y-2">
                             <div><span className="text-gray-400 font-medium">Age / Date of Birth:</span> <span className="text-gray-800 block">{formatAgeSummary(patient.age_years, patient.age_months, patient.age_days)} {patient.dob ? `(${patient.dob})` : ''}</span></div>
                             <div><span className="text-gray-400 font-medium">Mobile Phone:</span> <span className="font-mono text-gray-900 block">{patient.phone || '—'}</span></div>
-                            <div><span className="text-gray-400 font-medium">Blood Group:</span> <span className="text-gray-800 font-semibold block">{patient.blood_group || 'Unknown'}</span></div>
+                            {canViewClinicalRecords && <div><span className="text-gray-400 font-medium">Blood Group:</span> <span className="text-gray-800 font-semibold block">{patient.blood_group || 'Unknown'}</span></div>}
                         </div>
 
                         <div className="space-y-2">
@@ -118,10 +120,10 @@ export default function Show({ patient, relationshipOptions = [] }) {
                                 <span className="text-gray-400 font-medium">Residential Address:</span>
                                 <p className="text-gray-800 font-medium mt-0.5 whitespace-pre-wrap">{patient.address || 'No address recorded'}</p>
                             </div>
-                            <div>
+                            {canViewClinicalRecords && <div>
                                 <span className="text-gray-400 font-medium">Known Allergies:</span>
                                 <p className="text-gray-800 mt-0.5">{patient.known_allergies || 'None reported'}</p>
-                            </div>
+                            </div>}
                             <div>
                                 <span className="text-gray-400 font-medium">Referred By:</span>
                                 <span className="text-gray-800 block">{patient.referred_by || '—'}</span>
@@ -130,21 +132,22 @@ export default function Show({ patient, relationshipOptions = [] }) {
                     </div>
                 </div>
 
-                {/* Past Visits Table */}
-                <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-6 space-y-4">
-                    <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
-                            Consultation History &amp; Prescriptions ({patient.visits?.length || 0})
-                        </h3>
-                    </div>
+                {canVisitView && (
+                    <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-6 space-y-4">
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                            <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
+                                Consultation History &amp; Prescriptions ({patient.visits?.length || 0})
+                            </h3>
+                        </div>
 
-                    <DataTable
-                        columns={visitColumns}
-                        data={patient.visits || []}
-                        keyExtractor={(v) => v.id}
-                        emptyMessage="No consultation visits recorded for this patient yet."
-                    />
-                </div>
+                        <DataTable
+                            columns={visitColumns}
+                            data={patient.visits || []}
+                            keyExtractor={(v) => v.id}
+                            emptyMessage="No consultation visits recorded for this patient yet."
+                        />
+                    </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

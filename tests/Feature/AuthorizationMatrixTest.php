@@ -32,7 +32,7 @@ class AuthorizationMatrixTest extends TestCase
         parent::setUp();
 
         $modules = [
-            'patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map',
+            'patients', 'visits', 'clinical_records', 'medicines', 'symptoms', 'symptom_medicine_map',
             'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs',
         ];
         $actions = ['view', 'create', 'update', 'delete', 'export', 'amend'];
@@ -53,6 +53,7 @@ class AuthorizationMatrixTest extends TestCase
         $doctor->givePermissionTo([
             'patients.view', 'patients.create', 'patients.update', 'patients.delete',
             'visits.view', 'visits.create', 'visits.update', 'visits.delete',
+            'clinical_records.view',
             'medicines.view', 'medicines.create', 'medicines.update', 'medicines.delete',
             'symptoms.view', 'symptoms.create', 'symptoms.update', 'symptoms.delete',
             'symptom_medicine_map.view', 'symptom_medicine_map.create',
@@ -237,11 +238,11 @@ class AuthorizationMatrixTest extends TestCase
             ->assertStatus(200);
     }
 
-    public function test_visits_index_allowed_for_receptionist(): void
+    public function test_legacy_visits_view_permission_does_not_allow_receptionist_to_open_clinical_visits(): void
     {
         $this->actingAs($this->userWithRole('Receptionist'))
             ->get('/admin/visits')
-            ->assertStatus(200);
+            ->assertStatus(403);
     }
 
     public function test_visits_index_forbidden_for_accountant(): void
@@ -320,11 +321,11 @@ class AuthorizationMatrixTest extends TestCase
             ->assertStatus(200);
     }
 
-    public function test_reports_allowed_for_accountant(): void
+    public function test_reports_forbidden_for_accountant_without_clinical_chart_permission(): void
     {
         $this->actingAs($this->userWithRole('Accountant'))
             ->get('/admin/reports')
-            ->assertStatus(200);
+            ->assertStatus(403);
     }
 
     public function test_reports_forbidden_for_receptionist(): void

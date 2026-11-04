@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Prescription - {{ $visit->patient->name }}</title>
+    <title>Prescription - {{ $visit->patient_snapshot['name'] ?? $visit->patient->name }}</title>
     <style>
         @font-face {
             font-family: 'BanglaFont';
@@ -41,6 +41,16 @@
             margin: 2px 0;
             font-size: 11px;
             color: #555;
+        }
+        .document-status {
+            margin: 0 0 12px;
+            padding: 8px 12px;
+            text-align: center;
+            border: 1px solid #147a96;
+            color: #147a96;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
         }
         .patient-table {
             width: 100%;
@@ -116,9 +126,11 @@
 <body>
     @php
         $doc = $visit->doctor ?? null;
-        $docName = $doc?->name ?? ($settings->doctor_name ?? 'Doctor');
-        $docCred = $doc?->credentials ?? ($settings->doctor_credentials ?? '');
-        $docReg = $doc?->govt_reg_no ?? ($settings->govt_reg_no ?? '');
+        $patientSnapshot = $visit->patient_snapshot ?? [];
+        $prescriber = $visit->prescription_authorizer_snapshot ?? $visit->prescriber_snapshot ?? [];
+        $docName = $prescriber['doctor_name'] ?? $doc?->name ?? ($settings->doctor_name ?? 'Doctor');
+        $docCred = $prescriber['credentials'] ?? $doc?->credentials ?? ($settings->doctor_credentials ?? '');
+        $docReg = $prescriber['registration_number'] ?? $doc?->govt_reg_no ?? ($settings->govt_reg_no ?? '');
         $clinicPhone = $doc?->phone ?: ($settings->phone ?? '');
         $clinicAddress = $settings->address ?? '';
 
@@ -151,18 +163,26 @@
         <p>{{ $clinicAddress }} @if(!empty($clinicPhone)) | Phone: {{ $clinicPhone }} @endif</p>
     </div>
 
+    @if(empty($prescriber['authorized_at']) || empty($patientSnapshot['patient_id']))
+        <div class="document-status">LEGACY COPY — AUTHORIZATION DETAILS NOT RECORDED</div>
+    @elseif($visit->prescription_status === 'amended')
+        <div class="document-status">AMENDED PRESCRIPTION — Version {{ $visit->prescriptionItems->max('prescription_version') }}</div>
+    @else
+        <div class="document-status">AUTHORIZED PRESCRIPTION</div>
+    @endif
+
     <!-- Patient info row formatted with standard HTML table for dompdf -->
     <table class="patient-table">
         <tr>
             <td style="width: 50%;">
-                <strong>Patient No:</strong> {{ $visit->patient->patient_identifier }} &nbsp;|&nbsp;
-                <strong>Name:</strong> {{ $visit->patient->name }} <br>
+                <strong>Patient No:</strong> {{ $patientSnapshot['patient_identifier'] ?? $visit->patient->patient_identifier }} &nbsp;|&nbsp;
+                <strong>Name:</strong> {{ $patientSnapshot['name'] ?? $visit->patient->name }} <br>
                 <strong>Age:</strong> {{ $visit->age_summary ?? ($visit->age_at_visit ? $visit->age_at_visit . ' Y' : 'N/A') }} &nbsp;|&nbsp;
-                <strong>Gender:</strong> {{ ucfirst($visit->patient->gender ?? 'N/A') }}
+                <strong>Gender:</strong> {{ ucfirst($patientSnapshot['gender'] ?? $visit->patient->gender ?? 'N/A') }}
             </td>
             <td style="width: 50%; text-align: right;">
                 <strong>Date:</strong> {{ $visit->visit_date ? $visit->visit_date->format('d/m/Y') : date('d/m/Y') }} <br>
-                <strong>Phone:</strong> {{ $visit->patient->phone ?? 'N/A' }}
+                <strong>Phone:</strong> {{ $patientSnapshot['phone'] ?? $visit->patient->phone ?? 'N/A' }}
             </td>
         </tr>
     </table>
@@ -194,25 +214,36 @@
                 <ol class="rx-list">
                     @foreach($visit->prescriptionItems as $item)
                         @php
-                            $timingArray = is_array($item->timing) ? $item->timing : [];
+                            $snapshot = $item->prescription_snapshot ?? [];
+                            $snapshotDirections = $snapshot['directions'] ?? [];
+                            $timingArray = $snapshotDirections['timing'] ?? (is_array($item->timing) ? $item->timing : []);
                             $banglaTimings = array_map(fn($t) => $timingLabels[$t] ?? $t, $timingArray);
                             $timingText = implode(' + ', $banglaTimings);
-                            $mealText = $beforeAfterLabels[$item->before_after] ?? ($item->before_after . ' meal');
-                            $unitText = $doseUnitLabels[$item->dose_unit] ?? $item->dose_unit;
+                            $beforeAfter = $snapshotDirections['before_after'] ?? $item->before_after;
+                            $doseUnit = $snapshotDirections['dose_unit'] ?? $item->dose_unit;
+                            $doseQty = $snapshotDirections['dose_qty'] ?? $item->dose_qty;
+                            $dilutionNote = $snapshotDirections['dilution_note'] ?? $item->dilution_note;
+                            $durationDays = $snapshotDirections['duration_days'] ?? $item->duration_days;
+                            $medicineName = $snapshot['medicine_name'] ?? $item->medicine?->name ?? 'Medicine';
+                            $potency = $snapshot['potency'] ?? $item->medicine?->potency;
+                            $formulation = $snapshot['formulation'] ?? $item->medicine?->form;
+                            $mealText = $beforeAfterLabels[$beforeAfter] ?? ($beforeAfter . ' meal');
+                            $unitText = $doseUnitLabels[$doseUnit] ?? $doseUnit;
                         @endphp
                         <li>
-                            <strong>{{ $item->medicine->name }}</strong>
-                            @if(!empty($item->medicine->potency)) ({{ $item->medicine->potency }}) @endif
+                            <strong>{{ $medicineName }}</strong>
+                            @if(!empty($potency)) ({{ $potency }}) @endif
+                            @if(!empty($formulation)) — {{ ucfirst($formulation) }} @endif
                             <br>
                             <span style="color: #222;">
-                                {{ $item->dose_qty }} {{ $unitText }} &mdash; {{ $timingText }} ({{ $mealText }})
+                                {{ $doseQty }} {{ $unitText }} &mdash; {{ $timingText }} ({{ $mealText }})
                             </span>
-                            @if(!empty($item->dilution_note) || !empty($item->duration_days))
+                            @if(!empty($dilutionNote) || !empty($durationDays))
                                 <br>
                                 <span style="font-size: 11px; color: #555;">
-                                    @if(!empty($item->dilution_note)) <em>{{ $item->dilution_note }}</em> @endif
-                                    @if(!empty($item->dilution_note) && !empty($item->duration_days)) &mdash; @endif
-                                    @if(!empty($item->duration_days)) {{ $item->duration_days }} দিন @endif
+                                    @if(!empty($dilutionNote)) <em>{{ $dilutionNote }}</em> @endif
+                                    @if(!empty($dilutionNote) && !empty($durationDays)) &mdash; @endif
+                                    @if(!empty($item->duration_days)) {{ $durationDays }} দিন @endif
                                 </span>
                             @endif
                         </li>
@@ -220,6 +251,11 @@
                 </ol>
 
                 <div class="footer-section">
+                    @if(!empty($prescriber['authorized_at']))
+                        <p style="margin: 0 0 10px; font-size: 10px; color: #555;">
+                            Authorized by {{ $prescriber['authorized_by_name'] ?? $docName }} on {{ \Illuminate\Support\Carbon::parse($prescriber['authorized_at'])->format('d/m/Y H:i') }}
+                        </p>
+                    @endif
                     @if($visit->adviceItems && $visit->adviceItems->count() > 0)
                         <h4>পরামর্শ / Advice</h4>
                         <ul class="bullet-list">

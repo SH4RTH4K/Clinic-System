@@ -41,6 +41,32 @@ export default function Index({ logs, filters = {} }) {
             ),
         },
         {
+            header: 'Access outcome',
+            accessor: 'properties.authorization_outcome',
+            cell: (log) => {
+                if (log.log_name !== 'clinical_access') return <span className="text-xs text-gray-400">—</span>;
+                const allowed = log.properties?.authorization_outcome === 'allowed';
+                return (
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${allowed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                        {allowed ? 'Allowed' : 'Denied'}
+                    </span>
+                );
+            },
+        },
+        {
+            header: 'Clinical record IDs',
+            accessor: 'properties.visit_id',
+            cell: (log) => {
+                const patientId = log.properties?.patient_id;
+                const visitId = log.properties?.visit_id;
+                const references = [
+                    patientId ? `Patient #${patientId}` : null,
+                    visitId ? `Visit #${visitId}` : null,
+                ].filter(Boolean);
+                return <span className="font-mono text-xs text-gray-600">{references.join(' · ') || '—'}</span>;
+            },
+        },
+        {
             header: 'Target Model',
             accessor: 'subject_type',
             cell: (log) => {

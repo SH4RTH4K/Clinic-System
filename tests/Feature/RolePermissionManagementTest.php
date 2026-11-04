@@ -33,9 +33,14 @@ class RolePermissionManagementTest extends TestCase
                     $missingCatalogEntries = [
                         'patients.amend',
                         'visits.amend',
+                        'visits.finalize',
+                        'visits.cancel',
+                        'visits.cancel_other',
+                        'clinical_records.view',
                         'medicines.amend',
                         'symptoms.amend',
                         'symptom_medicine_map.amend',
+                        'symptom_medicine_map.review',
                         'appointments.amend',
                         'reports.amend',
                         'settings.amend',
@@ -68,7 +73,7 @@ class RolePermissionManagementTest extends TestCase
                         'patient_config.delete',
                     ];
 
-                    return $catalog->count() === 85
+                    return $catalog->count() === 90
                         && $catalog->contains('name', 'patients.view')
                         && collect($missingCatalogEntries)->every(fn (string $permissionName): bool => $catalog->contains('name', $permissionName));
                 }));
@@ -111,6 +116,32 @@ class RolePermissionManagementTest extends TestCase
             'role_id' => $role->id,
             'permission_id' => $oldPermission->id,
         ]);
+    }
+
+    public function test_permission_cache_reflects_role_changes_immediately(): void
+    {
+        $admin = $this->superAdminUser();
+        $role = $this->createRole('Doctor');
+        $oldPermission = $this->permission('patients.view');
+        $newPermission = $this->permission('visits.cancel');
+        $role->givePermissionTo($oldPermission);
+        $doctor = User::factory()->create([
+            'password' => Hash::make('Password1!'),
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
+        $doctor->assignRole($role);
+
+        $this->assertTrue($doctor->can($oldPermission->name));
+        $this->assertFalse($doctor->can($newPermission->name));
+
+        $this->actingAs($admin)->put(route('admin.permissions.update', $role), [
+            'permissions' => [$newPermission->name],
+        ])->assertRedirect(route('admin.permissions.index'));
+
+        $doctor->refresh();
+        $this->assertTrue($doctor->can($newPermission->name));
+        $this->assertFalse($doctor->can($oldPermission->name));
     }
 
     public function test_permission_assignment_rejects_keys_outside_the_system_catalog(): void

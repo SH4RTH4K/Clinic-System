@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Visit extends Model
 {
@@ -20,6 +22,11 @@ class Visit extends Model
         'age_at_visit' => 'integer',
         'age_months' => 'integer',
         'age_days' => 'integer',
+        'finalized_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'prescriber_snapshot' => 'array',
+        'prescription_authorizer_snapshot' => 'array',
+        'patient_snapshot' => 'array',
     ];
 
     protected $appends = ['age_summary'];
@@ -27,14 +34,16 @@ class Visit extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly([
-                // Structural and status fields only.
-                // chief_complaint, bp_symptoms_notes, diagnosis_notes excluded — clinical free-text.
-                'patient_id', 'doctor_id', 'visit_date', 'age_at_visit', 'age_months', 'age_days',
-                'status', 'follow_up_date', 'created_by',
-            ])
-            ->logOnlyDirty()
-            ->dontLogEmptyChanges();
+            ->logOnly([])
+            ->setDescriptionForEvent(fn (string $eventName): string => $this->privacySafeActivityDescription($eventName));
+    }
+
+    private function privacySafeActivityDescription(string $eventName): string
+    {
+        $changedFields = array_values(array_diff(array_keys($this->getDirty()), ['created_at', 'updated_at']));
+        $fieldSummary = $changedFields === [] ? '' : ' fields: '.implode(', ', $changedFields);
+
+        return 'visit.'.$eventName.$fieldSummary;
     }
 
     public function getAgeSummaryAttribute(): string
@@ -64,6 +73,21 @@ class Visit extends Model
     public function doctor()
     {
         return $this->belongsTo(Doctor::class);
+    }
+
+    public function finalizedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'finalized_by');
+    }
+
+    public function amendments(): HasMany
+    {
+        return $this->hasMany(VisitAmendment::class)->latest();
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function patient()

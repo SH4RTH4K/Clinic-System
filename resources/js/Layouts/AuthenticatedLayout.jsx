@@ -3,6 +3,8 @@ import Dropdown from '@/Components/Dropdown';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
+const AUTH_SESSION_CHANNEL = 'hcs-auth-session';
+
 export default function AuthenticatedLayout({ header, children }) {
     const { user, permissions = [], roles = [] } = usePage().props.auth;
     const { success } = usePage().props.flash ?? {};
@@ -20,11 +22,34 @@ export default function AuthenticatedLayout({ header, children }) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [sidebarOpen]);
 
+    useEffect(() => {
+        if (!('BroadcastChannel' in window)) {
+            return undefined;
+        }
+
+        const channel = new BroadcastChannel(AUTH_SESSION_CHANNEL);
+        channel.postMessage({ type: 'identity', userId: user?.id });
+
+        return () => channel.close();
+    }, [user?.id]);
+
+    const notifyLogoutToOtherTabs = () => {
+        if (!('BroadcastChannel' in window)) {
+            return;
+        }
+
+        const channel = new BroadcastChannel(AUTH_SESSION_CHANNEL);
+        channel.postMessage({ type: 'logout' });
+        channel.close();
+    };
+
     /**
      * Checks if current user has the required permission/role for a link.
      */
-    const canSeeLink = ({ permission, role }) => {
+    const canSeeLink = ({ permission, role, requiresClinicalChart = false, requiresPermissions = [] }) => {
         if (role && !roles.includes(role)) return false;
+        if (requiresClinicalChart && !permissions.includes('clinical_records.view')) return false;
+        if (requiresPermissions.some((requiredPermission) => !permissions.includes(requiredPermission))) return false;
         if (permission && !isSuperAdmin && !permissions.includes(permission)) return false;
         return true;
     };
@@ -62,6 +87,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     route: 'admin.visits.index',
                     active: 'admin.visits.*',
                     permission: 'visits.view',
+                    requiresClinicalChart: true,
                     role: null,
                     icon: (
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -86,6 +112,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     route: 'admin.reports.index',
                     active: 'admin.reports.*',
                     permission: 'reports.view',
+                    requiresPermissions: ['clinical_records.view', 'patients.view', 'visits.view'],
                     role: null,
                     icon: (
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -356,6 +383,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         href={route('logout')}
                         method="post"
                         as="button"
+                        onClick={notifyLogoutToOtherTabs}
                         className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition"
                         title="Log out"
                     >
@@ -477,7 +505,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Dropdown.Link href={route('profile.edit')}>
                                     Profile
                                 </Dropdown.Link>
-                                <Dropdown.Link href={route('logout')} method="post" as="button">
+                                <Dropdown.Link href={route('logout')} method="post" as="button" onClick={notifyLogoutToOtherTabs}>
                                     Log Out
                                 </Dropdown.Link>
                             </Dropdown.Content>

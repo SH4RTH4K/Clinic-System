@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\ForcePasswordChange;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequireClinicalRecordAccess;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->web(append: [
+            EnsureActiveUser::class,
             SetLocale::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
@@ -33,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'clinical_record_access' => RequireClinicalRecordAccess::class,
         ]);
 
         $middleware->appendToGroup('web', [

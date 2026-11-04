@@ -8,6 +8,7 @@ const MODULE_LABELS = {
     activity_logs: 'Activity logs',
     appointments: 'Appointments',
     clinic_settings: 'Clinic settings',
+    clinical_records: 'Clinical chart access',
     doctors: 'Doctors',
     general_settings: 'General settings',
     medicines: 'Medicines',
@@ -25,9 +26,12 @@ const MODULE_LABELS = {
 
 const ACTION_DETAILS = {
     amend: { label: 'Amend', description: 'Make changes to completed records' },
+    cancel: { label: 'Cancel', description: 'Cancel an issued prescription with a reason' },
+    cancel_other: { label: 'Cancel for another Doctor', description: 'Cancel another Doctor’s prescription with explicit authorization and a reason' },
     create: { label: 'Add', description: 'Add new records' },
     delete: { label: 'Delete', description: 'Remove existing records' },
     export: { label: 'Export', description: 'Download or export records' },
+    finalize: { label: 'Finalize', description: 'Authorize and complete clinical records' },
     order: { label: 'Change order', description: 'Change patient form field order' },
     update: { label: 'Edit', description: 'Edit existing records' },
     view: { label: 'View', description: 'Open records and details' },
@@ -38,7 +42,7 @@ const PERMISSION_CATEGORIES = [
         key: 'clinical_operations',
         label: 'Clinical Operations',
         description: 'Patient records, visits, appointments, and clinical reporting.',
-        modules: ['patients', 'visits', 'appointments', 'reports'],
+        modules: ['patients', 'clinical_records', 'visits', 'appointments', 'reports'],
     },
     {
         key: 'medicines_repertory',
@@ -62,7 +66,7 @@ const MODULE_ORDER = PERMISSION_CATEGORIES.flatMap((category) => category.module
 
 const CATEGORY_LABELS = Object.fromEntries(PERMISSION_CATEGORIES.map((category) => [category.key, category.label]));
 
-const ACTION_ORDER = ['view', 'create', 'update', 'order', 'delete', 'export', 'amend'];
+const ACTION_ORDER = ['view', 'create', 'update', 'finalize', 'cancel', 'cancel_other', 'order', 'delete', 'export', 'amend'];
 
 const toTitle = (value) => value
     .split('_')

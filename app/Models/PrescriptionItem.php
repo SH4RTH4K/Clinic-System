@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class PrescriptionItem extends Model
 {
@@ -15,18 +15,22 @@ class PrescriptionItem extends Model
 
     protected $casts = [
         'timing' => 'array',
+        'prescription_snapshot' => 'array',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly([
-                'visit_id', 'medicine_id', 'sort_order',
-                'timing', 'before_after', 'dose_qty', 'dose_unit',
-                'dilution_note', 'duration_days',
-            ])
-            ->logOnlyDirty()
-            ->dontLogEmptyChanges();
+            ->logOnly([])
+            ->setDescriptionForEvent(fn (string $eventName): string => $this->privacySafeActivityDescription($eventName));
+    }
+
+    private function privacySafeActivityDescription(string $eventName): string
+    {
+        $changedFields = array_values(array_diff(array_keys($this->getDirty()), ['created_at', 'updated_at']));
+        $fieldSummary = $changedFields === [] ? '' : ' fields: '.implode(', ', $changedFields);
+
+        return 'prescription_item.'.$eventName.$fieldSummary;
     }
 
     public function medicine()
