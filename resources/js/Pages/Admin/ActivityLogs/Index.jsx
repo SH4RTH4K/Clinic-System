@@ -5,7 +5,7 @@ import Pagination from '@/Components/Pagination';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function Index({ logs, filters = {} }) {
-    const { data, setData, get } = useForm({ search: filters.search || '' });
+    const { data, setData, get, processing } = useForm({ search: filters.search || '' });
 
     const onSearch = (e) => {
         e.preventDefault();
@@ -94,6 +94,7 @@ export default function Index({ logs, filters = {} }) {
                     <form onSubmit={onSearch} className="flex max-w-md gap-2">
                         <input
                             type="text"
+                            aria-label="Search activity logs"
                             value={data.search}
                             onChange={(e) => setData('search', e.target.value)}
                             placeholder="Search log descriptions..."
@@ -101,6 +102,7 @@ export default function Index({ logs, filters = {} }) {
                         />
                         <button
                             type="submit"
+                            disabled={processing}
                             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition"
                         >
                             Search
@@ -111,6 +113,7 @@ export default function Index({ logs, filters = {} }) {
                         columns={columns}
                         data={logs.data}
                         keyExtractor={(l) => l.id}
+                        isLoading={processing}
                         emptyMessage="No audit log entries found."
                     />
 

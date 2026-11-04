@@ -153,12 +153,17 @@ export default function Index({ maps, importPreview, flash = {} }) {
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Batch Import from CSV</h3>
                     <p className="text-xs text-gray-500 mb-3">UTF-8 CSV, up to 5 MB / 1,000 rows. Required headers: <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700">symptom_name, medicine_name</code>; optional: priority, note, source_title, source_author, source_edition, source_page, source_url. Imported mappings stay in Draft.</p>
                     <form onSubmit={uploadCsv} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                        <label htmlFor="symptom-map-csv" className="text-sm font-medium text-gray-700">CSV file <span className="text-gray-600">(required)</span></label>
                         <input
+                            id="symptom-map-csv"
                             type="file"
                             disabled={!canCreate}
                             onChange={e => setData('csv_file', e.target.files[0])}
                             accept=".csv"
                             required
+                            aria-required="true"
+                            aria-invalid={Boolean(errors.csv_file)}
+                            aria-describedby={errors.csv_file ? 'symptom-map-csv-error' : undefined}
                             className="text-xs text-gray-700 border border-gray-300 rounded-md file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
                         />
                         <button
@@ -169,7 +174,7 @@ export default function Index({ maps, importPreview, flash = {} }) {
                             {processing ? 'Validating...' : 'Preview CSV'}
                         </button>
                     </form>
-                    {errors.csv_file && <p className="text-xs text-red-500 mt-1">{errors.csv_file}</p>}
+                    {errors.csv_file && <p id="symptom-map-csv-error" className="text-sm font-medium text-red-700 mt-1">{errors.csv_file}</p>}
                     {errors.preview_token && <p className="text-xs text-red-500 mt-1">{errors.preview_token}</p>}
                     {flash.success && <p className="mt-3 text-sm font-medium text-green-700">{flash.success}</p>}
                     {flash.importResults?.length > 0 && (

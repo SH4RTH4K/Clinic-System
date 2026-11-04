@@ -1,20 +1,45 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 
+function FieldError({ id, message }) {
+    return message ? <p id={id} className="mt-1 text-sm font-medium text-red-700">{message}</p> : null;
+}
+
 export default function Create() {
-    const { data, setData, post, processing } = useForm({ name_en: '', name_bn: '', category: '', is_active: true });
-    const submit = (e) => { e.preventDefault(); post(route('admin.symptoms.store')); };
+    const { data, setData, post, processing, errors } = useForm({
+        name_en: '', name_bn: '', category: '', is_active: true,
+    });
+    const submit = (event) => {
+        event.preventDefault();
+        post(route('admin.symptoms.store'));
+    };
 
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold">Create Symptom</h2>}>
             <Head title="Create Symptom" />
-            <div className="py-12 max-w-7xl mx-auto px-4"><div className="bg-white p-6 shadow-sm rounded-lg">
-                <form onSubmit={submit} className="space-y-4">
-                    <div><label className="block">Name (EN)</label><input type="text" value={data.name_en} onChange={e => setData('name_en', e.target.value)} className="w-full rounded" required /></div>
-                    <div><label className="block">Name (BN)</label><input type="text" value={data.name_bn} onChange={e => setData('name_bn', e.target.value)} className="w-full rounded" /></div>
-                    <button type="submit" disabled={processing} className="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
-                </form>
-            </div></div>
+            <div className="mx-auto max-w-7xl px-4 py-12">
+                <div className="rounded-lg bg-white p-6 shadow-sm">
+                    <form onSubmit={submit} className="space-y-4">
+                        <div>
+                            <label htmlFor="symptom-name-en" className="block font-medium">Name (EN) <span className="text-sm text-gray-600">(required)</span></label>
+                            <input id="symptom-name-en" type="text" value={data.name_en} onChange={(event) => setData('name_en', event.target.value)} className="w-full rounded" required aria-required="true" aria-invalid={Boolean(errors.name_en)} aria-describedby={errors.name_en ? 'symptom-name-en-error' : undefined} />
+                            <FieldError id="symptom-name-en-error" message={errors.name_en} />
+                        </div>
+                        <div>
+                            <label htmlFor="symptom-name-bn" className="block font-medium">Name (BN)</label>
+                            <input id="symptom-name-bn" type="text" value={data.name_bn} onChange={(event) => setData('name_bn', event.target.value)} className="w-full rounded" aria-invalid={Boolean(errors.name_bn)} aria-describedby={errors.name_bn ? 'symptom-name-bn-error' : undefined} />
+                            <FieldError id="symptom-name-bn-error" message={errors.name_bn} />
+                        </div>
+                        <div>
+                            <label htmlFor="symptom-category" className="block font-medium">Category</label>
+                            <input id="symptom-category" type="text" value={data.category} onChange={(event) => setData('category', event.target.value)} className="w-full rounded" aria-invalid={Boolean(errors.category)} aria-describedby={errors.category ? 'symptom-category-error' : undefined} />
+                            <FieldError id="symptom-category-error" message={errors.category} />
+                        </div>
+                        <button type="submit" disabled={processing} className="rounded bg-blue-500 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50">{processing ? 'Saving...' : 'Save'}</button>
+                        {processing && <p role="status" className="text-sm text-gray-700">Saving symptom...</p>}
+                    </form>
+                </div>
+            </div>
         </AuthenticatedLayout>
     );
 }

@@ -16,7 +16,7 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
     const canCreate = can('patients.create');
     const canUpdate = can('patients.update');
     const canDelete = can('patients.delete');
-    const { data, setData, get } = useForm({
+    const { data, setData, get, processing } = useForm({
         search: filters.search || '',
     });
 
@@ -153,6 +153,7 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
                     <form onSubmit={onSearch} className="flex max-w-md gap-2">
                         <TextInput
                             type="text"
+                            aria-label="Search patients"
                             value={data.search}
                             onChange={(e) => setData('search', e.target.value)}
                             placeholder="Search by name, phone or patient ID..."
@@ -160,6 +161,7 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
                         />
                         <button
                             type="submit"
+                            disabled={processing}
                             className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
                         >
                             Search
@@ -170,6 +172,7 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
                 <DataTable
                     columns={columns}
                     data={patients.data || []}
+                    isLoading={processing}
                     emptyMessage="No patients found matching the criteria."
                 />
 

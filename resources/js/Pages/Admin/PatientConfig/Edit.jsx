@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import ConfirmDialog from '@/Components/ConfirmDialog';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import usePermission from '@/Components/usePermission';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 const FIELD_DETAILS = [
@@ -21,14 +22,12 @@ const FIELD_DETAILS = [
 ];
 
 export default function Edit({ fields, relationships }) {
-    const { auth = {} } = usePage().props;
-    const permissions = auth.permissions || [];
-    const isSuperAdmin = (auth.roles || []).includes('Super Admin');
-    const canCreate = isSuperAdmin || permissions.includes('patient_config.create');
-    const canUpdate = isSuperAdmin || permissions.includes('patient_config.update');
-    const canOrder = isSuperAdmin || permissions.includes('patient_config.order');
-    const canDelete = isSuperAdmin || permissions.includes('patient_config.delete');
-    const canViewClinicSettings = isSuperAdmin || permissions.includes('clinic_settings.view');
+    const can = usePermission();
+    const canCreate = can('patient_config.create');
+    const canUpdate = can('patient_config.update');
+    const canOrder = can('patient_config.order');
+    const canDelete = can('patient_config.delete');
+    const canViewClinicSettings = can('clinic_settings.view');
     const { data, setData, put, processing, errors } = useForm({ fields, relationships });
     const [newRelationshipLabel, setNewRelationshipLabel] = useState('');
     const [deleteTarget, setDeleteTarget] = useState(null);

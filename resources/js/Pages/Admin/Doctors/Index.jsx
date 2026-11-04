@@ -3,17 +3,16 @@ import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import StatusBadge from '@/Components/StatusBadge';
 import ConfirmDialog from '@/Components/ConfirmDialog';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import usePermission from '@/Components/usePermission';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ doctors = [] }) {
-    const { auth = {} } = usePage().props;
-    const permissions = auth.permissions || [];
-    const isSuperAdmin = (auth.roles || []).includes('Super Admin');
-    const canCreate = isSuperAdmin || permissions.includes('doctors.create');
-    const canView = isSuperAdmin || permissions.includes('doctors.view');
-    const canUpdate = isSuperAdmin || permissions.includes('doctors.update');
-    const canDelete = isSuperAdmin || permissions.includes('doctors.delete');
+    const can = usePermission();
+    const canCreate = can('doctors.create');
+    const canView = can('doctors.view');
+    const canUpdate = can('doctors.update');
+    const canDelete = can('doctors.delete');
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const confirmDelete = () => {

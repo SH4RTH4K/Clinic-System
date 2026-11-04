@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import StatusBadge from '@/Components/StatusBadge';
-import { Head, Link, usePage } from '@inertiajs/react';
+import usePermission from '@/Components/usePermission';
+import { Head, Link } from '@inertiajs/react';
 
 function Detail({ label, value, multiline = false }) {
     return (
@@ -15,10 +16,7 @@ function Detail({ label, value, multiline = false }) {
 }
 
 export default function Show({ doctor }) {
-    const { auth = {} } = usePage().props;
-    const permissions = auth.permissions || [];
-    const isSuperAdmin = (auth.roles || []).includes('Super Admin');
-    const canUpdate = isSuperAdmin || permissions.includes('doctors.update');
+    const canUpdate = usePermission()('doctors.update');
 
     return (
         <AuthenticatedLayout>

@@ -13,7 +13,7 @@ export default function Index({ symptoms, filters = {} }) {
     const canCreate = permissions.includes('symptoms.create');
     const canUpdate = permissions.includes('symptoms.update');
     const canDelete = permissions.includes('symptoms.delete');
-    const { data, setData, get } = useForm({ search: filters.search || '' });
+    const { data, setData, get, processing } = useForm({ search: filters.search || '' });
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const onSearch = (e) => {
@@ -38,6 +38,17 @@ export default function Index({ symptoms, filters = {} }) {
             header: 'Name (Bangla)',
             accessor: 'name_bn',
             cell: (s) => <span className="text-gray-700">{s.name_bn || '—'}</span>,
+        },
+        {
+            header: 'Category',
+            accessor: 'category',
+            cell: (symptom) => (
+                <span className="block max-w-xs whitespace-normal text-gray-700 [overflow-wrap:anywhere]">
+                    {(typeof symptom.category === 'string' && symptom.category.trim()) || typeof symptom.category === 'number'
+                        ? String(symptom.category)
+                        : 'Uncategorized'}
+                </span>
+            ),
         },
         {
             header: 'Status',
@@ -99,6 +110,7 @@ export default function Index({ symptoms, filters = {} }) {
                     <form onSubmit={onSearch} className="flex max-w-md gap-2">
                         <input
                             type="text"
+                            aria-label="Search symptoms"
                             value={data.search}
                             onChange={(e) => setData('search', e.target.value)}
                             placeholder="Search symptoms..."
@@ -106,6 +118,7 @@ export default function Index({ symptoms, filters = {} }) {
                         />
                         <button
                             type="submit"
+                            disabled={processing}
                             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition"
                         >
                             Search
@@ -116,6 +129,7 @@ export default function Index({ symptoms, filters = {} }) {
                         columns={columns}
                         data={symptoms.data}
                         keyExtractor={(s) => s.id}
+                        isLoading={processing}
                         emptyMessage="No symptoms found."
                     />
 

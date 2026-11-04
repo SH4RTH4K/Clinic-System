@@ -13,7 +13,7 @@ export default function Index({ medicines, filters = {} }) {
     const canCreate = permissions.includes('medicines.create');
     const canUpdate = permissions.includes('medicines.update');
     const canDelete = permissions.includes('medicines.delete');
-    const { data, setData, get } = useForm({ search: filters.search || '' });
+    const { data, setData, get, processing } = useForm({ search: filters.search || '' });
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const onSearch = (e) => {
@@ -109,6 +109,7 @@ export default function Index({ medicines, filters = {} }) {
                     <form onSubmit={onSearch} className="flex max-w-md gap-2">
                         <input
                             type="text"
+                            aria-label="Search medicines"
                             value={data.search}
                             onChange={(e) => setData('search', e.target.value)}
                             placeholder="Search by name..."
@@ -116,6 +117,7 @@ export default function Index({ medicines, filters = {} }) {
                         />
                         <button
                             type="submit"
+                            disabled={processing}
                             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition"
                         >
                             Search
@@ -126,6 +128,7 @@ export default function Index({ medicines, filters = {} }) {
                         columns={columns}
                         data={medicines.data}
                         keyExtractor={(m) => m.id}
+                        isLoading={processing}
                         emptyMessage="No medicines found."
                     />
 

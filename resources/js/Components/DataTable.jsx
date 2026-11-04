@@ -1,8 +1,11 @@
+import { useEffect, useRef, useState } from 'react';
+
 export default function DataTable({
     columns = [],
     data = [],
     keyExtractor = (item, index) => item?.id ?? index,
     isLoading = false,
+    hasError = false,
     emptyMessage = 'No records found.',
     className = '',
 }) {
@@ -12,6 +15,31 @@ export default function DataTable({
         : Array.isArray(data?.data)
             ? data.data
             : [];
+
+    const previousLoading = useRef(isLoading);
+    const [announcement, setAnnouncement] = useState(() => {
+        if (isLoading) {
+            return 'Loading records.';
+        }
+
+        if (hasError) {
+            return 'Unable to load records.';
+        }
+
+        return rows.length === 0 ? 'No records found.' : '';
+    });
+
+    useEffect(() => {
+        if (isLoading && !previousLoading.current) {
+            setAnnouncement('Loading records.');
+        } else if (!isLoading && previousLoading.current) {
+            setAnnouncement(hasError ? 'Unable to load records.' : rows.length === 0 ? 'No records found.' : 'Records loaded.');
+        } else if (!isLoading && hasError) {
+            setAnnouncement('Unable to load records.');
+        }
+
+        previousLoading.current = isLoading;
+    }, [hasError, isLoading, rows.length]);
 
     const getHeader = (col) => col.header ?? col.label ?? '';
     const getColumnKey = (col, index) => col.key ?? col.accessor ?? index;
@@ -38,99 +66,116 @@ export default function DataTable({
     };
 
     return (
-        <div className={`overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm ${className}`}>
-            <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-                <thead className="bg-gray-50/75">
-                    <tr>
-                        {columns.map((col, index) => (
-                            <th
-                                key={getColumnKey(col, index)}
-                                scope="col"
-                                className={`px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-ink-muted ${
-                                    col.className ?? ''
-                                }`}
-                            >
-                                {getHeader(col)}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                    {isLoading ? (
+        <>
+            <span className="sr-only" role={hasError ? 'alert' : 'status'} aria-live={hasError ? 'assertive' : 'polite'} aria-atomic="true">
+                {announcement}
+            </span>
+            <div
+                className={`overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${className}`}
+                role="region"
+                aria-label="Scrollable records table"
+                aria-busy={isLoading}
+                tabIndex={0}
+            >
+                <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
+                    <thead className="bg-gray-50/75">
                         <tr>
-                            <td
-                                colSpan={columns.length}
-                                className="px-4 py-12 text-center text-sm text-ink-muted"
-                            >
-                                <div className="flex items-center justify-center gap-2">
-                                    <svg
-                                        className="h-5 w-5 animate-spin text-primary-500"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                    >
-                                        <circle
-                                            className="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
-                                        />
-                                        <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8v8H4z"
-                                        />
-                                    </svg>
-                                    <span>Loading records...</span>
-                                </div>
-                            </td>
+                            {columns.map((col, index) => (
+                                <th
+                                    key={getColumnKey(col, index)}
+                                    scope="col"
+                                    className={`px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-ink-muted ${
+                                        col.className ?? ''
+                                    }`}
+                                >
+                                    {getHeader(col)}
+                                </th>
+                            ))}
                         </tr>
-                    ) : rows.length === 0 ? (
-                        <tr>
-                            <td
-                                colSpan={columns.length}
-                                className="px-4 py-12 text-center text-sm text-ink-muted"
-                            >
-                                <div className="mx-auto flex max-w-xs flex-col items-center">
-                                    <svg
-                                        className="h-10 w-10 text-gray-300 mb-2"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        aria-hidden="true"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-                                        />
-                                    </svg>
-                                    <span className="font-medium text-gray-600">{emptyMessage}</span>
-                                </div>
-                            </td>
-                        </tr>
-                    ) : (
-                        rows.map((item, rowIndex) => (
-                            <tr
-                                key={keyExtractor(item, rowIndex)}
-                                className="transition hover:bg-gray-50/60"
-                            >
-                                {columns.map((col, colIndex) => (
-                                    <td
-                                        key={getColumnKey(col, colIndex)}
-                                        className={`px-4 py-3.5 text-ink ${col.className ?? ''}`}
-                                    >
-                                        {renderCell(item, col, rowIndex)}
-                                    </td>
-                                ))}
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                        {isLoading ? (
+                            <tr>
+                                <td
+                                    colSpan={columns.length}
+                                    className="px-4 py-12 text-center text-sm text-ink-muted"
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        <svg
+                                            className="h-5 w-5 animate-spin text-primary-500"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                        >
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                            />
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8v8H4z"
+                                            />
+                                        </svg>
+                                        <span>Loading records...</span>
+                                    </div>
+                                </td>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
-        </div>
+                        ) : hasError ? (
+                            <tr>
+                                <td colSpan={columns.length} className="px-4 py-12 text-center text-sm font-medium text-red-800">
+                                    Unable to load records. Please try again.
+                                </td>
+                            </tr>
+                        ) : rows.length === 0 ? (
+                            <tr>
+                                <td
+                                    colSpan={columns.length}
+                                    className="px-4 py-12 text-center text-sm text-ink-muted"
+                                >
+                                    <div className="mx-auto flex max-w-xs flex-col items-center">
+                                        <svg
+                                            className="h-10 w-10 text-gray-300 mb-2"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+                                            />
+                                        </svg>
+                                        <span className="font-medium text-gray-600">{emptyMessage}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : (
+                            rows.map((item, rowIndex) => (
+                                <tr
+                                    key={keyExtractor(item, rowIndex)}
+                                    className="transition hover:bg-gray-50/60"
+                                >
+                                    {columns.map((col, colIndex) => (
+                                        <td
+                                            key={getColumnKey(col, colIndex)}
+                                            className={`px-4 py-3.5 text-ink ${col.className ?? ''}`}
+                                        >
+                                            {renderCell(item, col, rowIndex)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </>
     );
 }
 

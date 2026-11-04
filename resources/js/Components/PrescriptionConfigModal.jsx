@@ -2,7 +2,7 @@ import Modal from '@/Components/Modal';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import { usePage } from '@inertiajs/react';
+import usePermission from '@/Components/usePermission';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -13,12 +13,10 @@ export default function PrescriptionConfigModal({
     onConfigSaved = () => {},
     inline = false,
 }) {
-    const { auth = {} } = usePage().props;
-    const permissions = auth.permissions || [];
-    const isSuperAdmin = (auth.roles || []).includes('Super Admin');
-    const canCreate = isSuperAdmin || permissions.includes('prescription_options.create');
-    const canUpdate = isSuperAdmin || permissions.includes('prescription_options.update');
-    const canDelete = isSuperAdmin || permissions.includes('prescription_options.delete');
+    const can = usePermission();
+    const canCreate = can('prescription_options.create');
+    const canUpdate = can('prescription_options.update');
+    const canDelete = can('prescription_options.delete');
     const canSave = canCreate || canUpdate || canDelete;
 
     const defaultConfig = {

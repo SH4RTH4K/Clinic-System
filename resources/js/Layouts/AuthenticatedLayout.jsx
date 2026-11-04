@@ -1,25 +1,81 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import { Link, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const AUTH_SESSION_CHANNEL = 'hcs-auth-session';
 
 export default function AuthenticatedLayout({ header, children }) {
     const { user, permissions = [], roles = [] } = usePage().props.auth;
     const { success } = usePage().props.flash ?? {};
-    const isSuperAdmin = roles.includes('Super Admin');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const menuButtonRef = useRef(null);
+    const closeButtonRef = useRef(null);
+    const drawerRef = useRef(null);
 
-    // Close mobile drawer on ESC key
+    // Keep keyboard focus inside the modal drawer and restore it when closed.
     useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.key === 'Escape' && sidebarOpen) {
+        if (!sidebarOpen) {
+            return undefined;
+        }
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        closeButtonRef.current?.focus();
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setSidebarOpen(false);
+                return;
+            }
+
+            if (event.key !== 'Tab' || !drawerRef.current) {
+                return;
+            }
+
+            const focusableElements = Array.from(
+                drawerRef.current.querySelectorAll(
+                    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+                ),
+            ).filter((element) => element.getClientRects().length > 0);
+
+            if (focusableElements.length === 0) {
+                event.preventDefault();
+                drawerRef.current.focus();
+                return;
+            }
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey && (document.activeElement === firstElement || !drawerRef.current.contains(document.activeElement))) {
+                event.preventDefault();
+                lastElement.focus();
+            } else if (!event.shiftKey && (document.activeElement === lastElement || !drawerRef.current.contains(document.activeElement))) {
+                event.preventDefault();
+                firstElement.focus();
+            }
+        };
+
+        const desktopViewport = window.matchMedia('(min-width: 768px)');
+        const closeOnDesktopViewport = (event) => {
+            if (event.matches) {
                 setSidebarOpen(false);
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+
+        document.addEventListener('keydown', handleKeyDown);
+        desktopViewport.addEventListener('change', closeOnDesktopViewport);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            desktopViewport.removeEventListener('change', closeOnDesktopViewport);
+            document.body.style.overflow = previousOverflow;
+            if (menuButtonRef.current?.getClientRects().length > 0) {
+                menuButtonRef.current.focus();
+            }
+        };
     }, [sidebarOpen]);
 
     useEffect(() => {
@@ -50,7 +106,7 @@ export default function AuthenticatedLayout({ header, children }) {
         if (role && !roles.includes(role)) return false;
         if (requiresClinicalChart && !permissions.includes('clinical_records.view')) return false;
         if (requiresPermissions.some((requiredPermission) => !permissions.includes(requiredPermission))) return false;
-        if (permission && !isSuperAdmin && !permissions.includes(permission)) return false;
+        if (permission && !permissions.includes(permission)) return false;
         return true;
     };
 
@@ -307,7 +363,7 @@ export default function AuthenticatedLayout({ header, children }) {
         <div className="flex h-full flex-col min-h-0 bg-white">
             {/* Brand / Logo (Sticky Top) */}
             <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <Link href={route('dashboard')} className="flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg">
+                <Link href={route('dashboard')} onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg">
                     <ApplicationLogo className="h-8 w-8 text-primary-500 shrink-0" />
                     <div className="flex flex-col">
                         <span className="text-base font-bold text-gray-900 tracking-tight leading-tight">
@@ -383,7 +439,10 @@ export default function AuthenticatedLayout({ header, children }) {
                         href={route('logout')}
                         method="post"
                         as="button"
-                        onClick={notifyLogoutToOtherTabs}
+                        onClick={() => {
+                            setSidebarOpen(false);
+                            notifyLogoutToOtherTabs();
+                        }}
                         className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition"
                         title="Log out"
                     >
@@ -409,13 +468,22 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* Mobile Sliding Sidebar Drawer */}
             <aside
+                ref={drawerRef}
+                id="mobile-navigation-drawer"
                 className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-white shadow-xl transition-transform duration-300 ease-in-out md:hidden ${
                     sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
-                aria-label="Mobile Navigation"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="mobile-navigation-title"
+                aria-hidden={!sidebarOpen}
+                inert={sidebarOpen ? undefined : ''}
+                tabIndex={-1}
             >
+                <h2 id="mobile-navigation-title" className="sr-only">Mobile navigation</h2>
                 <div className="absolute right-2.5 top-3.5 z-10">
                     <button
+                        ref={closeButtonRef}
                         type="button"
                         onClick={() => setSidebarOpen(false)}
                         className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -438,15 +506,19 @@ export default function AuthenticatedLayout({ header, children }) {
             </aside>
 
             {/* Main Content Area (offset by sidebar on desktop) */}
-            <div className="flex flex-col md:pl-64">
+            <div className="flex flex-col md:pl-64" aria-hidden={sidebarOpen} inert={sidebarOpen ? '' : undefined}>
                 {/* Topbar */}
                 <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-gray-100 bg-white px-4 sm:px-6 lg:px-8 shadow-xs">
                     {/* Mobile menu trigger */}
                     <button
+                        ref={menuButtonRef}
                         type="button"
                         onClick={() => setSidebarOpen(true)}
                         className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 md:hidden"
                         aria-label="Open sidebar"
+                        aria-expanded={sidebarOpen}
+                        aria-controls="mobile-navigation-drawer"
+                        aria-haspopup="dialog"
                     >
                         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
