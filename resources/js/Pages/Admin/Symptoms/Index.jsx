@@ -92,7 +92,7 @@ export default function Index({ symptoms, filters = {} }) {
                 <PageHeader
                     title="Symptoms"
                     subtitle="Manage homeopathic symptoms dictionary and repertory entries"
-                    action={canCreate ? (
+                    actions={canCreate ? (
                         <Link
                             href={route('admin.symptoms.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"

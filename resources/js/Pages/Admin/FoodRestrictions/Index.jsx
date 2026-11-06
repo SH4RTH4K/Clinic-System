@@ -79,7 +79,7 @@ export default function Index({ foodRestrictions }) {
                 <PageHeader
                     title="Food Restrictions (খাদ্য নিষেধ)"
                     subtitle="Manage homeopathic dietary precautions and prohibitions for patients"
-                    action={canCreate ? (
+                    actions={canCreate ? (
                         <Link
                             href={route('admin.food_restrictions.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"

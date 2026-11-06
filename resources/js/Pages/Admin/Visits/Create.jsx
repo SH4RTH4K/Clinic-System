@@ -477,7 +477,7 @@ export default function Create({
                 <PageHeader
                     title="New Visit / Consultation (নতুন চিকিৎসা পরামর্শ)"
                     subtitle="Record patient clinical history, examination, repertory symptoms, and prescribe homeopathic remedies"
-                    action={
+                    actions={
                         <Link
                             href={route('admin.visits.index')}
                             className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-md shadow-xs transition inline-flex items-center gap-1.5"

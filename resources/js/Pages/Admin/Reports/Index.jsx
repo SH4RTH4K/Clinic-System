@@ -66,7 +66,7 @@ export default function Index({ visits, filters = {} }) {
                 <PageHeader
                     title="Clinical Reports"
                     subtitle="Filter and analyze patient visit records, diagnoses, and clinic activity"
-                    action={
+                    actions={
                         <button
                             type="button"
                             onClick={() => window.print()}

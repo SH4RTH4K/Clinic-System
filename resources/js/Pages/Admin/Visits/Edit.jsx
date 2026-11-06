@@ -364,7 +364,7 @@ export default function Edit({
                 <PageHeader
                     title={`Edit Visit #${visit.id} – ${visit.patient?.name || 'Patient'}`}
                     subtitle={`Visit Date: ${visit.visit_date} • Status: ${visit.status}`}
-                    action={
+                    actions={
                         <div className="flex items-center gap-2">
                             {canView ? <Link
                                 href={route('admin.visits.index')}

@@ -80,7 +80,7 @@ export default function Create({ defaults = {}, fieldConfig = {}, relationshipOp
                 <PageHeader
                     title="Register New Patient"
                     subtitle="Create a new medical record and assign the next sequential clinic patient ID"
-                    action={
+                    actions={
                         <Link
                             href={route('admin.patients.index')}
                             className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-md shadow-xs transition"

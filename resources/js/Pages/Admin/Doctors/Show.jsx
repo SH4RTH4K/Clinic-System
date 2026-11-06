@@ -25,7 +25,7 @@ export default function Show({ doctor }) {
                 <PageHeader
                     title={doctor.name}
                     subtitle={[doctor.credentials, doctor.specialty].filter(Boolean).join(' • ') || 'Doctor profile details'}
-                    action={
+                    actions={
                         <div className="flex gap-2">
                             <Link
                                 href={route('admin.doctors.index')}

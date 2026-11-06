@@ -79,7 +79,7 @@ export default function Index({ adviceItems }) {
                 <PageHeader
                     title="Advice Templates (উপদেশ)"
                     subtitle="Manage pre-configured general advice items attached to prescriptions"
-                    action={canCreate ? (
+                    actions={canCreate ? (
                         <Link
                             href={route('admin.advice_items.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"

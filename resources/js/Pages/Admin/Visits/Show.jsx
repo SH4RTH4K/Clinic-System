@@ -53,7 +53,7 @@ export default function Show({ visit, prescriptionHistory = [], canCancelPrescri
                 <PageHeader
                     title={`Visit #${visit.id} – ${patientName}`}
                     subtitle={`Patient ID: ${patientIdentifier} • Visit Date: ${visit.visit_date}`}
-                    action={
+                    actions={
                         <div className="flex gap-2">
                             {canUpdate || canAmend ? <Link
                                 href={route('admin.visits.edit', visit.id)}

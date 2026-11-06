@@ -65,7 +65,7 @@ export default function Edit({ mapping, symptoms = [], medicines = [], versions 
                 <PageHeader
                     title={canUpdate ? 'Edit repertory reference' : 'Review repertory reference'}
                     subtitle={`${mapping.symptom?.name_en || 'Symptom'} → ${mapping.medicine?.name || 'Medicine'}`}
-                    action={<Link href={route('admin.symptom_medicine_map.index')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Back to mappings</Link>}
+                    actions={<Link href={route('admin.symptom_medicine_map.index')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Back to mappings</Link>}
                 />
 
                 <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">

@@ -133,7 +133,7 @@ export default function Index({ maps, importPreview, flash = {} }) {
                 <PageHeader
                     title="Symptom &amp; Medicine Repertory"
                     subtitle="Define clinical relationships between homeopathic symptoms and remedies"
-                    action={canCreate ? (
+                    actions={canCreate ? (
                         <Link
                             href={route('admin.symptom_medicine_map.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"

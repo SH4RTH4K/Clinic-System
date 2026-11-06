@@ -94,7 +94,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                 <PageHeader
                     title={`Edit Patient: ${patient.name}`}
                     subtitle={`Patient ID: ${patient.patient_identifier || `${patient.patient_no}${patient.patient_series || ''}`} • Created: ${new Date(patient.created_at).toLocaleDateString()}`}
-                    action={
+                    actions={
                         <div className="flex gap-2">
                             <Link
                                 href={route('admin.patients.show', patient.id)}

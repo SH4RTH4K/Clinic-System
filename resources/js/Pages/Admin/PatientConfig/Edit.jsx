@@ -185,7 +185,7 @@ export default function Edit({ fields, relationships }) {
                 <PageHeader
                     title="Patient Configurable"
                     subtitle="Set field labels, visibility, required status, and order within each section. Age fields move together."
-                    action={canViewClinicSettings ? (
+                    actions={canViewClinicSettings ? (
                         <Link href={route('admin.settings.edit')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                             Clinic Settings
                         </Link>

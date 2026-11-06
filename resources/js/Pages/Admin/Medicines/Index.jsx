@@ -91,7 +91,7 @@ export default function Index({ medicines, filters = {} }) {
                 <PageHeader
                     title="Medicines"
                     subtitle="Manage homeopathic medicines catalog, forms, and potencies"
-                    action={canCreate ? (
+                    actions={canCreate ? (
                         <Link
                             href={route('admin.medicines.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"
