@@ -374,6 +374,17 @@ export default function AuthenticatedLayout({ header, children }) {
                     ),
                 },
                 {
+                    label: 'Git Repository',
+                    route: 'admin.git_repository.index',
+                    active: 'admin.git_repository.*',
+                    role: 'Super Admin',
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75v3m0 10.5v3m10.5-16.5v3m0 10.5v3M3.75 6.75h3m10.5 0h3m-16.5 10.5h3m10.5 0h3M8.25 8.25h7.5v7.5h-7.5z" />
+                        </svg>
+                    ),
+                },
+                {
                     label: 'System Health',
                     route: 'admin.system_health.index',
                     active: 'admin.system_health.*',

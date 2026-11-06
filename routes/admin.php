@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AppointmentRequestController as AdminApptControll
 use App\Http\Controllers\Admin\ClinicSettingController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\FoodRestrictionController;
+use App\Http\Controllers\Admin\GitRepositoryController;
 use App\Http\Controllers\Admin\MedicineController;
 use App\Http\Controllers\Admin\PatientConfigController;
 use App\Http\Controllers\Admin\PatientController;
@@ -239,6 +240,14 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|system_health.manage'
     Route::post('/system-health/maintenance/clear-caches', [SystemHealthController::class, 'clearCaches'])
         ->middleware('throttle:2,1')
         ->name('system_health.clear_caches');
+});
+
+// Repository operations can change deployed application source and are Super Admin only.
+Route::middleware(['auth', 'role:Super Admin'])->prefix('system/git-repository')->name('git_repository.')->group(function () {
+    Route::get('/', [GitRepositoryController::class, 'index'])->name('index');
+    Route::post('/settings', [GitRepositoryController::class, 'updateSettings'])->middleware('throttle:6,1')->name('settings');
+    Route::post('/check', [GitRepositoryController::class, 'check'])->middleware('throttle:6,1')->name('check');
+    Route::post('/pull', [GitRepositoryController::class, 'pull'])->middleware('throttle:2,1')->name('pull');
 });
 
 // Appointments
