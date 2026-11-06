@@ -17,6 +17,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+copy_directory() {
+    mkdir -p "$2"
+    cp -a "$1/." "$2/"
+}
+
 mkdir -p "$source_directory" "$distribution_directory"
 
 if [[ -f .env ]]; then
@@ -50,28 +55,34 @@ done
 for directory in app bootstrap config resources routes; do
     if [[ -d "$source_directory/$directory" ]]; then
         if [[ "$directory" == "bootstrap" ]]; then
-            rsync -a --exclude='/cache/*.php' \
-                "$source_directory/$directory/" "$package_directory/private/$directory/"
+            copy_directory "$source_directory/$directory" "$package_directory/private/$directory"
+            for cache_file in "$package_directory/private/bootstrap/cache/"*.php; do
+                if [[ -f "$cache_file" ]]; then rm -f -- "$cache_file"; fi
+            done
         else
-            rsync -a "$source_directory/$directory/" "$package_directory/private/$directory/"
+            copy_directory "$source_directory/$directory" "$package_directory/private/$directory"
         fi
     fi
 done
 
 if [[ -d "$source_directory/lang" ]]; then
-    rsync -a "$source_directory/lang/" "$package_directory/private/lang/"
+    copy_directory "$source_directory/lang" "$package_directory/private/lang"
 fi
 
 if [[ -d "$source_directory/database/migrations" ]]; then
     mkdir -p "$package_directory/private/database/migrations"
-    rsync -a "$source_directory/database/migrations/" "$package_directory/private/database/migrations/"
+    copy_directory "$source_directory/database/migrations" "$package_directory/private/database/migrations"
 fi
 
-rsync -a --exclude='/build/***' --exclude='/hot' --exclude='/storage/***' \
-    "$source_directory/public/" "$package_directory/public/"
-rsync -a public/build/ "$package_directory/public/build/"
+while IFS= read -r -d '' public_entry; do
+    case "${public_entry##*/}" in
+        build|hot|storage) continue ;;
+    esac
+    cp -a "$public_entry" "$package_directory/public/"
+done < <(find "$source_directory/public" -mindepth 1 -maxdepth 1 -print0)
+copy_directory public/build "$package_directory/public/build"
 cp "$source_directory/deploy/cpanel/index.php" "$package_directory/public/index.php"
-rsync -a vendor/ "$package_directory/private/vendor/"
+copy_directory vendor "$package_directory/private/vendor"
 
 mkdir -p "$package_directory/private/bootstrap/cache"
 for manifest in packages.php services.php; do
