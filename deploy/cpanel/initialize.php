@@ -181,7 +181,7 @@ try {
     echo $state['phase'] === 'active' ? 'Clinic application activated successfully.'.PHP_EOL : 'Administrator initialized; maintenance remains enabled.'.PHP_EOL;
 } catch (Throwable $exception) {
     $detail = $exception instanceof DeploymentStop ? $exception->getMessage() : get_class($exception).' (code '.preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $exception->getCode()).')';
-    fwrite(STDERR, 'Initialization stopped during '.$phase.': '.$detail.PHP_EOL);
+    fwrite(STDERR, 'Initialization stopped during '.$phase.': '.$detail.' at '.basename($exception->getFile()).':'.$exception->getLine().PHP_EOL);
     exit(1);
 } finally {
     if (is_resource($lock)) {
