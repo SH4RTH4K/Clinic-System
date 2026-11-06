@@ -31,6 +31,38 @@ class PatientGuardianRelationshipTest extends TestCase
         ]);
     }
 
+    public function test_required_relationship_configuration_rejects_an_empty_selection(): void
+    {
+        $user = $this->userWithPermission('patients.create');
+        $this->createClinicSetting();
+        $settings = ClinicSetting::query()->firstOrFail();
+        $fields = ClinicSetting::defaultPatientFormConfig();
+        $fields['guardian_relationship']['required'] = true;
+        $settings->update(['patient_form_config' => $fields]);
+
+        $this->actingAs($user)->from(route('admin.patients.create'))
+            ->post(route('admin.patients.store'), [
+                'name' => 'Test Patient',
+                'gender' => 'female',
+                'guardian_relationship' => '',
+            ])
+            ->assertSessionHasErrors('guardian_relationship');
+
+        $this->assertDatabaseMissing('patients', ['name' => 'Test Patient']);
+    }
+
+    public function test_gender_is_required_instead_of_being_assumed_for_new_patients(): void
+    {
+        $user = $this->userWithPermission('patients.create');
+        $this->createClinicSetting();
+
+        $this->actingAs($user)->from(route('admin.patients.create'))
+            ->post(route('admin.patients.store'), ['name' => 'Test Patient'])
+            ->assertSessionHasErrors('gender');
+
+        $this->assertDatabaseMissing('patients', ['name' => 'Test Patient']);
+    }
+
     public function test_guardian_relationship_can_be_updated(): void
     {
         $user = $this->userWithPermission('patients.update');

@@ -18,7 +18,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
         name: patient.name || '',
         guardian_name: patient.guardian_name || '',
         guardian_relationship: patient.guardian_relationship || '',
-        gender: patient.gender || 'male',
+        gender: patient.gender || '',
         age_years: initialYears,
         age_months: initialMonths,
         age_days: initialDays,
@@ -148,7 +148,9 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                                             className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                             required={field('guardian_relationship').required}
                                         >
-                                            <option value="">Select relationship (optional)</option>
+                                            <option value="" disabled={field('guardian_relationship').required}>
+                                                {field('guardian_relationship').required ? 'Select relationship' : 'Select relationship (optional)'}
+                                            </option>
                                             {availableRelationshipOptions.map((option) => (
                                                 <option key={option.value} value={option.value}>{option.label}</option>
                                             ))}
@@ -184,6 +186,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                                             className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
                                             required={field('gender').required}
                                         >
+                                            <option value="" disabled>Select gender</option>
                                             <option value="male">Male (পুরুষ)</option>
                                             <option value="female">Female (মহিলা)</option>
                                             <option value="other">Other (অন্যান্য)</option>
