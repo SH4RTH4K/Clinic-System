@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VisitController;
 use App\Http\Controllers\Admin\VisitDraftController;
+use App\Http\Controllers\DoctorPhotoController;
 use Illuminate\Support\Facades\Route;
 
 // User administration is restricted to the Super Admin role.
@@ -172,6 +173,8 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|prescription_options.
     ->put('settings/prescription-config', [PrescriptionOptionController::class, 'update'])->name('settings.prescription_config');
 
 // Doctor profiles
+Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.view'])
+    ->get('doctors/{doctor}/photo', [DoctorPhotoController::class, 'showAdmin'])->name('doctors.photo');
 Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.create'])
     ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['create', 'store']));
 Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.view'])

@@ -67,7 +67,7 @@
                             <div>
                                 <div class="flex items-center gap-4 mb-4">
                                     @if($doctor->photo_path)
-                                        <img src="{{ asset('storage/' . $doctor->photo_path) }}"
+                                        <img src="{{ route('doctors.photo', $doctor) }}"
                                              alt="{{ $doctor->name }}"
                                              width="72"
                                              height="72"
@@ -94,7 +94,7 @@
                                 @endif
 
                                 @if($doctor->bio)
-                                    <p class="text-xs text-gray-700 leading-relaxed line-clamp-4 mt-2">
+                                    <p class="mt-2 whitespace-pre-line break-words text-xs leading-relaxed text-gray-700">
                                         {{ $doctor->bio }}
                                     </p>
                                 @endif

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppointmentRequestController;
+use App\Http\Controllers\DoctorPhotoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\LanguageController;
 use App\Http\Controllers\PublicController;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicController::class, 'index'])->name('home');
 Route::get('/about', [PublicController::class, 'about'])->name('about');
 Route::get('/doctors', [PublicController::class, 'doctors'])->name('doctors');
+Route::get('/doctor-profiles/{doctor}/photo', [DoctorPhotoController::class, 'showPublic'])->name('doctors.photo');
 Route::get('/contact', [PublicController::class, 'contact'])->name('contact');
 Route::post('/appointment-requests', [AppointmentRequestController::class, 'store'])
     ->name('appointment.store')

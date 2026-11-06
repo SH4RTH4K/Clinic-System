@@ -33,7 +33,7 @@ export default function Index({ doctors = [] }) {
                     <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gray-100 border border-gray-200">
                         {doctor.photo_path ? (
                             <img
-                                src={`/storage/${doctor.photo_path}`}
+                                src={route('admin.doctors.photo', doctor.id)}
                                 alt={doctor.name}
                                 className="h-full w-full object-cover"
                                 loading="lazy"
@@ -58,9 +58,9 @@ export default function Index({ doctors = [] }) {
             header: 'Specialty',
             accessor: 'specialty',
             cell: (doctor) => (
-                <div>
-                    <span className="text-xs text-gray-800">{doctor.specialty || '—'}</span>
-                    {doctor.specialty_bn && <div className="text-[11px] text-gray-500">{doctor.specialty_bn}</div>}
+                <div className="min-w-0 max-w-xs break-words">
+                    <span className="block whitespace-normal break-words text-xs text-gray-800">{doctor.specialty || '—'}</span>
+                    {doctor.specialty_bn && <div className="whitespace-normal break-words text-[11px] text-gray-500">{doctor.specialty_bn}</div>}
                 </div>
             ),
         },

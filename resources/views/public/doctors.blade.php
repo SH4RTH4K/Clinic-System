@@ -17,7 +17,7 @@
                         @if($doctor->photo_path)
                             <img
                                 class="h-full w-full object-cover"
-                                src="{{ asset('storage/' . $doctor->photo_path) }}"
+                                src="{{ route('doctors.photo', $doctor) }}"
                                 alt="{{ $doctor->name }}"
                             >
                         @else

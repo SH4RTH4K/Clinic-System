@@ -57,7 +57,7 @@ export default function Show({ doctor }) {
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
                             {doctor.photo_path ? (
-                                <img src={`/storage/${doctor.photo_path}`} alt={doctor.name} className="h-full w-full object-cover" />
+                                <img src={route('admin.doctors.photo', doctor.id)} alt={doctor.name} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-gray-400">
                                     {(doctor.name || 'D').charAt(0)}

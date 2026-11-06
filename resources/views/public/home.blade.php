@@ -87,7 +87,7 @@
 
                                 <h2 class="text-base font-bold text-primary-800 sm:text-lg">"{{ $subtitle }}"</h2>
 
-                                <p class="max-w-lg text-xs sm:text-sm font-medium leading-relaxed text-gray-800 line-clamp-2">
+                                <p class="max-w-lg whitespace-pre-line break-words text-xs font-medium leading-relaxed text-gray-800 sm:text-sm">
                                     {{ $description }}
                                 </p>
 
@@ -101,7 +101,7 @@
                                         @if(count($doctorDetails) > 0)
                                             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                                 @foreach($doctorDetails as $label => $value)
-                                                    <div class="truncate">
+                                                    <div class="min-w-0 break-words">
                                                         <span class="font-semibold text-gray-500 text-[10px] uppercase">{{ $label }}:</span>
                                                         <span class="font-bold text-gray-900 text-xs ml-1">{{ $value }}</span>
                                                     </div>
@@ -152,7 +152,7 @@
                                 </div>
 
                                 @if($doctor?->photo_path)
-                                    <img src="{{ asset('storage/' . $doctor->photo_path) }}"
+                                    <img src="{{ route('doctors.photo', $doctor) }}"
                                          alt="Portrait of {{ $name }}"
                                          width="340"
                                          height="380"

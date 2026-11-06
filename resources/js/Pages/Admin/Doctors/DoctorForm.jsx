@@ -27,7 +27,7 @@ export default function DoctorForm({
     doctorAccounts = [],
     canManageDoctorAccounts = false,
 }) {
-    const photoUrl = doctor?.photo_path ? `/storage/${doctor.photo_path}` : null;
+    const photoUrl = doctor?.photo_path ? route('admin.doctors.photo', doctor.id) : null;
 
     return (
         <form onSubmit={onSubmit} className="space-y-6">
