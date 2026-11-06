@@ -202,17 +202,19 @@ class PatientClinicalAccessTest extends TestCase
         $this->actingAs($patientViewer)->get(route('admin.visits.show', $visit))->assertForbidden();
     }
 
-    public function test_seeded_super_admin_does_not_receive_clinical_chart_access(): void
+    public function test_seeded_super_admin_receives_clinical_chart_access(): void
     {
         $this->seedApplicationDefaults();
         $patient = $this->patientWithClinicalHistory();
         $defaultAdmin = $this->userWithRole('Super Admin');
 
-        $this->assertFalse($defaultAdmin->can('clinical_records.view'));
+        $this->assertTrue($defaultAdmin->can('clinical_records.view'));
         $this->actingAs($defaultAdmin)
             ->get(route('admin.patients.show', $patient))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->missing('patient.known_allergies')->missing('patient.visits'));
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('patient.known_allergies', 'Synthetic patient allergy')
+                ->has('patient.visits', 1));
     }
 
     public function test_permission_migration_grants_doctors_only_and_is_retry_safe(): void

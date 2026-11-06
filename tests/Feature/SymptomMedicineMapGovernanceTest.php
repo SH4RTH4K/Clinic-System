@@ -231,7 +231,7 @@ class SymptomMedicineMapGovernanceTest extends TestCase
         $this->assertFalse($mapping->fresh()->is_approved);
     }
 
-    public function test_super_admin_administration_does_not_implicitly_grant_clinical_review_authority(): void
+    public function test_super_admin_without_qualified_review_permission_cannot_publish_pending_reference(): void
     {
         $superAdmin = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
         $superAdmin->assignRole('Super Admin');

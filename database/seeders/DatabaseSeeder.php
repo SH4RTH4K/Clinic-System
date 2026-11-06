@@ -54,23 +54,11 @@ class DatabaseSeeder extends Seeder
         $receptionist = Role::firstOrCreate(['name' => 'Receptionist']);
         $accountant = Role::firstOrCreate(['name' => 'Accountant']);
 
-        // Give Super Admin all permissions
-        $superAdmin->givePermissionTo(Permission::whereNotIn('name', [
-            'visits.finalize',
-            'visits.cancel',
-            'visits.cancel_other',
-            'clinical_records.view',
-            'medicines.create',
-            'medicines.update',
-            'medicines.delete',
-            'symptoms.create',
-            'symptoms.update',
-            'symptoms.delete',
-            'symptom_medicine_map.create',
-            'symptom_medicine_map.update',
-            'symptom_medicine_map.delete',
-            'symptom_medicine_map.review',
-        ])->get());
+        // Super Admin can access all registered application features.
+        $superAdmin->givePermissionTo(Permission::query()
+            ->where('guard_name', 'web')
+            ->whereNotIn('name', ['visits.cancel_other', 'symptom_medicine_map.review'])
+            ->get());
 
         // Doctor permissions
         $doctor->givePermissionTo([

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Visit;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -46,13 +47,105 @@ class DoctorDefaultPermissionsTest extends TestCase
 
         $superAdmin = Role::query()->where('name', 'Super Admin')->firstOrFail();
         foreach ([
-            'visits.finalize', 'visits.cancel', 'visits.cancel_other',
+            'visits.view', 'visits.create', 'visits.update', 'visits.delete',
+            'visits.finalize', 'visits.cancel', 'clinical_records.view',
             'medicines.create', 'medicines.update', 'medicines.delete',
             'symptoms.create', 'symptoms.update', 'symptoms.delete',
-            'symptom_medicine_map.create', 'symptom_medicine_map.update', 'symptom_medicine_map.delete', 'symptom_medicine_map.review',
+            'symptom_medicine_map.create', 'symptom_medicine_map.update', 'symptom_medicine_map.delete',
         ] as $permissionName) {
-            $this->assertFalse($superAdmin->hasPermissionTo($permissionName));
+            $this->assertTrue($superAdmin->hasPermissionTo($permissionName), "Expected {$permissionName} for the Super Admin role.");
         }
+        foreach (['visits.cancel_other', 'symptom_medicine_map.review'] as $restrictedPermission) {
+            $this->assertFalse($superAdmin->hasPermissionTo($restrictedPermission));
+        }
+    }
+
+    public function test_super_admin_can_open_visit_workflow_but_cannot_finalize_without_own_active_doctor_profile(): void
+    {
+        $this->withoutVite();
+        $this->seedApplicationDefaults();
+
+        $superAdmin = User::query()->where('username', 'superadmin')->firstOrFail();
+        $superAdmin->update(['must_change_password' => false]);
+        $patient = Patient::factory()->create();
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.visits.index'))
+            ->assertOk();
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.visits.create'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('responsibleDoctor', null)
+                ->where('canFinalize', false));
+
+        $visitPayload = [
+            'patient_id' => $patient->id,
+            'visit_date' => now()->toDateString(),
+            'chief_complaint' => 'Synthetic Super Admin visit draft',
+        ];
+
+        $this->actingAs($superAdmin)
+            ->post(route('admin.visits.finalize'), $visitPayload)
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('visits', 0);
+    }
+
+    public function test_super_admin_can_open_catalog_and_symptom_map_create_forms(): void
+    {
+        $this->withoutVite();
+        $this->seedApplicationDefaults();
+
+        $superAdmin = User::query()->where('username', 'superadmin')->firstOrFail();
+        $superAdmin->update(['must_change_password' => false]);
+
+        foreach ([
+            'admin.medicines.create',
+            'admin.symptoms.create',
+            'admin.symptom_medicine_map.create',
+        ] as $routeName) {
+            $this->actingAs($superAdmin)
+                ->get(route($routeName))
+                ->assertOk();
+        }
+    }
+
+    public function test_existing_super_admin_role_receives_applicable_web_permissions_idempotently(): void
+    {
+        $superAdmin = Role::query()->create(['name' => 'Super Admin', 'guard_name' => 'web']);
+        $doctor = Role::query()->create(['name' => 'Doctor', 'guard_name' => 'web']);
+        $superAdminPermission = Permission::query()->firstOrCreate(['name' => 'visits.finalize', 'guard_name' => 'web']);
+        $catalogPermission = Permission::query()->firstOrCreate(['name' => 'medicines.create', 'guard_name' => 'web']);
+        $otherGuardPermission = Permission::query()->create(['name' => 'other.guard.permission', 'guard_name' => 'api']);
+        $doctor->givePermissionTo($catalogPermission);
+
+        $migration = require database_path('migrations/2026_11_07_090000_grant_super_admin_feature_permissions.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertTrue($superAdmin->fresh()->hasPermissionTo($superAdminPermission));
+        $this->assertTrue($superAdmin->fresh()->hasPermissionTo($catalogPermission));
+        foreach (['visits.cancel_other', 'symptom_medicine_map.review'] as $restrictedPermissionName) {
+            $restrictedPermission = Permission::query()->firstOrCreate([
+                'name' => $restrictedPermissionName,
+                'guard_name' => 'web',
+            ]);
+            $this->assertSame(0, DB::table('role_has_permissions')
+                ->where('role_id', $superAdmin->id)
+                ->where('permission_id', $restrictedPermission->id)
+                ->count());
+        }
+        $this->assertSame(0, DB::table('role_has_permissions')
+            ->where('role_id', $superAdmin->id)
+            ->where('permission_id', $otherGuardPermission->id)
+            ->count());
+        $this->assertTrue($doctor->fresh()->hasPermissionTo($catalogPermission));
+        $this->assertSame(1, DB::table('role_has_permissions')
+            ->where('role_id', $superAdmin->id)
+            ->where('permission_id', $superAdminPermission->id)
+            ->count());
     }
 
     public function test_default_doctor_cannot_delete_patients_visits_medicines_symptoms_or_mappings(): void

@@ -15,7 +15,7 @@ class ProductionSetupSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_creates_a_restricted_initial_admin_without_sample_clinical_content(): void
+    public function test_creates_an_initial_admin_with_feature_permissions_without_sample_clinical_content(): void
     {
         config(['app.name' => 'Synthetic Clinic']);
 
@@ -28,8 +28,11 @@ class ProductionSetupSeederTest extends TestCase
         $this->assertTrue($admin->hasRole('Super Admin'));
         $this->assertTrue($admin->can('users.create'));
         $this->assertTrue($admin->can('system_health.manage'));
-        $this->assertFalse($admin->can('clinical_records.view'));
-        $this->assertFalse($admin->can('visits.finalize'));
+        $this->assertTrue($admin->can('clinical_records.view'));
+        $this->assertTrue($admin->can('visits.finalize'));
+        $this->assertTrue($admin->can('medicines.create'));
+        $this->assertTrue($admin->can('symptoms.create'));
+        $this->assertFalse($admin->can('visits.cancel_other'));
         $this->assertFalse($admin->can('symptom_medicine_map.review'));
         $this->assertFalse(Role::findByName('Doctor')->hasPermissionTo('visits.finalize'));
         $this->assertDatabaseCount('users', 1);
