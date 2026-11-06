@@ -78,7 +78,7 @@ if [[ "$missing_tool" == 1 ]]; then exit 1; fi
 "$php_binary" "$composer_binary" check-platform-reqs --no-dev
 npm ci
 npm audit
-NODE_OPTIONS=--max-old-space-size=512 npm run build
+ROLLDOWN_WORKER_THREADS=1 RAYON_NUM_THREADS=1 UV_THREADPOOL_SIZE=1 NODE_OPTIONS=--max-old-space-size=512 npm run build
 APP_ENV=production APP_DEBUG=false DB_CONNECTION=sqlite DB_DATABASE=:memory: CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync \
     "$php_binary" artisan package:discover --ansi --no-interaction
 
