@@ -61,11 +61,14 @@ if [[ -z "$node_binary" ]]; then
     exit 1
 fi
 export PATH="$(dirname "$php_binary"):$(dirname "$node_binary"):$PATH"
-command -v npm >/dev/null
-command -v rsync >/dev/null
-command -v zip >/dev/null
-command -v unzip >/dev/null
-command -v sha256sum >/dev/null
+missing_tool=0
+for required_tool in npm rsync zip unzip sha256sum; do
+    if ! command -v "$required_tool" >/dev/null; then
+        printf 'Required deployment tool is unavailable: %s\n' "$required_tool" >&2
+        missing_tool=1
+    fi
+done
+if [[ "$missing_tool" == 1 ]]; then exit 1; fi
 
 "$php_binary" --version
 "$node_binary" --version
