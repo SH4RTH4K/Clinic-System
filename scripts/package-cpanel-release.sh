@@ -63,6 +63,7 @@ if [[ -d "$source_directory/lang" ]]; then
 fi
 
 if [[ -d "$source_directory/database/migrations" ]]; then
+    mkdir -p "$package_directory/private/database/migrations"
     rsync -a "$source_directory/database/migrations/" "$package_directory/private/database/migrations/"
 fi
 
