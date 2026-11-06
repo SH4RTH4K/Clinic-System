@@ -779,7 +779,7 @@ class SystemHealthTest extends TestCase
         $backupService->shouldReceive('create')
             ->once()
             ->with('full')
-            ->andReturn('C:\\private\\system-backups\\full-20261106-120000-0123456789abcdef.zip');
+            ->andReturn(sys_get_temp_dir().DIRECTORY_SEPARATOR.'full-20261106-120000-0123456789abcdef.zip');
         $backupService->shouldReceive('pruneExpiredBackups')->once()->andReturn(2);
         $this->app->instance(DatabaseBackupService::class, $backupService);
 
