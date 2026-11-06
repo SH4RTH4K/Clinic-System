@@ -35,11 +35,44 @@ if [[ -L "$private_path" || -L "$public_path" || -e "$private_path/storage/frame
     exit 1
 fi
 
+application_sources_match() {
+    git cat-file -e "$1^{commit}" 2>/dev/null &&
+        git diff --quiet "$1" "$release_commit" -- . \
+            ':!deploy/cpanel/update-live.sh' ':!deploy/cpanel/artisan.php' \
+            ':!deploy/cpanel/reviewed-migrations.sha256' ':!tests/deployment/test_update_live.py'
+}
+
+# Repeated clicks and tooling-only updates must not accumulate code backups.
+if [[ -f "$private_path/DEPLOYED_COMMIT" ]]; then
+    deployed_commit="$(cat "$private_path/DEPLOYED_COMMIT")"
+    if [[ "$deployed_commit" =~ ^[a-f0-9]{40}$ ]] && application_sources_match "$deployed_commit"; then
+        printf '%s\n' "$release_commit" > "$private_path/DEPLOYED_COMMIT"
+        printf 'Application files already current; deployment recorded as %s.\n' "${release_commit:0:12}"
+        exit 0
+    fi
+fi
+
+# Deployment tooling is not packaged application code. Reuse a verified payload
+# when those are the only changes, avoiding another copy on small disk quotas.
+artifact_commit="$release_commit"
+if [[ ! -f "$release_path/VERIFIED_COMMIT" ]]; then
+    for marker in "$release_base"/clinic-system-cpanel-*/VERIFIED_COMMIT; do
+        [[ -f "$marker" && ! -L "${marker%/*}" ]] || continue
+        cached_commit="$(cat "$marker")"
+        [[ "$cached_commit" =~ ^[a-f0-9]{40}$ ]] || continue
+        if application_sources_match "$cached_commit"; then
+            release_path="${marker%/*}"
+            artifact_commit="$cached_commit"
+            printf 'Reusing verified application payload: %s\n' "${cached_commit:0:12}"
+            break
+        fi
+    done
+fi
 # Build before taking the live site offline; failed builds cannot affect it.
 if [[ ! -f "$release_path/VERIFIED_COMMIT" ]]; then
     /bin/bash deploy/cpanel/build-release.sh
 fi
-test "$(cat "$release_path/VERIFIED_COMMIT")" = "$release_commit"
+test "$(cat "$release_path/VERIFIED_COMMIT")" = "$artifact_commit"
 test -f "$release_path/private/vendor/autoload.php"
 test -f "$release_path/public/build/manifest.json"
 test -f "$release_path/public/index.php"
@@ -79,36 +112,6 @@ done
 
 backup_path="$(mktemp -d "$backup_base/update-${release_commit:0:12}-XXXXXXXX")"
 staging_path="$(mktemp -d "$release_base/.update-XXXXXXXX")"
-mkdir -p "$backup_path/private" "$backup_path/public"
-cp -a "$release_path/private" "$staging_path/private"
-cp -a "$release_path/public" "$staging_path/public"
-
-# Keep old hashed assets available to pages already open in a browser.
-if [[ -d "$public_path/build" ]]; then
-    cp -an "$public_path/build/." "$staging_path/public/build/"
-fi
-if [[ -f "$public_path/.htaccess" ]]; then
-    sed -n '/# php -- BEGIN cPanel-generated handler/,/# php -- END cPanel-generated handler/p' \
-        "$public_path/.htaccess" >> "$staging_path/public/.htaccess"
-fi
-
-private_entries=(app bootstrap config database resources routes vendor artisan composer.json composer.lock)
-if [[ -d "$staging_path/private/lang" || -e "$private_path/lang" ]]; then private_entries+=(lang); fi
-public_entries=()
-find "$staging_path/public" -mindepth 1 -maxdepth 1 -print0 > "$staging_path/public-entries"
-while IFS= read -r -d '' entry; do
-    entry="${entry##*/}"
-    case "$entry" in .env|.git|storage|uploads|hot) printf '%s\n' 'Unexpected runtime path in the public release.' >&2; exit 1 ;; esac
-    public_entries+=("$entry")
-done < "$staging_path/public-entries"
-
-for entry in "${private_entries[@]}"; do
-    if [[ -L "$private_path/$entry" ]]; then printf '%s\n' 'Linked application code requires manual review.' >&2; exit 1; fi
-done
-for entry in "${public_entries[@]}"; do
-    if [[ -L "$public_path/$entry" ]]; then printf '%s\n' 'Linked public code requires manual review.' >&2; exit 1; fi
-done
-
 installed_private=()
 installed_public=()
 maintenance_started=0
@@ -143,6 +146,37 @@ cleanup() {
     exit "$result"
 }
 trap cleanup EXIT
+
+mkdir -p "$backup_path/private" "$backup_path/public"
+cp -a "$release_path/private" "$staging_path/private"
+cp -a "$release_path/public" "$staging_path/public"
+
+# Keep old hashed assets available to pages already open in a browser.
+if [[ -d "$public_path/build" ]]; then
+    cp -an "$public_path/build/." "$staging_path/public/build/"
+fi
+if [[ -f "$public_path/.htaccess" ]]; then
+    sed -n '/# php -- BEGIN cPanel-generated handler/,/# php -- END cPanel-generated handler/p' \
+        "$public_path/.htaccess" >> "$staging_path/public/.htaccess"
+fi
+
+private_entries=(app bootstrap config database resources routes vendor artisan composer.json composer.lock)
+if [[ -d "$staging_path/private/lang" || -e "$private_path/lang" ]]; then private_entries+=(lang); fi
+public_entries=()
+find "$staging_path/public" -mindepth 1 -maxdepth 1 -print0 > "$staging_path/public-entries"
+while IFS= read -r -d '' entry; do
+    entry="${entry##*/}"
+    case "$entry" in .env|.git|storage|uploads|hot) printf '%s\n' 'Unexpected runtime path in the public release.' >&2; exit 1 ;; esac
+    public_entries+=("$entry")
+done < "$staging_path/public-entries"
+
+for entry in "${private_entries[@]}"; do
+    if [[ -L "$private_path/$entry" ]]; then printf '%s\n' 'Linked application code requires manual review.' >&2; exit 1; fi
+done
+for entry in "${public_entries[@]}"; do
+    if [[ -L "$public_path/$entry" ]]; then printf '%s\n' 'Linked public code requires manual review.' >&2; exit 1; fi
+done
+
 
 artisan down --render=errors::503 --retry=60 >/dev/null
 maintenance_started=1
