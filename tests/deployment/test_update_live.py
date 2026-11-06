@@ -225,6 +225,63 @@ return new class {
         self.assertFalse((self.root / 'commands').exists())
         self.assert_runtime_preserved()
 
+    def commit_file(self, relative_path, content):
+        self.write(self.repo / relative_path, content)
+        subprocess.run(['git', 'add', relative_path], cwd=self.repo, check=True)
+        subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                        'commit', '-qm', 'fixture change'], cwd=self.repo, check=True)
+        return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=self.repo, text=True).strip()
+
+    def test_tooling_only_change_reuses_verified_payload_and_records_new_commit(self):
+        new_commit = self.commit_file('deploy/cpanel/update-live.sh', 'tooling change')
+
+        result = self.deploy()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Reusing verified application payload', result.stdout)
+        self.assertEqual((self.account / 'private/DEPLOYED_COMMIT').read_text().strip(), new_commit)
+        self.assertEqual((self.release / 'VERIFIED_COMMIT').read_text(), self.commit)
+        self.assert_runtime_preserved()
+
+    def test_already_deployed_application_records_tooling_commit_without_staging_or_backup(self):
+        self.write(self.account / 'private/DEPLOYED_COMMIT', self.commit)
+        new_commit = self.commit_file('deploy/cpanel/update-live.sh', 'tooling change')
+
+        result = self.deploy()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Application files already current', result.stdout)
+        self.assertEqual((self.account / 'private/DEPLOYED_COMMIT').read_text().strip(), new_commit)
+        self.assertFalse((self.account / 'clinic-backups').exists() and
+                         list((self.account / 'clinic-backups').glob('update-*')))
+        self.assertFalse((self.root / 'commands').exists())
+        self.assertEqual((self.account / 'private/app/fixture').read_text(), 'old')
+        self.assert_runtime_preserved()
+
+    def test_application_change_requires_a_new_build_instead_of_using_cached_payload(self):
+        self.commit_file('app/changed.php', 'application change')
+        self.write(self.repo / 'deploy/cpanel/build-release.sh', 'exit 33\n')
+
+        result = self.deploy()
+
+        self.assertEqual(result.returncode, 33)
+        self.assertNotIn('Reusing verified application payload', result.stdout)
+        self.assertEqual((self.account / 'private/app/fixture').read_text(), 'old')
+        self.assert_runtime_preserved()
+
+    def test_failed_staging_copy_removes_partial_files_before_maintenance(self):
+        tools = self.root / 'failing-tools'
+        self.write(tools / 'cp', '#!/bin/bash\nmkdir -p "$3"\ntouch "$3/partial"\nexit 29\n')
+        (tools / 'cp').chmod(0o700)
+
+        result = self.deploy(PATH=str(tools) + os.pathsep + self.env['PATH'])
+
+        self.assertEqual(result.returncode, 29)
+        self.assertEqual(list((self.account / 'clinic-releases').glob('.update-*')), [])
+        self.assertFalse((self.root / 'commands').exists())
+        self.assertEqual((self.account / 'private/app/fixture').read_text(), 'old')
+        self.assert_runtime_preserved()
+
     def test_failed_build_leaves_live_site_available(self):
         shutil.rmtree(self.release)
         self.write(self.repo / 'deploy/cpanel/build-release.sh', 'exit 33\n')
