@@ -70,6 +70,49 @@ class ClinicalRetentionMigrationTest extends TestCase
         $this->assertFalse(Schema::hasColumn('visit_drafts', 'payload'));
     }
 
+    public function test_history_schema_checks_accept_explicit_null_timestamp_defaults(): void
+    {
+        foreach ([
+            'visit_drafts' => '2026_11_03_173145_create_visit_drafts_table.php',
+            'visit_amendments' => '2026_11_03_175934_create_visit_amendments_table.php',
+        ] as $tableName => $migrationFile) {
+            Schema::table($tableName, function (Blueprint $table): void {
+                $table->timestamp('created_at')->nullable()->default(DB::raw('NULL'))->change();
+                $table->timestamp('updated_at')->nullable()->default(DB::raw('NULL'))->change();
+            });
+            $columnsBefore = Schema::getColumns($tableName);
+            $this->assertSame('NULL', collect($columnsBefore)->firstWhere('name', 'created_at')['default']);
+
+            $this->migration($migrationFile)->up();
+
+            $this->assertSame($columnsBefore, Schema::getColumns($tableName));
+        }
+    }
+
+    public function test_history_schema_checks_reject_non_null_timestamp_defaults_without_changing_schema(): void
+    {
+        foreach ([
+            'visit_drafts' => '2026_11_03_173145_create_visit_drafts_table.php',
+            'visit_amendments' => '2026_11_03_175934_create_visit_amendments_table.php',
+        ] as $tableName => $migrationFile) {
+            foreach ([DB::raw('CURRENT_TIMESTAMP'), 'NULL'] as $default) {
+                Schema::table($tableName, function (Blueprint $table) use ($default): void {
+                    $table->timestamp('created_at')->nullable()->default($default)->change();
+                });
+                $columnsBefore = Schema::getColumns($tableName);
+
+                try {
+                    $this->migration($migrationFile)->up();
+                    $this->fail('A timestamp expression or string default must remain incompatible.');
+                } catch (RuntimeException $exception) {
+                    $this->assertStringContainsString('incompatible nullability or default settings', $exception->getMessage());
+                }
+
+                $this->assertSame($columnsBefore, Schema::getColumns($tableName));
+            }
+        }
+    }
+
     public function test_amendment_and_reference_retention_migrations_are_repeatable_and_preserve_history(): void
     {
         [$patient, $user, $visit] = $this->createClinicalParents();
