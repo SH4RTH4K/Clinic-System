@@ -50,15 +50,15 @@
                     }
 
                     $socials = [
-                        ['url' => $doctor?->social_facebook, 'label' => 'Facebook', 'short' => 'f'],
-                        ['url' => $doctor?->social_twitter, 'label' => 'Twitter/X', 'short' => 'x'],
-                        ['url' => $doctor?->social_youtube, 'label' => 'YouTube', 'short' => 'yt'],
-                        ['url' => $doctor?->social_instagram, 'label' => 'Instagram', 'short' => 'ig'],
-                        ['url' => $doctor?->social_linkedin, 'label' => 'LinkedIn', 'short' => 'in'],
-                        ['url' => $whatsappUrl, 'label' => 'WhatsApp', 'short' => 'wa'],
-                        ['url' => $doctor?->social_tiktok, 'label' => 'TikTok', 'short' => 'tt'],
-                        ['url' => $doctor?->social_telegram, 'label' => 'Telegram', 'short' => 'tg'],
-                        ['url' => $doctor?->social_website, 'label' => 'Website', 'short' => 'web'],
+                        ['url' => $doctor?->social_facebook, 'label' => 'Facebook', 'icon' => 'facebook', 'color' => 'text-blue-600'],
+                        ['url' => $doctor?->social_twitter, 'label' => 'Twitter/X', 'icon' => 'x', 'color' => 'text-gray-900'],
+                        ['url' => $doctor?->social_youtube, 'label' => 'YouTube', 'icon' => 'youtube', 'color' => 'text-red-600'],
+                        ['url' => $doctor?->social_instagram, 'label' => 'Instagram', 'icon' => 'instagram', 'color' => 'text-pink-600'],
+                        ['url' => $doctor?->social_linkedin, 'label' => 'LinkedIn', 'icon' => 'linkedin', 'color' => 'text-sky-700'],
+                        ['url' => $whatsappUrl, 'label' => 'WhatsApp', 'icon' => 'whatsapp', 'color' => 'text-green-600'],
+                        ['url' => $doctor?->social_tiktok, 'label' => 'TikTok', 'icon' => 'tiktok', 'color' => 'text-gray-900'],
+                        ['url' => $doctor?->social_telegram, 'label' => 'Telegram', 'icon' => 'telegram', 'color' => 'text-sky-600'],
+                        ['url' => $doctor?->social_website, 'label' => 'Website', 'icon' => 'website', 'color' => 'text-primary-700'],
                     ];
                 @endphp
 
@@ -71,8 +71,35 @@
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        aria-label="Visit {{ $name }} on {{ $social['label'] }}"
-                                       class="flex h-7 w-7 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold uppercase text-white transition hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                                        {{ $social['short'] }}
+                                       class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/80 bg-white/80 {{ $social['color'] }} shadow-sm backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                        @switch($social['icon'])
+                                            @case('facebook')
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 21v-8.2h2.8l.4-3.2h-3.2V7.5c0-.9.3-1.6 1.6-1.6h1.7V3.1c-.3 0-1.4-.1-2.7-.1-2.7 0-4.5 1.6-4.5 4.6v2.1h-3v3.2h3V21h3.9Z" /></svg>
+                                                @break
+                                            @case('x')
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.9 3h2.8l-6.1 7 7.2 11h-5.6l-4.4-6.8L6.9 21H4.1l6.5-7.5L3.7 3h5.8l4 6.2L18.9 3Zm-1 16.1h1.6L8.6 4.8H6.9l11 14.3Z" /></svg>
+                                                @break
+                                            @case('youtube')
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.5 2.5 0 0 0-1.8 1.8A26 26 0 0 0 2 12a26 26 0 0 0 .4 4.8 2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8A26 26 0 0 0 22 12a26 26 0 0 0-.4-4.8Z" /><path fill="white" d="m10 15.2 5.2-3.2L10 8.8v6.4Z" /></svg>
+                                                @break
+                                            @case('instagram')
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="17.5" cy="6.8" r="1.2" fill="currentColor" /></svg>
+                                                @break
+                                            @case('linkedin')
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 8.5H2.2V21H5V8.5ZM3.6 6.8a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4ZM21.8 13.8c0-3.8-2-5.6-4.7-5.6a4.1 4.1 0 0 0-3.7 2V8.5h-2.8V21h2.8v-6.2c0-1.6.3-3.2 2.3-3.2s2 1.9 2 3.3V21h2.9l1.2-7.2Z" /></svg>
+                                                @break
+                                            @case('whatsapp')
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.2 3.8A11.5 11.5 0 0 0 2.1 17.7L.7 23.1l5.5-1.4A11.5 11.5 0 0 0 20.2 3.8ZM12 20.5a9.5 9.5 0 0 1-4.8-1.3l-.4-.2-3.2.8.8-3.1-.2-.5A9.5 9.5 0 1 1 12 20.5Z" /><path fill="currentColor" d="M16.9 13.9c-.3-.2-1.7-.9-2-.9-.2-.1-.5-.2-.7.2-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.3-.8-.7-1.3-1.6-1.5-1.9-.2-.3 0-.4.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.1-.2-.5-.5-.4-.7-.4h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.1 3c.2.2 2 3.1 4.9 4.3.7.3 1.2.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.3.2-.6.2-1.1.2-1.3s-.3-.3-.6-.5Z" /></svg>
+                                                @break
+                                            @case('tiktok')
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.6 7.1a6.2 6.2 0 0 1-4-1.8v8.2a5.7 5.7 0 1 1-5.7-5.7c.4 0 .8 0 1.1.1v3.2a2.5 2.5 0 1 0 1.5 2.4V2h3.3a6.2 6.2 0 0 0 3.8 4.1v1Z" /></svg>
+                                                @break
+                                            @case('telegram')
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m21.7 4.3-3.2 15.2c-.2 1.1-.8 1.4-1.7.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-8c.4-.3-.1-.5-.6-.2L6.4 13.5l-4.6-1.4c-1-.3-1-1 .2-1.5L20 4c.8-.3 1.5.2 1.7.3Z" /></svg>
+                                                @break
+                                            @default
+                                                <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8" /><path d="M3.5 12h17M12 3c2.2 2.4 3.2 5.4 3.2 9s-1 6.6-3.2 9c-2.2-2.4-3.2-5.4-3.2-9s1-6.6 3.2-9Z" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>
+                                        @endswitch
                                     </a>
                                 @endif
                             @endforeach

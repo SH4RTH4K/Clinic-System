@@ -6,10 +6,47 @@ import { useEffect, useState } from 'react';
 const inputClass = 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
 const labelClass = 'block text-sm font-medium text-gray-700';
 
-function Field({ label, error, children }) {
+const socialIconClasses = {
+    facebook: 'bg-blue-50 text-blue-600',
+    x: 'bg-gray-100 text-gray-900',
+    youtube: 'bg-red-50 text-red-600',
+    instagram: 'bg-gradient-to-br from-amber-100 via-pink-100 to-purple-100 text-pink-600',
+    linkedin: 'bg-sky-50 text-sky-700',
+    whatsapp: 'bg-green-50 text-green-600',
+    tiktok: 'bg-gray-100 text-gray-900',
+    telegram: 'bg-sky-50 text-sky-600',
+    website: 'bg-indigo-50 text-indigo-600',
+};
+
+const socialIconPaths = {
+    facebook: <path d="M13.5 21v-8.2h2.8l.4-3.2h-3.2V7.5c0-.9.3-1.6 1.6-1.6h1.7V3.1c-.3 0-1.4-.1-2.7-.1-2.7 0-4.5 1.6-4.5 4.6v2.1h-3v3.2h3V21h3.9Z" fill="currentColor" />,
+    x: <path d="M18.9 3h2.8l-6.1 7 7.2 11h-5.6l-4.4-6.8L6.9 21H4.1l6.5-7.5L3.7 3h5.8l4 6.2L18.9 3Zm-1 16.1h1.6L8.6 4.8H6.9l11 14.3Z" fill="currentColor" />,
+    youtube: <><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.5 2.5 0 0 0-1.8 1.8A26 26 0 0 0 2 12a26 26 0 0 0 .4 4.8 2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8A26 26 0 0 0 22 12a26 26 0 0 0-.4-4.8Z" fill="currentColor" /><path d="m10 15.2 5.2-3.2L10 8.8v6.4Z" fill="white" /></>,
+    instagram: <><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="17.5" cy="6.8" r="1.2" fill="currentColor" /></>,
+    linkedin: <><path d="M5 8.5H2.2V21H5V8.5ZM3.6 6.8a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4ZM21.8 13.8c0-3.8-2-5.6-4.7-5.6a4.1 4.1 0 0 0-3.7 2V8.5h-2.8V21h2.8v-6.2c0-1.6.3-3.2 2.3-3.2s2 1.9 2 3.3V21h2.9l1.2-7.2Z" fill="currentColor" /></>,
+    whatsapp: <><path d="M20.2 3.8A11.5 11.5 0 0 0 2.1 17.7L.7 23.1l5.5-1.4A11.5 11.5 0 0 0 20.2 3.8ZM12 20.5a9.5 9.5 0 0 1-4.8-1.3l-.4-.2-3.2.8.8-3.1-.2-.5A9.5 9.5 0 1 1 12 20.5Z" fill="currentColor" /><path d="M16.9 13.9c-.3-.2-1.7-.9-2-.9-.2-.1-.5-.2-.7.2-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.3-.8-.7-1.3-1.6-1.5-1.9-.2-.3 0-.4.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.1-.2-.5-.5-.4-.7-.4h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.1 3c.2.2 2 3.1 4.9 4.3.7.3 1.2.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.3.2-.6.2-1.1.2-1.3s-.3-.3-.6-.5Z" fill="currentColor" /></>,
+    tiktok: <path d="M19.6 7.1a6.2 6.2 0 0 1-4-1.8v8.2a5.7 5.7 0 1 1-5.7-5.7c.4 0 .8 0 1.1.1v3.2a2.5 2.5 0 1 0 1.5 2.4V2h3.3a6.2 6.2 0 0 0 3.8 4.1v1Z" fill="currentColor" />,
+    telegram: <path d="m21.7 4.3-3.2 15.2c-.2 1.1-.8 1.4-1.7.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-8c.4-.3-.1-.5-.6-.2L6.4 13.5l-4.6-1.4c-1-.3-1-1 .2-1.5L20 4c.8-.3 1.5.2 1.7.3Z" fill="currentColor" />,
+    website: <><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M3.5 12h17M12 3c2.2 2.4 3.2 5.4 3.2 9s-1 6.6-3.2 9c-2.2-2.4-3.2-5.4-3.2-9s1-6.6 3.2-9Z" fill="none" stroke="currentColor" strokeWidth="1.6" /></>,
+};
+
+function SocialPlatformIcon({ platform }) {
+    return (
+        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${socialIconClasses[platform]}`} aria-hidden="true">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                {socialIconPaths[platform]}
+            </svg>
+        </span>
+    );
+}
+
+function Field({ label, error, icon, children }) {
     return (
         <div>
-            <label className={labelClass}>{label}</label>
+            <label className={`${labelClass} ${icon ? 'flex items-center gap-2' : ''}`}>
+                {icon && <SocialPlatformIcon platform={icon} />}
+                {label}
+            </label>
             <div className="mt-1">{children}</div>
             <InputError message={error} className="mt-2" />
         </div>
@@ -352,7 +389,7 @@ export default function DoctorForm({
                     <div className="rounded-lg border border-gray-200 p-4">
                         <h3 className="text-base font-semibold text-gray-900">Social Media Links</h3>
                         <div className="mt-4 space-y-4">
-                            <Field label="Facebook URL" error={errors.social_facebook}>
+                            <Field label="Facebook URL" icon="facebook" error={errors.social_facebook}>
                                 <input
                                     type="url"
                                     value={data.social_facebook}
@@ -362,7 +399,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="Twitter / X URL" error={errors.social_twitter}>
+                            <Field label="Twitter / X URL" icon="x" error={errors.social_twitter}>
                                 <input
                                     type="url"
                                     value={data.social_twitter}
@@ -372,7 +409,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="YouTube URL" error={errors.social_youtube}>
+                            <Field label="YouTube URL" icon="youtube" error={errors.social_youtube}>
                                 <input
                                     type="url"
                                     value={data.social_youtube}
@@ -382,7 +419,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="Instagram URL" error={errors.social_instagram}>
+                            <Field label="Instagram URL" icon="instagram" error={errors.social_instagram}>
                                 <input
                                     type="url"
                                     value={data.social_instagram}
@@ -392,7 +429,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="LinkedIn URL" error={errors.social_linkedin}>
+                            <Field label="LinkedIn URL" icon="linkedin" error={errors.social_linkedin}>
                                 <input
                                     type="url"
                                     value={data.social_linkedin}
@@ -402,7 +439,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="WhatsApp Link or Number" error={errors.social_whatsapp}>
+                            <Field label="WhatsApp Link or Number" icon="whatsapp" error={errors.social_whatsapp}>
                                 <input
                                     type="text"
                                     value={data.social_whatsapp}
@@ -412,7 +449,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="TikTok URL" error={errors.social_tiktok}>
+                            <Field label="TikTok URL" icon="tiktok" error={errors.social_tiktok}>
                                 <input
                                     type="url"
                                     value={data.social_tiktok}
@@ -422,7 +459,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="Telegram URL" error={errors.social_telegram}>
+                            <Field label="Telegram URL" icon="telegram" error={errors.social_telegram}>
                                 <input
                                     type="url"
                                     value={data.social_telegram}
@@ -432,7 +469,7 @@ export default function DoctorForm({
                                 />
                             </Field>
 
-                            <Field label="Website URL" error={errors.social_website}>
+                            <Field label="Website URL" icon="website" error={errors.social_website}>
                                 <input
                                     type="url"
                                     value={data.social_website}
