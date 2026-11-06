@@ -1,5 +1,6 @@
 """Exercise the cPanel updater with disposable files and a fake PHP process."""
 import fcntl
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -107,10 +108,65 @@ if [[ "$2" == up ]]; then rm -f storage/framework/maintenance.php storage/framew
         self.write(self.release / 'private/database/migrations/new.php', 'new schema')
         result = self.deploy()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('Migration files changed', result.stderr)
+        self.assertIn('New migration needs review: new.php', result.stderr)
         self.assertFalse((self.root / 'commands').exists())
         self.assertEqual((self.account / 'private/app/fixture').read_text(), 'old')
         self.assert_runtime_preserved()
+
+    def review_new_migration(self):
+        migration = self.release / 'private/database/migrations/new.php'
+        self.write(migration, 'reviewed additive migration')
+        self.write(self.repo / 'deploy/cpanel/reviewed-migrations.sha256',
+                   hashlib.sha256(migration.read_bytes()).hexdigest() + '  new.php\n')
+
+    def test_reviewed_migration_is_backed_up_and_applied_before_code_switch(self):
+        self.review_new_migration()
+
+        result = self.deploy()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = (self.root / 'commands').read_text().splitlines()
+        self.assertEqual(commands[:4], ['down', 'system-health:backup', 'migrate', 'config:clear'])
+        self.assertEqual((self.account / 'private/app/fixture').read_text(), 'new')
+        self.assertTrue((self.account / 'private/database/migrations/new.php').exists())
+        self.assert_runtime_preserved()
+
+    def test_modified_reviewed_migration_is_rejected_before_backup_or_maintenance(self):
+        self.review_new_migration()
+        self.write(self.release / 'private/database/migrations/new.php', 'unreviewed change')
+
+        result = self.deploy()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / 'commands').exists())
+        self.assert_runtime_preserved()
+
+    def test_backup_or_migration_failure_keeps_old_code_and_restores_availability(self):
+        self.review_new_migration()
+        for command in ['system-health:backup', 'migrate']:
+            with self.subTest(command=command):
+                result = self.deploy(CLINIC_TEST_FAIL=command)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual((self.account / 'private/app/fixture').read_text(), 'old')
+                self.assertFalse((self.account / 'private/DEPLOYED_COMMIT').exists())
+                self.assert_runtime_preserved()
+
+    def test_historical_migration_edits_and_removals_are_rejected(self):
+        migration = self.release / 'private/database/migrations/same.php'
+        for value in ['edited history', None]:
+            with self.subTest(value=value):
+                if value is None:
+                    migration.unlink()
+                else:
+                    migration.write_text(value)
+
+                result = self.deploy()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('Historical migration changed or removed', result.stderr)
+                self.assertFalse((self.root / 'commands').exists())
+                self.assert_runtime_preserved()
 
     def test_existing_maintenance_and_concurrent_deployment_are_not_interrupted(self):
         self.write(self.account / 'private/storage/framework/down', 'manual maintenance')
