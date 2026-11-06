@@ -5,6 +5,7 @@ use Database\Seeders\ProductionSetupSeeder;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Validation\ValidationException;
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
@@ -181,6 +182,10 @@ try {
     echo $state['phase'] === 'active' ? 'Clinic application activated successfully.'.PHP_EOL : 'Administrator initialized; maintenance remains enabled.'.PHP_EOL;
 } catch (Throwable $exception) {
     $detail = $exception instanceof DeploymentStop ? $exception->getMessage() : get_class($exception).' (code '.preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $exception->getCode()).')';
+    if ($exception instanceof ValidationException) {
+        $fields = array_intersect(array_keys($exception->errors()), ['email', 'password']);
+        $detail = 'Initial administrator validation failed for: '.implode(', ', $fields).'. Use a valid email and a password with at least 16 characters, uppercase and lowercase letters, numbers and symbols.';
+    }
     fwrite(STDERR, 'Initialization stopped during '.$phase.': '.$detail.' at '.basename($exception->getFile()).':'.$exception->getLine().PHP_EOL);
     exit(1);
 } finally {
