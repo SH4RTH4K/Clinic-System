@@ -1,6 +1,7 @@
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { Link } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 const inputClass = 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
 const labelClass = 'block text-sm font-medium text-gray-700';
@@ -27,7 +28,22 @@ export default function DoctorForm({
     doctorAccounts = [],
     canManageDoctorAccounts = false,
 }) {
-    const photoUrl = doctor?.photo_path ? route('admin.doctors.photo', doctor.id) : null;
+    const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
+
+    useEffect(() => {
+        if (!data.photo) {
+            setSelectedPhotoUrl(null);
+
+            return undefined;
+        }
+
+        const previewUrl = URL.createObjectURL(data.photo);
+        setSelectedPhotoUrl(previewUrl);
+
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [data.photo]);
+
+    const photoUrl = selectedPhotoUrl || (doctor?.photo_path ? route('admin.doctors.photo', doctor.id) : null);
 
     return (
         <form onSubmit={onSubmit} className="space-y-6">
@@ -292,7 +308,7 @@ export default function DoctorForm({
                     <div className="rounded-lg border border-gray-200 p-4">
                         <div className="mb-4 h-40 w-40 overflow-hidden rounded-full bg-gray-100">
                             {photoUrl ? (
-                                <img src={photoUrl} alt={doctor.name} className="h-full w-full object-cover" />
+                                <img src={photoUrl} alt={data.name || doctor?.name || 'Doctor photo'} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-gray-500">
                                     No Photo

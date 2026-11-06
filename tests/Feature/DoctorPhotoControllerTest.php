@@ -6,6 +6,7 @@ use App\Models\Doctor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -43,6 +44,33 @@ class DoctorPhotoControllerTest extends TestCase
         ]);
 
         $this->get(route('doctors.photo', $doctor))->assertNotFound();
+    }
+
+    public function test_active_doctor_photo_is_served_from_legacy_public_storage_when_disk_copy_is_missing(): void
+    {
+        Storage::fake('public');
+        $photoBytes = UploadedFile::fake()->image('legacy-doctor.png', 1, 1)->getContent();
+        $temporaryPublicPath = storage_path('framework/testing/doctor-photo-'.uniqid('', true));
+        $legacyPhotoPath = $temporaryPublicPath.'/storage/doctors/legacy-doctor.png';
+
+        File::ensureDirectoryExists(dirname($legacyPhotoPath));
+        file_put_contents($legacyPhotoPath, $photoBytes);
+        $this->app->usePublicPath($temporaryPublicPath);
+
+        $doctor = Doctor::query()->create([
+            'name' => 'Synthetic Legacy Photo Doctor',
+            'is_active' => true,
+            'photo_path' => 'doctors/legacy-doctor.png',
+        ]);
+
+        try {
+            $this->get(route('doctors.photo', $doctor))
+                ->assertOk()
+                ->assertHeader('Content-Type', 'image/png')
+                ->assertStreamedContent($photoBytes);
+        } finally {
+            File::deleteDirectory($temporaryPublicPath);
+        }
     }
 
     public function test_super_admin_can_view_an_inactive_doctor_photo_in_admin(): void

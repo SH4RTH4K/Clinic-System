@@ -11,6 +11,7 @@ use App\Models\Visit;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -104,7 +105,7 @@ class DoctorController extends Controller
         }
 
         if ($newPhotoPath !== null && $doctor->photo_path !== null) {
-            Storage::disk('public')->delete($doctor->photo_path);
+            $this->deleteDoctorPhotoIfUnused($doctor->photo_path, $doctor->id);
         }
 
         return redirect()->route('admin.doctors.index')->with('success', 'Doctor updated successfully.');
@@ -153,5 +154,29 @@ class DoctorController extends Controller
             })
             ->orderBy('name')
             ->get(['id', 'name', 'username']);
+    }
+
+    private function deleteDoctorPhotoIfUnused(?string $path, int $doctorId): void
+    {
+        if (! is_string($path)
+            || preg_match('/\Adoctors\/[a-z0-9][a-z0-9._-]*\.(?:jpe?g|png|webp)\z/i', $path) !== 1
+            || Doctor::query()->where('photo_path', $path)->where('id', '!=', $doctorId)->exists()) {
+            return;
+        }
+
+        Storage::disk('public')->delete($path);
+
+        $legacyRoot = realpath(public_path('storage/doctors'));
+        $legacyPath = realpath(public_path('storage/'.$path));
+
+        if (is_string($legacyRoot)
+            && is_string($legacyPath)
+            && is_file($legacyPath)
+            && str_starts_with(
+                strtolower($legacyPath),
+                strtolower(rtrim($legacyRoot, '\\/').DIRECTORY_SEPARATOR),
+            )) {
+            File::delete($legacyPath);
+        }
     }
 }

@@ -31,14 +31,44 @@ class DoctorPhotoController extends Controller
         );
 
         $disk = Storage::disk('public');
-        abort_unless($disk->exists($path), 404);
+        if ($disk->exists($path)) {
+            $mimeType = $disk->mimeType($path);
+            abort_unless(in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true), 404);
 
-        $mimeType = $disk->mimeType($path);
+            return $disk->response($path, basename($path), [
+                'Cache-Control' => 'private, max-age=300',
+                'X-Content-Type-Options' => 'nosniff',
+            ], 'inline');
+        }
+
+        $legacyRoot = realpath(public_path('storage/doctors'));
+        $legacyPath = realpath(public_path('storage/'.$path));
+
+        abort_unless(
+            is_string($legacyRoot)
+                && is_string($legacyPath)
+                && is_file($legacyPath)
+                && str_starts_with(
+                    strtolower($legacyPath),
+                    strtolower(rtrim($legacyRoot, '\\/').DIRECTORY_SEPARATOR),
+                ),
+            404,
+        );
+
+        $mimeType = mime_content_type($legacyPath);
         abort_unless(in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true), 404);
 
-        return $disk->response($path, basename($path), [
-            'Cache-Control' => 'private, max-age=300',
-            'X-Content-Type-Options' => 'nosniff',
-        ], 'inline');
+        return response()->stream(
+            static function () use ($legacyPath): void {
+                readfile($legacyPath);
+            },
+            200,
+            [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline; filename="'.basename($legacyPath).'"',
+                'Cache-Control' => 'private, max-age=300',
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+        );
     }
 }

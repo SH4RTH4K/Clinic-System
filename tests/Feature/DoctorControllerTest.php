@@ -6,6 +6,9 @@ use App\Models\Doctor;
 use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -95,6 +98,41 @@ class DoctorControllerTest extends TestCase
 
         $this->assertTrue((bool) $activeDoctor->fresh()->is_active);
         $this->assertFalse((bool) $inactiveDoctor->fresh()->is_active);
+    }
+
+    public function test_replacing_doctor_photo_deletes_the_old_legacy_public_storage_file(): void
+    {
+        Storage::fake('public');
+        $temporaryPublicPath = storage_path('framework/testing/doctor-photo-replacement-'.uniqid('', true));
+        $oldPhotoPath = $temporaryPublicPath.'/storage/doctors/old-doctor.png';
+        $oldPhotoBytes = UploadedFile::fake()->image('old-doctor.png', 1, 1)->getContent();
+
+        File::ensureDirectoryExists(dirname($oldPhotoPath));
+        file_put_contents($oldPhotoPath, $oldPhotoBytes);
+        $this->app->usePublicPath($temporaryPublicPath);
+
+        $doctor = Doctor::query()->create([
+            'name' => 'Synthetic Photo Replacement Doctor',
+            'photo_path' => 'doctors/old-doctor.png',
+        ]);
+        $user = $this->userWithPermissions(['doctors.update']);
+
+        try {
+            $this->actingAs($user)
+                ->put(route('admin.doctors.update', $doctor), [
+                    'name' => 'Synthetic Photo Replacement Doctor',
+                    'photo' => UploadedFile::fake()->image('new-doctor.png', 1, 1),
+                ])
+                ->assertRedirect(route('admin.doctors.index'));
+
+            $newPhotoPath = $doctor->fresh()->photo_path;
+
+            $this->assertNotSame('doctors/old-doctor.png', $newPhotoPath);
+            $this->assertFileDoesNotExist($oldPhotoPath);
+            $this->assertTrue(Storage::disk('public')->exists($newPhotoPath));
+        } finally {
+            File::deleteDirectory($temporaryPublicPath);
+        }
     }
 
     public function test_explicit_active_status_values_activate_or_deactivate_a_doctor(): void
