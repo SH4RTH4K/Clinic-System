@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PermissionLink from '@/Components/PermissionLink';
+import usePermission from '@/Components/usePermission';
 import { Head } from '@inertiajs/react';
 
 const statCards = [
@@ -125,6 +126,8 @@ export default function Dashboard({
     recent_requests = [],
     recent_visits = [],
 }) {
+    const can = usePermission();
+    const canCreateVisit = can('visits.create') && can('clinical_records.view');
     const visibleStatCards = statCards.filter((card) => access[card.access]);
     const maxWeeklyVisits = Math.max(...weekly_visits.map((day) => day.total), 1);
     const appointmentTotal = appointmentStatuses.reduce((total, item) => total + (appointment_status[item.key] ?? 0), 0);
@@ -140,9 +143,11 @@ export default function Dashboard({
                         <h1 className="mt-1 text-2xl font-bold text-slate-950">Admin Dashboard</h1>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <PermissionLink permission="visits.create" href={route('admin.visits.create')} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
-                            New Visit
-                        </PermissionLink>
+                        {canCreateVisit && (
+                            <PermissionLink permission="visits.create" href={route('admin.visits.create')} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+                                New Visit
+                            </PermissionLink>
+                        )}
                         <PermissionLink permission="patients.create" href={route('admin.patients.create')} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                             New Patient
                         </PermissionLink>

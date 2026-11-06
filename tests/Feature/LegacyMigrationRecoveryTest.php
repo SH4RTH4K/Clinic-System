@@ -156,6 +156,154 @@ class LegacyMigrationRecoveryTest extends TestCase
         } catch (RuntimeException $exception) {
             $this->assertStringContainsString('Duplicate non-null patient codes', $exception->getMessage());
         }
+
+        $this->assertSame(2, DB::table('patients')->where('patient_code', 'DUPLICATE-CODE')->count());
+        $this->assertSame(1, DB::table('patients')->where('patient_code', 'DUPLICATE-CODE')->distinct()->count('patient_code'));
+    }
+
+    public function test_numbering_fields_migration_accepts_verified_varchar_100_columns_and_preserves_values(): void
+    {
+        $this->withNumberingMigrationProbe(function (): void {
+            $this->createNumberingMigrationProbeSchema('varchar(100)', 'varchar(100)');
+            DB::table('patient_numbering_profiles')->insert(['id' => 1]);
+            DB::table('patients')->insert([
+                'id' => 77,
+                'patient_no' => 777,
+                'patient_series' => 'SYN',
+                'patient_numbering_profile_id' => 1,
+                'patient_category' => 'Synthetic category',
+                'patient_code' => 'SYN-0777',
+            ]);
+
+            $this->runMigration('2026_11_03_160209_add_numbering_profile_fields_to_patients_table.php');
+
+            $this->assertDatabaseHas('patients', [
+                'id' => 77,
+                'patient_no' => 777,
+                'patient_series' => 'SYN',
+                'patient_numbering_profile_id' => 1,
+                'patient_category' => 'Synthetic category',
+                'patient_code' => 'SYN-0777',
+            ]);
+            $this->assertContains(strtolower(Schema::getColumnType('patients', 'patient_series')), ['string', 'varchar']);
+        });
+    }
+
+    public function test_numbering_fields_migration_rejects_undersized_column_without_changing_values(): void
+    {
+        $this->withNumberingMigrationProbe(function (): void {
+            $this->createNumberingMigrationProbeSchema('varchar(50)', 'varchar(100)');
+            DB::table('patients')->insert([
+                'id' => 78,
+                'patient_no' => 778,
+                'patient_series' => 'T',
+                'patient_category' => 'Existing category',
+                'patient_code' => 'SYN-0778',
+            ]);
+
+            try {
+                $this->runMigration('2026_11_03_160209_add_numbering_profile_fields_to_patients_table.php');
+                $this->fail('Expected an undersized column definition to stop migration recovery.');
+            } catch (RuntimeException $exception) {
+                $this->assertStringContainsString('must support at least 100 characters', $exception->getMessage());
+            }
+
+            $this->assertDatabaseHas('patients', [
+                'id' => 78,
+                'patient_category' => 'Existing category',
+                'patient_code' => 'SYN-0778',
+            ]);
+            $this->assertCount(0, Schema::getForeignKeys('patients'));
+            $this->assertCount(0, collect(Schema::getIndexes('patients'))->filter(
+                fn (array $index): bool => $index['unique'] && $index['columns'] === ['patient_code']
+            ));
+        });
+    }
+
+    public function test_numbering_fields_migration_rejects_unexpected_column_type(): void
+    {
+        $this->withNumberingMigrationProbe(function (): void {
+            $this->createNumberingMigrationProbeSchema('varchar(100)', 'text');
+            DB::table('patients')->insert([
+                'id' => 79,
+                'patient_no' => 779,
+                'patient_series' => 'T',
+                'patient_category' => 'Existing category',
+                'patient_code' => 'SYN-0779',
+            ]);
+
+            try {
+                $this->runMigration('2026_11_03_160209_add_numbering_profile_fields_to_patients_table.php');
+                $this->fail('Expected an unexpected column type to stop migration recovery.');
+            } catch (RuntimeException $exception) {
+                $this->assertStringContainsString('patient_code column must be VARCHAR', $exception->getMessage());
+            }
+
+            $this->assertDatabaseHas('patients', ['id' => 79, 'patient_code' => 'SYN-0779']);
+        });
+    }
+
+    public function test_numbering_fields_migration_resumes_partial_schema_and_adds_missing_index_and_foreign_key(): void
+    {
+        $this->withNumberingMigrationProbe(function (): void {
+            $this->createNumberingMigrationProbeSchema('varchar(100)', 'varchar(100)');
+            DB::table('patient_numbering_profiles')->insert(['id' => 1]);
+            DB::table('patients')->insert([
+                'id' => 80,
+                'patient_no' => 780,
+                'patient_series' => 'T',
+                'patient_numbering_profile_id' => 1,
+                'patient_category' => 'Partial schema',
+                'patient_code' => 'SYN-0780',
+            ]);
+
+            $this->runMigration('2026_11_03_160209_add_numbering_profile_fields_to_patients_table.php');
+
+            $this->assertDatabaseHas('patients', [
+                'id' => 80,
+                'patient_numbering_profile_id' => 1,
+                'patient_category' => 'Partial schema',
+                'patient_code' => 'SYN-0780',
+            ]);
+            $this->assertTrue(collect(Schema::getIndexes('patients'))->contains(
+                fn (array $index): bool => $index['unique'] && $index['columns'] === ['patient_code']
+            ));
+            $this->assertTrue(collect(Schema::getForeignKeys('patients'))->contains(
+                fn (array $foreignKey): bool => $foreignKey['columns'] === ['patient_numbering_profile_id']
+                    && $foreignKey['foreign_table'] === 'patient_numbering_profiles'
+                    && strtolower($foreignKey['on_delete']) === 'set null'
+            ));
+        });
+    }
+
+    public function test_numbering_fields_migration_rejects_orphaned_profile_without_repairing_it(): void
+    {
+        $this->withNumberingMigrationProbe(function (): void {
+            $this->createNumberingMigrationProbeSchema('varchar(100)', 'varchar(100)');
+            DB::table('patients')->insert([
+                'id' => 81,
+                'patient_no' => 781,
+                'patient_series' => 'T',
+                'patient_numbering_profile_id' => 987,
+                'patient_category' => 'Orphan retained',
+                'patient_code' => 'SYN-0781',
+            ]);
+
+            try {
+                $this->runMigration('2026_11_03_160209_add_numbering_profile_fields_to_patients_table.php');
+                $this->fail('Expected orphaned profile reference to stop migration recovery.');
+            } catch (RuntimeException $exception) {
+                $this->assertStringContainsString('reference missing numbering profiles', $exception->getMessage());
+            }
+
+            $this->assertDatabaseHas('patients', [
+                'id' => 81,
+                'patient_numbering_profile_id' => 987,
+                'patient_category' => 'Orphan retained',
+                'patient_code' => 'SYN-0781',
+            ]);
+            $this->assertSame(0, DB::table('patient_numbering_profiles')->count());
+        });
     }
 
     public function test_numbering_fields_migration_repairs_one_missing_nullable_column_without_rewriting_other_values(): void
@@ -306,6 +454,37 @@ class LegacyMigrationRecoveryTest extends TestCase
     private function loadMigration(string $file): Migration
     {
         return require database_path('migrations/'.$file);
+    }
+
+    private function withNumberingMigrationProbe(callable $callback): void
+    {
+        $defaultConnection = config('database.default');
+        config([
+            'database.connections.numbering_migration_probe' => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+                'foreign_key_constraints' => true,
+            ],
+            'database.default' => 'numbering_migration_probe',
+        ]);
+        DB::purge('numbering_migration_probe');
+
+        try {
+            $callback();
+        } finally {
+            DB::disconnect('numbering_migration_probe');
+            DB::purge('numbering_migration_probe');
+            config(['database.default' => $defaultConnection]);
+        }
+    }
+
+    private function createNumberingMigrationProbeSchema(string $categoryType, string $codeType): void
+    {
+        Schema::create('patient_numbering_profiles', function (Blueprint $table): void {
+            $table->id();
+        });
+        DB::statement("CREATE TABLE patients (id INTEGER PRIMARY KEY, patient_no INTEGER NOT NULL, patient_series VARCHAR(10) NOT NULL, patient_numbering_profile_id INTEGER NULL, patient_category {$categoryType} NULL, patient_code {$codeType} NULL)");
     }
 
     /** @param array<string, mixed> $overrides */

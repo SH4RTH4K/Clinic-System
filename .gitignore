@@ -19,6 +19,7 @@
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot
+/dist/
 /public/storage
 /storage/*.key
 /storage/fonts/*

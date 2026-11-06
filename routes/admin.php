@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SymptomController;
 use App\Http\Controllers\Admin\SymptomMedicineMapController;
+use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VisitController;
 use App\Http\Controllers\Admin\VisitDraftController;
@@ -222,6 +223,30 @@ Route::middleware([
 // Activity Logs
 Route::middleware(['auth', 'permission:activity_logs.view', 'role:Super Admin'])
     ->group(fn () => Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity_logs.index'));
+
+// System health and backup maintenance are restricted to Super Admins and explicitly authorized managers.
+Route::middleware(['auth', 'role_or_permission:Super Admin|system_health.manage'])->group(function () {
+    Route::get('/system-health', [SystemHealthController::class, 'index'])->name('system_health.index');
+    Route::post('/system-health/backups', [SystemHealthController::class, 'backup'])
+        ->middleware('throttle:2,1')
+        ->name('system_health.backup');
+    Route::post('/system-health/backup-schedule', [SystemHealthController::class, 'updateBackupSchedule'])
+        ->middleware('throttle:6,1')
+        ->name('system_health.backup_schedule');
+    Route::get('/system-health/backups/{filename}', [SystemHealthController::class, 'download'])
+        ->where('filename', '[A-Za-z0-9_.-]+')
+        ->name('system_health.backups.download');
+    Route::delete('/system-health/backups/{filename}', [SystemHealthController::class, 'destroyBackup'])
+        ->where('filename', '[A-Za-z0-9_.-]+')
+        ->middleware(['role:Super Admin', 'throttle:10,1'])
+        ->name('system_health.backups.destroy');
+    Route::post('/system-health/restores', [SystemHealthController::class, 'restore'])
+        ->middleware(['role:Super Admin', 'throttle:2,1'])
+        ->name('system_health.restore');
+    Route::post('/system-health/maintenance/clear-caches', [SystemHealthController::class, 'clearCaches'])
+        ->middleware('throttle:2,1')
+        ->name('system_health.clear_caches');
+});
 
 // Appointments
 Route::middleware(['auth', 'permission:appointments.view'])->group(function () {

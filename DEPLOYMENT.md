@@ -1,5 +1,7 @@
 # cPanel deployment guide — JB Homeo Hall Clinic
 
+> **File Manager only / no SSH or Terminal:** Use [the portable File Manager installation guide](docs/deployment/cpanel-file-manager.md). This document contains some CLI-based operational examples and must not be treated as a way to bypass the separate reviewed database installation and migration gate. The release workflow builds assets and packages files; it does not deploy or change a database.
+
 This guide targets shared cPanel hosting with **PHP 8.3**, MySQL, and Apache. The project dependency lock is resolved for PHP 8.3. Do not assume PHP 8.4 or 8.5 is available on the host.
 
 The repository was developed and tested locally using PHP 8.4.25. That is not a substitute for running the platform checks and smoke tests with the actual PHP 8.3 cPanel runtime before a production release.

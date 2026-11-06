@@ -56,7 +56,8 @@ return new class extends Migration
             });
         }
 
-        if ($this->patientSeriesLength() > 10) {
+        $patientSeriesLength = $this->patientSeriesLength();
+        if ($patientSeriesLength !== null && $patientSeriesLength > 10) {
             Schema::table('patients', function (Blueprint $table): void {
                 $table->string('patient_series', 10)->change();
             });
@@ -93,11 +94,8 @@ return new class extends Migration
             }
         }
 
-        $categoryColumn = collect(Schema::getColumns('patients'))->firstWhere('name', self::CATEGORY_COLUMN);
-        $codeColumn = collect(Schema::getColumns('patients'))->firstWhere('name', self::CODE_COLUMN);
-        if (DB::connection()->getDriverName() !== 'sqlite'
-            && ((int) ($categoryColumn['length'] ?? 0) < 100 || (int) ($codeColumn['length'] ?? 0) < 100)) {
-            throw new RuntimeException('Patient numbering text columns are shorter than required. Manual schema review is required.');
+        foreach ([self::CATEGORY_COLUMN, self::CODE_COLUMN] as $columnName) {
+            $this->assertVarcharColumnLength($columnName, 100);
         }
 
         $profileColumnType = strtolower((string) Schema::getColumnType('patients', self::PROFILE_COLUMN));
@@ -177,11 +175,11 @@ return new class extends Migration
         }
 
         $length = $this->patientSeriesLength();
-        if (($length === 0 && DB::connection()->getDriverName() !== 'sqlite') || $length > 50) {
+        if ($length !== null && $length > 50) {
             throw new RuntimeException('The patients.patient_series column has an unexpected length. Manual schema review is required.');
         }
 
-        if ($length < 50) {
+        if ($length !== null && $length < 50) {
             Schema::table('patients', function (Blueprint $table): void {
                 $table->string('patient_series', 50)->change();
             });
@@ -209,14 +207,92 @@ return new class extends Migration
             ->first(fn (array $foreignKey): bool => $foreignKey['columns'] === [self::PROFILE_COLUMN]);
     }
 
-    private function patientSeriesLength(): int
+    private function patientSeriesLength(): ?int
     {
-        $column = collect(Schema::getColumns('patients'))->firstWhere('name', 'patient_series');
-        $length = (int) ($column['length'] ?? 0);
-        if ($length === 0 && DB::connection()->getDriverName() === 'sqlite') {
-            return 50;
+        $definition = $this->characterColumnDefinition('patient_series');
+        if (! in_array($definition['type'], ['varchar', 'character varying'], true)) {
+            throw new RuntimeException('The patients.patient_series column must be VARCHAR; manual schema review is required.');
         }
 
-        return $length;
+        if ($definition['length'] === null && ! $this->isUnboundedSqliteVarchar($definition['type'])) {
+            throw new RuntimeException('The patients.patient_series column length could not be verified; manual schema review is required.');
+        }
+
+        return $definition['length'];
+    }
+
+    private function assertVarcharColumnLength(string $columnName, int $minimumLength): void
+    {
+        $definition = $this->characterColumnDefinition($columnName);
+        if (! in_array($definition['type'], ['varchar', 'character varying'], true)) {
+            throw new RuntimeException("The patients.{$columnName} column must be VARCHAR; manual schema review is required.");
+        }
+
+        if ($definition['length'] === null && ! $this->isUnboundedSqliteVarchar($definition['type'])) {
+            throw new RuntimeException("The patients.{$columnName} column length could not be verified; manual schema review is required.");
+        }
+
+        if ($definition['length'] !== null && $definition['length'] < $minimumLength) {
+            throw new RuntimeException("The patients.{$columnName} column must support at least {$minimumLength} characters; manual schema review is required.");
+        }
+    }
+
+    private function isUnboundedSqliteVarchar(string $type): bool
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            && in_array($type, ['varchar', 'character varying'], true);
+    }
+
+    /** @return array{type: string, length: int|null} */
+    private function characterColumnDefinition(string $columnName): array
+    {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            $column = DB::selectOne(
+                'SELECT DATA_TYPE AS data_type, CHARACTER_MAXIMUM_LENGTH AS character_length FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                ['patients', $columnName],
+            );
+
+            if ($column === null) {
+                throw new RuntimeException("The patients.{$columnName} column metadata is unavailable; manual schema review is required.");
+            }
+
+            return [
+                'type' => strtolower((string) $column->data_type),
+                'length' => $column->character_length === null ? null : (int) $column->character_length,
+            ];
+        }
+
+        if ($driver === 'sqlite') {
+            $column = collect(DB::select('PRAGMA table_info(patients)'))
+                ->first(fn (object $column): bool => $column->name === $columnName);
+
+            if ($column === null) {
+                throw new RuntimeException("The patients.{$columnName} column metadata is unavailable; manual schema review is required.");
+            }
+
+            $declaredType = strtolower(trim((string) $column->type));
+            if (in_array($declaredType, ['varchar', 'character varying'], true)) {
+                return [
+                    'type' => $declaredType,
+                    'length' => null,
+                ];
+            }
+
+            if (preg_match('/^(varchar|character varying)\s*\(\s*(\d+)\s*\)$/', $declaredType, $matches) === 1) {
+                return [
+                    'type' => $matches[1],
+                    'length' => (int) $matches[2],
+                ];
+            }
+
+            return [
+                'type' => $declaredType,
+                'length' => null,
+            ];
+        }
+
+        throw new RuntimeException("Column definition verification is unsupported for the {$driver} database driver.");
     }
 };

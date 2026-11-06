@@ -1,0 +1,179 @@
+name: Build cPanel release package
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or commit SHA to build
+        required: true
+        default: hardening
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Validate and package selected revision
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out selected revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Reject environment and Laravel configuration caches
+        run: |
+          test ! -f .env
+          test ! -f bootstrap/cache/config.php
+          test ! -f public/hot
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_mysql, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Verify PHP and locked production platform
+        run: |
+          php --version
+          php -r 'foreach (["pdo_mysql", "intl", "mbstring", "dom", "fileinfo", "openssl", "xml", "zip"] as $extension) { if (! extension_loaded($extension)) { fwrite(STDERR, "Missing PHP extension: {$extension}\n"); exit(1); } }'
+          composer validate --strict --no-check-publish
+          composer check-platform-reqs --lock
+
+      - name: Audit and install locked PHP dependencies
+        run: |
+          composer audit --locked
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install locked frontend dependencies
+        run: npm ci
+
+      - name: Audit frontend dependencies
+        run: npm audit
+
+      - name: Require the approved New Visit source entry
+        run: |
+          grep -Fq "label: 'New Visit'" resources/js/Layouts/AuthenticatedLayout.jsx
+          grep -Fq "route: 'admin.visits.create'" resources/js/Layouts/AuthenticatedLayout.jsx
+          grep -Fq "permission: 'visits.create'" resources/js/Layouts/AuthenticatedLayout.jsx
+
+      - name: Build fresh frontend assets
+        run: |
+          rm -rf public/build public/hot
+          npm run build
+
+      - name: Verify Vite manifest, assets, and Bengali font
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest_path = Path("public/build/manifest.json")
+          if not manifest_path.is_file():
+              raise SystemExit("Vite manifest is missing")
+
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          required_entries = {"resources/js/app.jsx", "resources/css/app.css"}
+          missing_entries = required_entries - manifest.keys()
+          if missing_entries:
+              raise SystemExit(f"Missing Vite entries: {sorted(missing_entries)}")
+
+          for key in required_entries:
+              if not manifest[key].get("isEntry"):
+                  raise SystemExit(f"Vite entry is not marked as an entry point: {key}")
+
+          referenced_files = set()
+          for entry in manifest.values():
+              for field in ("file", "css", "assets"):
+                  value = entry.get(field)
+                  if isinstance(value, str):
+                      referenced_files.add(value)
+                  elif isinstance(value, list):
+                      referenced_files.update(item for item in value if isinstance(item, str))
+
+          missing_files = [path for path in sorted(referenced_files) if not (Path("public/build") / path).is_file()]
+          if missing_files:
+              raise SystemExit(f"Manifest references missing files: {missing_files}")
+
+          manifest_keys = set(manifest)
+          missing_imports = [
+              dependency
+              for entry in manifest.values()
+              for field in ("imports", "dynamicImports")
+              for dependency in entry.get(field, [])
+              if dependency not in manifest_keys
+          ]
+          if missing_imports:
+              raise SystemExit(f"Manifest references missing entries: {sorted(set(missing_imports))}")
+
+          if not Path("public/fonts/NotoSansBengali-Regular.ttf").is_file():
+              raise SystemExit("Required Bengali font source is missing")
+
+          layout_entries = [entry for entry in manifest.values() if entry.get("name") == "AuthenticatedLayout"]
+          if len(layout_entries) != 1:
+              raise SystemExit("AuthenticatedLayout bundle is missing or ambiguous")
+
+          layout_bundle = (Path("public/build") / layout_entries[0]["file"]).read_text(encoding="utf-8")
+          for text in ("New Visit", "admin.visits.create", "visits.create"):
+              if text not in layout_bundle:
+                  raise SystemExit(f"Fresh AuthenticatedLayout bundle is missing: {text}")
+
+          print(f"Verified {len(manifest)} manifest entries and {len(referenced_files)} referenced files")
+          PY
+
+      - name: Run PHPUnit with isolated SQLite configuration
+        run: php artisan test --compact
+        env:
+          APP_ENV: testing
+          APP_DEBUG: 'false'
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          DB_URL: ''
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          MAIL_MAILER: array
+          FILESYSTEM_DISK: local
+
+      - name: Install production-only PHP dependencies
+        run: |
+          rm -f bootstrap/cache/*.php
+          rm -rf vendor
+          composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader --no-scripts
+          composer check-platform-reqs --no-dev
+
+      - name: Generate production package manifests
+        run: php artisan package:discover --ansi
+        env:
+          APP_ENV: production
+          APP_DEBUG: 'false'
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          DB_URL: ''
+
+      - name: Create portable cPanel package and checksum
+        run: bash scripts/package-cpanel-release.sh
+
+      - name: Upload cPanel release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpanel-release-${{ github.sha }}
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
