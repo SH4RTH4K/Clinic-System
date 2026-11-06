@@ -10,9 +10,9 @@ import { useState } from 'react';
 export default function Index({ foodRestrictions }) {
     const { auth = {} } = usePage().props;
     const permissions = auth.permissions || [];
-    const canCreate = permissions.includes('settings.create');
-    const canUpdate = permissions.includes('settings.update');
-    const canDelete = permissions.includes('settings.delete');
+    const canCreate = permissions.includes('food_restrictions.create') || permissions.includes('settings.create');
+    const canUpdate = permissions.includes('food_restrictions.update') || permissions.includes('settings.update');
+    const canDelete = permissions.includes('food_restrictions.delete') || permissions.includes('settings.delete');
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const confirmDelete = () => {

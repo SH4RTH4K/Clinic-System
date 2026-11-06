@@ -37,6 +37,8 @@ class DatabaseSeeder extends Seeder
             'prescription_options' => ['view', 'create', 'update', 'delete'],
             'clinic_settings' => ['view', 'update'],
             'general_settings' => ['view', 'create', 'update', 'delete'],
+            'advice_items' => ['view', 'create', 'update', 'delete'],
+            'food_restrictions' => ['view', 'create', 'update', 'delete'],
             'patient_config' => ['view', 'create', 'update', 'order', 'delete'],
             'symptom_medicine_map' => ['review'],
         ];

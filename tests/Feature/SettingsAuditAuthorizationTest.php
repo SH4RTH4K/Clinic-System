@@ -199,6 +199,46 @@ class SettingsAuditAuthorizationTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_advice_item_create_permission_does_not_grant_food_restriction_creation(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('advice_items.create');
+        $doctor = $this->userWithRole('Doctor');
+
+        $this->actingAs($doctor)
+            ->post(route('admin.advice_items.store'), [
+                'text_en' => 'Take rest',
+                'text_bn' => 'বিশ্রাম নিন',
+            ])
+            ->assertRedirect(route('admin.advice_items.index'));
+
+        $this->actingAs($doctor)
+            ->post(route('admin.food_restrictions.store'), [
+                'text_en' => 'Avoid smoke',
+                'text_bn' => 'ধূমপান এড়িয়ে চলুন',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_food_restriction_create_permission_does_not_grant_advice_item_creation(): void
+    {
+        Role::findByName('Doctor')->givePermissionTo('food_restrictions.create');
+        $doctor = $this->userWithRole('Doctor');
+
+        $this->actingAs($doctor)
+            ->post(route('admin.food_restrictions.store'), [
+                'text_en' => 'Avoid smoke',
+                'text_bn' => 'ধূমপান এড়িয়ে চলুন',
+            ])
+            ->assertRedirect(route('admin.food_restrictions.index'));
+
+        $this->actingAs($doctor)
+            ->post(route('admin.advice_items.store'), [
+                'text_en' => 'Take rest',
+                'text_bn' => 'বিশ্রাম নিন',
+            ])
+            ->assertForbidden();
+    }
+
     public function test_symptom_medicine_map_import_requires_create_permission(): void
     {
         Role::findByName('Doctor')->givePermissionTo('symptom_medicine_map.view');

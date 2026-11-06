@@ -184,30 +184,24 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.update'])
 Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.delete'])
     ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['destroy']));
 
-// Advice and food restriction changes require their matching settings permission.
-Route::middleware(['auth', 'permission:settings.create'])
-    ->group(function () {
-        Route::resource('advice_items', AdviceItemController::class)->only(['create', 'store']);
-        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['create', 'store']);
-    });
+// Keep shared settings permissions as a compatibility path for existing role assignments.
+Route::middleware(['auth', 'permission:advice_items.create|settings.create'])
+    ->group(fn () => Route::resource('advice_items', AdviceItemController::class)->only(['create', 'store']));
+Route::middleware(['auth', 'permission:advice_items.update|settings.update'])
+    ->group(fn () => Route::resource('advice_items', AdviceItemController::class)->only(['edit', 'update']));
+Route::middleware(['auth', 'permission:advice_items.delete|settings.delete'])
+    ->group(fn () => Route::resource('advice_items', AdviceItemController::class)->only(['destroy']));
+Route::middleware(['auth', 'permission:advice_items.view|settings.view'])
+    ->group(fn () => Route::resource('advice_items', AdviceItemController::class)->only(['index', 'show']));
 
-Route::middleware(['auth', 'permission:settings.update'])
-    ->group(function () {
-        Route::resource('advice_items', AdviceItemController::class)->only(['edit', 'update']);
-        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['edit', 'update']);
-    });
-
-Route::middleware(['auth', 'permission:settings.delete'])
-    ->group(function () {
-        Route::resource('advice_items', AdviceItemController::class)->only(['destroy']);
-        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['destroy']);
-    });
-
-Route::middleware(['auth', 'permission:settings.view'])
-    ->group(function () {
-        Route::resource('advice_items', AdviceItemController::class)->only(['index', 'show']);
-        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['index', 'show']);
-    });
+Route::middleware(['auth', 'permission:food_restrictions.create|settings.create'])
+    ->group(fn () => Route::resource('food_restrictions', FoodRestrictionController::class)->only(['create', 'store']));
+Route::middleware(['auth', 'permission:food_restrictions.update|settings.update'])
+    ->group(fn () => Route::resource('food_restrictions', FoodRestrictionController::class)->only(['edit', 'update']));
+Route::middleware(['auth', 'permission:food_restrictions.delete|settings.delete'])
+    ->group(fn () => Route::resource('food_restrictions', FoodRestrictionController::class)->only(['destroy']));
+Route::middleware(['auth', 'permission:food_restrictions.view|settings.view'])
+    ->group(fn () => Route::resource('food_restrictions', FoodRestrictionController::class)->only(['index', 'show']));
 
 // Reports
 Route::middleware([

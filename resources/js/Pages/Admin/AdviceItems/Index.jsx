@@ -10,9 +10,9 @@ import { useState } from 'react';
 export default function Index({ adviceItems }) {
     const { auth = {} } = usePage().props;
     const permissions = auth.permissions || [];
-    const canCreate = permissions.includes('settings.create');
-    const canUpdate = permissions.includes('settings.update');
-    const canDelete = permissions.includes('settings.delete');
+    const canCreate = permissions.includes('advice_items.create') || permissions.includes('settings.create');
+    const canUpdate = permissions.includes('advice_items.update') || permissions.includes('settings.update');
+    const canDelete = permissions.includes('advice_items.delete') || permissions.includes('settings.delete');
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const confirmDelete = () => {

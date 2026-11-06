@@ -66,6 +66,14 @@ class RolePermissionManagementTest extends TestCase
                         'general_settings.update',
                         'general_settings.create',
                         'general_settings.delete',
+                        'advice_items.view',
+                        'advice_items.create',
+                        'advice_items.update',
+                        'advice_items.delete',
+                        'food_restrictions.view',
+                        'food_restrictions.create',
+                        'food_restrictions.update',
+                        'food_restrictions.delete',
                         'patient_config.view',
                         'patient_config.create',
                         'patient_config.update',
@@ -74,7 +82,7 @@ class RolePermissionManagementTest extends TestCase
                         'system_health.manage',
                     ];
 
-                    return $catalog->count() === 91
+                    return $catalog->count() === 99
                         && $catalog->contains('name', 'patients.view')
                         && collect($missingCatalogEntries)->every(fn (string $permissionName): bool => $catalog->contains('name', $permissionName));
                 }));

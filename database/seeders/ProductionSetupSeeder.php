@@ -33,7 +33,11 @@ class ProductionSetupSeeder extends Seeder
             }
 
             app(PermissionRegistrar::class)->forgetCachedPermissions();
-            foreach (['prescription_options.create', 'prescription_options.delete'] as $permission) {
+            foreach ([
+                'prescription_options.create', 'prescription_options.delete',
+                'advice_items.view', 'advice_items.create', 'advice_items.update', 'advice_items.delete',
+                'food_restrictions.view', 'food_restrictions.create', 'food_restrictions.update', 'food_restrictions.delete',
+            ] as $permission) {
                 Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
             }
 
