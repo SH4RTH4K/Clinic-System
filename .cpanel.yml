@@ -1,4 +1,6 @@
 ---
 deployment:
   tasks:
+    - /bin/cp database/migrations/2026_11_03_173145_create_visit_drafts_table.php /home/jbhomio/private/database/migrations/2026_11_03_173145_create_visit_drafts_table.php
+    - /bin/cp database/migrations/2026_11_03_175934_create_visit_amendments_table.php /home/jbhomio/private/database/migrations/2026_11_03_175934_create_visit_amendments_table.php
     - /bin/bash deploy/cpanel/initialize.sh
