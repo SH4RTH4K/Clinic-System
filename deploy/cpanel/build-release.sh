@@ -35,8 +35,22 @@ for candidate in /opt/cpanel/composer/bin/composer /usr/local/bin/composer /usr/
     if [[ -f "$candidate" ]]; then composer_binary="$candidate"; break; fi
 done
 if [[ -z "$composer_binary" ]]; then
-    printf '%s\n' 'The host must enable Composer for cPanel Git deployment.' >&2
-    exit 1
+    command -v curl >/dev/null
+    tooling_directory="$release_base/tooling"
+    mkdir -p "$tooling_directory"
+    composer_installer="$(mktemp "$tooling_directory/composer-setup-XXXXXXXX.php")"
+    curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+        --max-time 60 https://getcomposer.org/installer --output "$composer_installer"
+    installer_signature="$(curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location --max-time 60 https://composer.github.io/installer.sig)"
+    installer_checksum="$("$php_binary" -r 'echo hash_file("sha384", $argv[1]);' "$composer_installer")"
+    if [[ ! "$installer_signature" =~ ^[[:xdigit:]]{96}$ ]] || [[ "$installer_signature" != "$installer_checksum" ]]; then
+        rm -f -- "$composer_installer"
+        printf '%s\n' 'Composer installer signature verification failed.' >&2
+        exit 1
+    fi
+    "$php_binary" "$composer_installer" --2 --quiet --install-dir="$tooling_directory" --filename=composer.phar
+    rm -f -- "$composer_installer"
+    composer_binary="$tooling_directory/composer.phar"
 fi
 
 node_binary=''
