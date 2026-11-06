@@ -62,7 +62,7 @@ return new class extends Migration
         }
 
         foreach (['created_at', 'updated_at'] as $column) {
-            if (! $columns[$column]['nullable'] || $columns[$column]['default'] !== null) {
+            if (! $columns[$column]['nullable'] || ! in_array($columns[$column]['default'], [null, 'NULL'], true)) {
                 throw new RuntimeException("The existing visit_amendments.{$column} column has incompatible nullability or default settings.");
             }
         }
