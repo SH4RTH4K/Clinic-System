@@ -113,7 +113,7 @@ installed_private=()
 installed_public=()
 maintenance_started=0
 deployment_complete=0
-artisan() { (cd "$private_path" && "$php_binary" artisan "$@" --no-interaction); }
+artisan() { (cd "$private_path" && "$php_binary" "$repository_root/deploy/cpanel/artisan.php" "$@" --no-interaction); }
 
 cleanup() {
     result=$?
