@@ -1,5 +1,4 @@
 ---
 deployment:
   tasks:
-    - /bin/bash deploy/cpanel/build-release.sh
-    - /bin/bash deploy/cpanel/install-files.sh
+    - /bin/bash deploy/cpanel/initialize.sh
