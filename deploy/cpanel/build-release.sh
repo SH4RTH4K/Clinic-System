@@ -38,19 +38,17 @@ if [[ -z "$composer_binary" ]]; then
     command -v curl >/dev/null
     tooling_directory="$release_base/tooling"
     mkdir -p "$tooling_directory"
-    composer_installer="$(mktemp "$tooling_directory/composer-setup-XXXXXXXX.php")"
+    composer_download="$(mktemp "$tooling_directory/composer-download-XXXXXXXX.phar")"
     curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
-        --max-time 60 https://getcomposer.org/installer --output "$composer_installer"
-    installer_signature="$(curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location --max-time 60 https://composer.github.io/installer.sig)"
-    installer_checksum="$("$php_binary" -r 'echo hash_file("sha384", $argv[1]);' "$composer_installer")"
-    if [[ ! "$installer_signature" =~ ^[[:xdigit:]]{96}$ ]] || [[ "$installer_signature" != "$installer_checksum" ]]; then
-        rm -f -- "$composer_installer"
-        printf '%s\n' 'Composer installer signature verification failed.' >&2
+        --max-time 60 https://getcomposer.org/download/2.11.1/composer.phar --output "$composer_download"
+    composer_checksum="$("$php_binary" -r 'echo hash_file("sha256", $argv[1]);' "$composer_download")"
+    if [[ "$composer_checksum" != '6f1b891e1d4927d62740276c540fb490e47689e19e102c49e8da849794882f8c' ]]; then
+        rm -f -- "$composer_download"
+        printf '%s\n' 'Composer archive checksum verification failed.' >&2
         exit 1
     fi
-    "$php_binary" "$composer_installer" --2 --quiet --install-dir="$tooling_directory" --filename=composer.phar
-    rm -f -- "$composer_installer"
     composer_binary="$tooling_directory/composer.phar"
+    mv "$composer_download" "$composer_binary"
 fi
 
 node_binary=''
