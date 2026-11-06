@@ -1,6 +1,7 @@
 """Exercise the cPanel updater with disposable files and a fake PHP process."""
 import fcntl
 import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -167,6 +168,43 @@ if [[ "$2" == up ]]; then rm -f storage/framework/maintenance.php storage/framew
                 self.assertIn('Historical migration changed or removed', result.stderr)
                 self.assertFalse((self.root / 'commands').exists())
                 self.assert_runtime_preserved()
+
+    @unittest.skipUnless(shutil.which('php'), 'PHP is required for the cPanel console integration test')
+    def test_cpanel_console_uses_public_html_and_preserves_command_arguments_and_exit_status(self):
+        self.write(self.account / 'private/vendor/autoload.php',
+                   '<?php namespace Symfony\\Component\\Console\\Input; class ArgvInput {}')
+        self.write(self.account / 'private/bootstrap/app.php', '''<?php
+return new class {
+    private string $publicPath;
+    public function usePublicPath(string $path): void { $this->publicPath = $path; }
+    public function handleCommand($input): int {
+        file_put_contents(getenv('CLINIC_TEST_CAPTURE'), json_encode([
+            'public_path' => $this->publicPath, 'arguments' => array_slice($_SERVER['argv'], 1),
+        ]));
+        return 17;
+    }
+};
+''')
+        capture = self.root / 'console.json'
+
+        result = subprocess.run(['php', str(SOURCE.with_name('artisan.php')),
+                                 'system-health:backup', 'database', '--no-interaction'],
+                                env=dict(self.env, CLINIC_TEST_CAPTURE=str(capture)), capture_output=True)
+
+        self.assertEqual(result.returncode, 17, result.stderr)
+        captured = json.loads(capture.read_text())
+        self.assertEqual(captured['public_path'], str(self.account / 'public_html'))
+        self.assertEqual(captured['arguments'], ['system-health:backup', 'database', '--no-interaction'])
+
+    @unittest.skipUnless(shutil.which('php'), 'PHP is required for the cPanel console integration test')
+    def test_cpanel_console_rejects_missing_public_directory_before_bootstrap(self):
+        shutil.rmtree(self.account / 'public_html')
+
+        result = subprocess.run(['php', str(SOURCE.with_name('artisan.php')), 'up'],
+                                env=self.env, capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('An initialized cPanel installation is required.', result.stderr)
 
     def test_existing_maintenance_and_concurrent_deployment_are_not_interrupted(self):
         self.write(self.account / 'private/storage/framework/down', 'manual maintenance')
