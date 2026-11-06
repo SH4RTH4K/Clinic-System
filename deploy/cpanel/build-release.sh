@@ -62,7 +62,7 @@ if [[ -z "$node_binary" ]]; then
 fi
 export PATH="$(dirname "$php_binary"):$(dirname "$node_binary"):$PATH"
 missing_tool=0
-for required_tool in npm rsync zip unzip sha256sum; do
+for required_tool in npm zip unzip sha256sum; do
     if ! command -v "$required_tool" >/dev/null; then
         printf 'Required deployment tool is unavailable: %s\n' "$required_tool" >&2
         missing_tool=1
@@ -96,6 +96,9 @@ test -f "$staged_release/public/build/manifest.json"
 test ! -e "$staged_release/private/.env"
 mkdir -p "$staged_release/private/storage/fonts"
 cp "$staged_release/public/fonts/NotoSansBengali-Regular.ttf" "$staged_release/private/storage/fonts/"
+chmod 755 "$staged_release"
+find "$staged_release/public" -type d -exec chmod 755 {} +
+find "$staged_release/public" -type f -exec chmod 644 {} +
 printf '%s\n' "$release_commit" > "$staged_release/VERIFIED_COMMIT"
 mv "$staged_release" "$release_path"
 printf 'Verified release staged: %s\n' "$release_name"
