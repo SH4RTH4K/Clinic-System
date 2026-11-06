@@ -74,12 +74,15 @@ if [[ -d "$source_directory/database/migrations" ]]; then
     copy_directory "$source_directory/database/migrations" "$package_directory/private/database/migrations"
 fi
 
-while IFS= read -r -d '' public_entry; do
-    case "${public_entry##*/}" in
-        build|hot|storage) continue ;;
-    esac
-    cp -a "$public_entry" "$package_directory/public/"
-done < <(find "$source_directory/public" -mindepth 1 -maxdepth 1 -print0)
+(
+    shopt -s dotglob nullglob
+    for public_entry in "$source_directory/public/"*; do
+        case "${public_entry##*/}" in
+            build|hot|storage) continue ;;
+        esac
+        cp -a "$public_entry" "$package_directory/public/"
+    done
+)
 copy_directory public/build "$package_directory/public/build"
 cp "$source_directory/deploy/cpanel/index.php" "$package_directory/public/index.php"
 copy_directory vendor "$package_directory/private/vendor"
