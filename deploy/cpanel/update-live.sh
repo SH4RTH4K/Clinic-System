@@ -46,11 +46,36 @@ test -f "$release_path/public/index.php"
 test ! -e "$release_path/private/.env"
 test ! -e "$release_path/public/storage"
 
-# Schema updates need a separately reviewed database deployment and backup.
-if ! diff -qr "$release_path/private/database/migrations" "$private_path/database/migrations" >/dev/null; then
-    printf '%s\n' 'Migration files changed. Review and apply the database upgrade before deploying these application files.' >&2
-    exit 1
-fi
+# Only checksum-reviewed, additive migrations may run automatically. Historical
+# edits and removals still require a separate database deployment.
+migration_paths=()
+reviewed_migrations="$repository_root/deploy/cpanel/reviewed-migrations.sha256"
+for migration in "$private_path"/database/migrations/*; do
+    [[ -e "$migration" ]] || continue
+    name="${migration##*/}"
+    if [[ ! -f "$migration" || -L "$migration" || ! -f "$release_path/private/database/migrations/$name" ]] ||
+       ! cmp -s "$migration" "$release_path/private/database/migrations/$name"; then
+        printf 'Historical migration changed or removed: %s. Review the database upgrade separately.\n' "$name" >&2
+        exit 1
+    fi
+done
+for migration in "$release_path"/private/database/migrations/*; do
+    [[ -e "$migration" ]] || continue
+    name="${migration##*/}"
+    if [[ ! -f "$migration" || -L "$migration" ]]; then
+        printf 'Unsupported migration entry: %s\n' "$name" >&2
+        exit 1
+    fi
+    [[ ! -e "$private_path/database/migrations/$name" ]] || continue
+    checksum="$(sha256sum "$migration")"
+    checksum="${checksum%% *}"
+    if [[ "$name" != *.php || ! -f "$reviewed_migrations" ]] ||
+       ! grep -Fxq -- "$checksum  $name" "$reviewed_migrations"; then
+        printf 'New migration needs review: %s. Add its checksum only after verifying a compatible upgrade.\n' "$name" >&2
+        exit 1
+    fi
+    migration_paths+=("$migration")
+done
 
 backup_path="$(mktemp -d "$backup_base/update-${release_commit:0:12}-XXXXXXXX")"
 staging_path="$(mktemp -d "$release_base/.update-XXXXXXXX")"
@@ -121,6 +146,14 @@ trap cleanup EXIT
 
 artisan down --render=errors::503 --retry=60 >/dev/null
 maintenance_started=1
+if (( ${#migration_paths[@]} )); then
+    printf '%s\n' 'Creating a private database backup before reviewed migrations.'
+    artisan system-health:backup database
+    for migration in "${migration_paths[@]}"; do
+        printf 'Applying reviewed migration: %s\n' "${migration##*/}"
+        artisan migrate --force --realpath --path="$migration"
+    done
+fi
 for entry in "${private_entries[@]}"; do
     if [[ -e "$private_path/$entry" ]]; then mv "$private_path/$entry" "$backup_path/private/"; fi
     installed_private+=("$entry")
