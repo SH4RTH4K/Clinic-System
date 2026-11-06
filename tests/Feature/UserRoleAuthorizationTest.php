@@ -136,6 +136,30 @@ class UserRoleAuthorizationTest extends TestCase
             ->assertStatus(200);
     }
 
+    public function test_super_admin_can_open_and_create_user_without_direct_user_permissions(): void
+    {
+        Role::query()->where('name', 'Super Admin')->firstOrFail()->syncPermissions([]);
+        $superAdmin = $this->userWithRole('Super Admin');
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.users.create'))
+            ->assertOk();
+
+        $this->actingAs($superAdmin)
+            ->post(route('admin.users.store'), [
+                'name' => 'Synthetic Staff Account',
+                'username' => 'synthetic_staff_account',
+                'email' => 'synthetic-staff@example.invalid',
+                'password' => 'SecureSynthetic1!',
+                'password_confirmation' => 'SecureSynthetic1!',
+                'roles' => ['Doctor'],
+                'is_active' => true,
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertDatabaseHas('users', ['username' => 'synthetic_staff_account']);
+    }
+
     // -------------------------------------------------------------------------
     // Test 8: Super Admin can create a user with Super Admin role
     // -------------------------------------------------------------------------

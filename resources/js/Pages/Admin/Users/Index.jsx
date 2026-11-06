@@ -4,14 +4,16 @@ import DataTable from '@/Components/DataTable';
 import StatusBadge from '@/Components/StatusBadge';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import usePermission from '@/Components/usePermission';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ users = [] }) {
     const can = usePermission();
-    const canCreate = can('users.create');
-    const canUpdate = can('users.update');
-    const canDelete = can('users.delete');
+    const { auth = {} } = usePage().props;
+    const isSuperAdmin = auth.roles?.includes('Super Admin') ?? false;
+    const canCreate = isSuperAdmin || can('users.create');
+    const canUpdate = isSuperAdmin || can('users.update');
+    const canDelete = isSuperAdmin || can('users.delete');
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const confirmDelete = () => {
@@ -98,7 +100,7 @@ export default function Index({ users = [] }) {
                 <PageHeader
                     title="Staff &amp; User Accounts"
                     subtitle="Manage clinic staff access, login credentials, and assigned roles"
-                    action={canCreate ? (
+                    actions={canCreate ? (
                         <Link
                             href={route('admin.users.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"

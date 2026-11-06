@@ -35,6 +35,22 @@ class DoctorControllerTest extends TestCase
         $this->assertDatabaseHas('doctors', ['name' => 'Synthetic Doctor', 'is_active' => true]);
     }
 
+    public function test_super_admin_without_doctor_permissions_can_open_and_create_doctor_profile(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole('Super Admin');
+
+        $this->actingAs($user)
+            ->get(route('admin.doctors.create'))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->post(route('admin.doctors.store'), ['name' => 'Synthetic Super Admin Doctor', 'is_active' => 'true'])
+            ->assertRedirect(route('admin.doctors.index'));
+
+        $this->assertDatabaseHas('doctors', ['name' => 'Synthetic Super Admin Doctor', 'is_active' => true]);
+    }
+
     public function test_unauthorized_user_cannot_create_or_edit_doctor_profiles(): void
     {
         $doctor = Doctor::query()->create(['name' => 'Protected Synthetic Doctor']);

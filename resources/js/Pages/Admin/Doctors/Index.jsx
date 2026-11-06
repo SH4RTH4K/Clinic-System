@@ -4,15 +4,17 @@ import DataTable from '@/Components/DataTable';
 import StatusBadge from '@/Components/StatusBadge';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import usePermission from '@/Components/usePermission';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ doctors = [] }) {
     const can = usePermission();
-    const canCreate = can('doctors.create');
-    const canView = can('doctors.view');
-    const canUpdate = can('doctors.update');
-    const canDelete = can('doctors.delete');
+    const { auth = {} } = usePage().props;
+    const isSuperAdmin = auth.roles?.includes('Super Admin') ?? false;
+    const canCreate = isSuperAdmin || can('doctors.create');
+    const canView = isSuperAdmin || can('doctors.view');
+    const canUpdate = isSuperAdmin || can('doctors.update');
+    const canDelete = isSuperAdmin || can('doctors.delete');
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const confirmDelete = () => {
@@ -142,7 +144,7 @@ export default function Index({ doctors = [] }) {
                 <PageHeader
                     title="Doctors"
                     subtitle="Manage clinic physicians, qualifications, chamber contact, and public profiles"
-                    action={canCreate ? (
+                    actions={canCreate ? (
                         <Link
                             href={route('admin.doctors.create')}
                             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-semibold shadow-xs transition"
