@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -10,9 +11,6 @@ use Symfony\Component\Process\Process;
 
 class GitRepositoryService
 {
-    /** @var list<string> */
-    private const SAFE_PULL_PREFIXES = ['app/', 'routes/'];
-
     private const SETTINGS_PATH = 'system/git-repository/settings.json';
 
     private const HISTORY_PATH = 'system/git-repository/history.json';
@@ -42,6 +40,7 @@ class GitRepositoryService
             'working_tree_changes' => 0,
             'working_tree_paths' => [],
             'pull_available' => false,
+            'deploy_available' => false,
         ];
 
         if (! $settings['valid']) {
@@ -60,6 +59,13 @@ class GitRepositoryService
         $snapshot['enabled'] = true;
 
         try {
+            if (! $this->repositoryExists()) {
+                $snapshot['status'] = 'Not connected';
+                $snapshot['message'] = 'Save repository settings to initialize Git metadata without replacing deployed files.';
+
+                return $snapshot;
+            }
+
             $this->assertRepositoryReady();
             $this->assertConfiguredRemote();
 
@@ -107,10 +113,11 @@ class GitRepositoryService
             $snapshot['message'] = $incomingCount > 0
                 ? $incomingCount.' fast-forward update(s) are available.'
                 : 'The deployed checkout is up to date.';
-            $snapshot['pull_available'] = $incomingCount > 0 && $this->incomingChangesAreSafe();
+            $snapshot['deploy_available'] = $incomingCount > 0 && $this->incomingChangesAreSafe();
+            $snapshot['pull_available'] = $snapshot['deploy_available'];
 
-            if ($incomingCount > 0 && ! $snapshot['pull_available']) {
-                $snapshot['message'] = 'This update includes migrations, frontend assets, dependencies, or deployment files. Use a reviewed release package instead.';
+            if ($incomingCount > 0 && ! $snapshot['deploy_available']) {
+                $snapshot['message'] = 'This update is blocked by a safety check. Review local changes, protected paths, migration settings, and compiled frontend assets before deploying.';
             }
         } catch (RuntimeException) {
             $snapshot['status'] = 'Unavailable';
@@ -139,7 +146,7 @@ class GitRepositoryService
         return $this->snapshot();
     }
 
-    /** @return array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, has_credential: bool, can_configure: bool, configuration_message: ?string} */
+    /** @return array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, has_credential: bool, run_migrations: bool, clear_cache: bool, health_check: bool, can_configure: bool, configuration_message: ?string} */
     public function settingsForPage(): array
     {
         $settings = $this->settings();
@@ -152,6 +159,9 @@ class GitRepositoryService
             'remote' => $settings['remote'],
             'authentication' => $settings['authentication'],
             'has_credential' => $settings['credential'] !== null,
+            'run_migrations' => $settings['run_migrations'],
+            'clear_cache' => $settings['clear_cache'],
+            'health_check' => $settings['health_check'],
             'can_configure' => $this->canConfigure(),
             'configuration_message' => $this->configurationMessage(),
         ];
@@ -196,15 +206,15 @@ class GitRepositoryService
         ], $validHistory);
     }
 
-    /** @param array{enabled: bool, branch: string, remote: string, repository_type: string, repository_url: string, authentication: string, credential: ?string, clear_credential: bool} $settings */
+    /** @param array{enabled: bool, branch: string, remote: string, repository_type: string, repository_url: string, authentication: string, credential: ?string, clear_credential: bool, run_migrations: bool, clear_cache: bool, health_check: bool} $settings */
     public function saveSettings(array $settings): void
     {
-        if (! app()->isProduction()) {
-            throw new RuntimeException('Repository settings can only be changed in production.');
+        if (! $this->supportsGitActions()) {
+            throw new RuntimeException('Git settings and actions are disabled in the automated testing environment.');
         }
 
-        if (! function_exists('proc_open') || ! file_exists(base_path('.git'))) {
-            throw new RuntimeException('Settings cannot be enabled because this server is not running a Git checkout with process execution available.');
+        if (! function_exists('proc_open')) {
+            throw new RuntimeException('The PHP runtime does not allow launching Git processes.');
         }
 
         $branchCheck = $this->executeGit(['check-ref-format', '--branch', $settings['branch']]);
@@ -216,8 +226,8 @@ class GitRepositoryService
             throw new RuntimeException('The configured Git remote name is invalid.');
         }
 
-        if ($settings['repository_type'] === 'private' && $settings['authentication'] !== 'personal_access_token') {
-            throw new RuntimeException('Private GitHub repositories require a personal access token.');
+        if ($settings['repository_type'] === 'private' && ! in_array($settings['authentication'], ['personal_access_token', 'ssh_deploy_key'], true)) {
+            throw new RuntimeException('Private GitHub repositories require a personal access token or SSH deploy key.');
         }
 
         if ($settings['authentication'] === 'none' && $settings['repository_type'] === 'private') {
@@ -235,9 +245,17 @@ class GitRepositoryService
             throw new RuntimeException('Enter a personal access token before saving this authentication method.');
         }
 
-        $this->assertRepositoryReady();
+        if ($settings['authentication'] === 'ssh_deploy_key' && ($credential === null || preg_match('#\Agit@github\.com:#i', $settings['repository_url']) !== 1)) {
+            throw new RuntimeException('SSH deploy-key authentication requires a key and a git@github.com repository URL.');
+        }
+
         if ($settings['enabled']) {
-            $this->assertConfiguredRemote($settings);
+            if ($this->repositoryExists()) {
+                $this->assertRepositoryReady();
+                $this->assertConfiguredRemote($settings);
+            } else {
+                $this->initializeRepository($settings, $credential);
+            }
         }
 
         $this->writeSettings([
@@ -248,6 +266,9 @@ class GitRepositoryService
             'remote' => $settings['remote'],
             'authentication' => $settings['authentication'],
             'credential' => $credential,
+            'run_migrations' => (bool) $settings['run_migrations'],
+            'clear_cache' => (bool) $settings['clear_cache'],
+            'health_check' => (bool) $settings['health_check'],
         ]);
     }
 
@@ -278,20 +299,38 @@ class GitRepositoryService
                 $snapshot = $this->check();
                 $targetCommit = $snapshot['remote_commit'];
                 $commitsApplied = (int) $snapshot['incoming_commits'];
+                $incomingMigrations = $this->incomingChangesContainMigrations();
 
-                if ($snapshot['status'] !== 'Update available' || ! $snapshot['pull_available']) {
+                if ($snapshot['status'] !== 'Update available' || ! $snapshot['deploy_available']) {
                     throw new RuntimeException((string) $snapshot['message']);
                 }
 
                 $this->runGit(['merge', '--ff-only', $this->remoteTrackingBranch()]);
+                $checks = ['Clean tracked checkout', 'Untracked files preserved', 'Approved GitHub URL', 'Fast-forward only'];
+
+                if ($incomingMigrations && $this->settings()['run_migrations']) {
+                    $this->runArtisan(['migrate', '--force']);
+                    $checks[] = 'Forward migrations completed';
+                }
+
+                if ($this->settings()['clear_cache']) {
+                    $this->runArtisan(['optimize:clear']);
+                    $checks[] = 'Application caches cleared';
+                }
+
+                if ($this->settings()['health_check']) {
+                    $this->healthCheck();
+                    $checks[] = 'Database health check passed';
+                }
+
                 $this->recordHistory([
                     'status' => 'completed',
                     'branch' => $this->branch(),
                     'previous_commit' => $previousCommit,
                     'target_commit' => (string) $targetCommit,
                     'commits_applied' => $commitsApplied,
-                    'change' => 'Fast-forward backend update',
-                    'checks' => ['Clean checkout', 'Approved repository URL', 'Fast-forward only', 'Backend PHP allowlist'],
+                    'change' => 'Fast-forward repository update',
+                    'checks' => $checks,
                     'finished_at' => now()->toISOString(),
                 ]);
 
@@ -318,7 +357,7 @@ class GitRepositoryService
 
     private function operationsEnabled(): bool
     {
-        return app()->isProduction()
+        return $this->supportsGitActions()
             && $this->settings()['valid']
             && $this->settings()['enabled']
             && function_exists('proc_open');
@@ -326,8 +365,8 @@ class GitRepositoryService
 
     private function assertOperationsAllowed(): void
     {
-        if (! app()->isProduction()) {
-            throw new RuntimeException('Git-changing actions are disabled outside production.');
+        if (! $this->supportsGitActions()) {
+            throw new RuntimeException('Git settings and actions are disabled in the automated testing environment.');
         }
 
         if (! $this->settings()['valid'] || ! $this->settings()['enabled']) {
@@ -341,7 +380,7 @@ class GitRepositoryService
 
     private function assertRepositoryReady(): void
     {
-        if (! file_exists(base_path('.git'))) {
+        if (! file_exists(base_path('.git')) || is_link(base_path('.git'))) {
             throw new RuntimeException('This deployed installation is not a full Git checkout.');
         }
 
@@ -350,6 +389,39 @@ class GitRepositoryService
 
         if ($root === false || $applicationRoot === false || $root !== $applicationRoot) {
             throw new RuntimeException('Git repository root does not match the Laravel application directory.');
+        }
+    }
+
+    private function repositoryExists(): bool
+    {
+        return file_exists(base_path('.git'));
+    }
+
+    /** @param array<string, mixed> $settings */
+    private function initializeRepository(array $settings, ?string $credential): void
+    {
+        $gitPath = base_path('.git');
+
+        if (file_exists($gitPath) || is_link($gitPath)) {
+            throw new RuntimeException('Existing Git metadata could not be safely verified.');
+        }
+
+        $this->runGit(['init', '--quiet']);
+
+        try {
+            $this->runGit(['remote', 'add', $settings['remote'], $settings['repository_url']]);
+            $this->runGit([
+                'fetch', '--no-tags', '--no-recurse-submodules', '--', $settings['repository_url'],
+                '+refs/heads/'.$settings['branch'].':refs/remotes/'.$settings['remote'].'/'.$settings['branch'],
+            ], $this->authenticationEnvironmentFor($settings['authentication'], $credential));
+            $trackingRef = 'refs/remotes/'.$settings['remote'].'/'.$settings['branch'];
+            $this->runGit(['branch', '--force', $settings['branch'], $trackingRef]);
+            $this->runGit(['symbolic-ref', 'HEAD', 'refs/heads/'.$settings['branch']]);
+            $this->runGit(['reset', '--mixed', $trackingRef]);
+            $this->assertRepositoryReady();
+            $this->assertConfiguredRemote($settings);
+        } catch (\Throwable) {
+            throw new RuntimeException('Git metadata setup failed without checking out or replacing application files. Review server Git support and repository settings before retrying.');
         }
     }
 
@@ -399,7 +471,7 @@ class GitRepositoryService
     /** @return list<string> */
     private function workingTreeChanges(): array
     {
-        $output = $this->runGit(['status', '--porcelain', '--untracked-files=all']);
+        $output = $this->runGit(['status', '--porcelain', '--untracked-files=no']);
 
         return array_values(array_filter(preg_split('/\R/', trim($output)) ?: []));
     }
@@ -415,25 +487,162 @@ class GitRepositoryService
 
         foreach ($changes as $change) {
             $parts = explode("\t", $change, 2);
-            if (count($parts) !== 2 || ! in_array($parts[0], ['A', 'M'], true)) {
+            if (count($parts) !== 2 || ! in_array($parts[0], ['A', 'M', 'D'], true)) {
                 return false;
             }
 
             $path = $parts[1];
-            $safePath = false;
-            foreach (self::SAFE_PULL_PREFIXES as $prefix) {
-                if (str_starts_with($path, $prefix) && str_ends_with($path, '.php')) {
-                    $safePath = true;
-                    break;
-                }
+            if ($this->isProtectedDeploymentPath($path)) {
+                return false;
+            }
+        }
+
+        $rawChanges = $this->runGit(['diff', '--raw', '--no-renames', 'HEAD', $this->remoteTrackingBranch()]);
+        foreach (array_filter(preg_split('/\R/', trim($rawChanges)) ?: []) as $rawChange) {
+            if (preg_match('/\A:([0-7]{6}) ([0-7]{6}) [a-f0-9]+ [a-f0-9]+ ([A-Z])\t.+\z/i', $rawChange, $matches) !== 1) {
+                return false;
             }
 
-            if (! $safePath) {
+            $newMode = $matches[2];
+            $status = $matches[3];
+            if (($status === 'D' && $newMode !== '000000') || ($status !== 'D' && ! in_array($newMode, ['100644', '100755'], true))) {
+                return false;
+            }
+        }
+
+        return $this->incomingFrontendBuildIsValid()
+            && (! $this->incomingChangesContainMigrations()
+                || ($this->settings()['run_migrations'] && $this->incomingMigrationsAreForwardOnly()));
+    }
+
+    private function incomingFrontendBuildIsValid(): bool
+    {
+        $changedPaths = preg_split('/\R/', trim($this->runGit([
+            'diff', '--name-only', 'HEAD', $this->remoteTrackingBranch(), '--',
+            'resources/js', 'resources/css', 'vite.config.js', 'package.json', 'package-lock.json',
+        ]))) ?: [];
+
+        if ($changedPaths === []) {
+            return true;
+        }
+
+        $manifestPath = 'public/build/manifest.json';
+        $manifestChanges = preg_split('/\R/', trim($this->runGit([
+            'diff', '--name-only', 'HEAD', $this->remoteTrackingBranch(), '--', $manifestPath,
+        ]))) ?: [];
+
+        if (! in_array($manifestPath, $manifestChanges, true)) {
+            return false;
+        }
+
+        $manifestResult = $this->executeGit(['show', $this->remoteTrackingBranch().':'.$manifestPath]);
+        if ($manifestResult['code'] !== 0) {
+            return false;
+        }
+
+        try {
+            $manifest = json_decode($manifestResult['output'], true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (! is_array($manifest) || $manifest === []) {
+            return false;
+        }
+
+        foreach ($manifest as $entry) {
+            if (! is_array($entry)) {
+                return false;
+            }
+
+            $assets = array_filter(array_merge(
+                [is_string($entry['file'] ?? null) ? $entry['file'] : null],
+                is_array($entry['css'] ?? null) ? $entry['css'] : [],
+                is_array($entry['assets'] ?? null) ? $entry['assets'] : [],
+            ), static fn (mixed $asset): bool => is_string($asset));
+
+            foreach ($assets as $asset) {
+                if (str_contains($asset, '..') || str_starts_with($asset, '/')) {
+                    return false;
+                }
+
+                if ($this->executeGit(['cat-file', '-e', $this->remoteTrackingBranch().':public/build/'.$asset])['code'] !== 0) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function isProtectedDeploymentPath(string $path): bool
+    {
+        $normalized = strtolower(str_replace('\\', '/', ltrim($path, '/')));
+        $basename = basename($normalized);
+
+        foreach (['.env', '.git/', 'storage/', 'public/storage/', 'bootstrap/cache/', 'vendor/', 'node_modules/'] as $protected) {
+            if ($normalized === rtrim($protected, '/') || str_starts_with($normalized, $protected)) {
+                return true;
+            }
+        }
+
+        if (str_starts_with($basename, '.env') && ! in_array($basename, ['.env.example', '.env.production.example'], true)) {
+            return true;
+        }
+
+        return str_ends_with($normalized, '.sqlite')
+            || str_ends_with($normalized, '.sql')
+            || in_array(pathinfo($basename, PATHINFO_EXTENSION), ['pem', 'key', 'p12', 'pfx'], true);
+    }
+
+    private function incomingChangesContainMigrations(): bool
+    {
+        $output = $this->runGit(['diff', '--name-only', 'HEAD', $this->remoteTrackingBranch(), '--', 'database/migrations']);
+
+        return trim($output) !== '';
+    }
+
+    private function incomingMigrationsAreForwardOnly(): bool
+    {
+        $output = $this->runGit(['diff', '--name-status', '--no-renames', 'HEAD', $this->remoteTrackingBranch(), '--', 'database/migrations']);
+        $changes = array_values(array_filter(preg_split('/\R/', trim($output)) ?: []));
+
+        if ($changes === []) {
+            return false;
+        }
+
+        foreach ($changes as $change) {
+            $parts = explode("\t", $change, 2);
+            if (count($parts) !== 2 || $parts[0] !== 'A' || ! str_ends_with($parts[1], '.php')) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /** @param list<string> $arguments */
+    private function runArtisan(array $arguments): void
+    {
+        $process = new Process(array_merge([PHP_BINARY, base_path('artisan')], $arguments), base_path(), [
+            'APP_ENV' => 'production',
+            'APP_DEBUG' => 'false',
+            'DB_URL' => '',
+        ], null, 300);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new RuntimeException('A configured post-deploy Artisan operation failed; inspect protected server logs before another deployment attempt.');
+        }
+    }
+
+    private function healthCheck(): void
+    {
+        try {
+            DB::connection()->select('SELECT 1');
+        } catch (\Throwable) {
+            throw new RuntimeException('The configured post-deploy database health check failed.');
+        }
     }
 
     /**
@@ -446,6 +655,8 @@ class GitRepositoryService
     private function executeGit(array $arguments, array $environment = []): array
     {
         $binary = trim((string) config('git_repository.binary', 'git'));
+        $temporaryKeyPath = $environment['CLINIC_GIT_TEMP_KEY_PATH'] ?? null;
+        unset($environment['CLINIC_GIT_TEMP_KEY_PATH']);
 
         if ($binary === '') {
             throw new RuntimeException('A Git executable is not configured.');
@@ -479,6 +690,15 @@ class GitRepositoryService
             ];
         } catch (\Throwable) {
             throw new RuntimeException('The Git executable could not be started.');
+        } finally {
+            $privateKeyDirectory = realpath(storage_path('app/private/git-repository'));
+            if (is_string($temporaryKeyPath)
+                && $privateKeyDirectory !== false
+                && str_starts_with($temporaryKeyPath, $privateKeyDirectory.DIRECTORY_SEPARATOR)
+                && is_file($temporaryKeyPath)
+                && ! is_link($temporaryKeyPath)) {
+                unlink($temporaryKeyPath);
+            }
         }
     }
 
@@ -491,34 +711,72 @@ class GitRepositoryService
         $result = $this->executeGit($arguments, $environment);
 
         if ($result['code'] !== 0) {
-            throw new RuntimeException('A Git operation failed. Check the private server logs and repository configuration.');
+            throw new RuntimeException($this->gitFailureMessage($arguments, $result));
         }
 
         return $result['output'];
     }
 
+    /** @param list<string> $arguments
+     * @param  array{code: int, output: string, error: string}  $result
+     */
+    private function gitFailureMessage(array $arguments, array $result): string
+    {
+        $diagnostic = strtolower($result['error'].' '.$result['output']);
+        $operation = match ($arguments[0] ?? '') {
+            'fetch' => 'GitHub connection check',
+            'remote' => 'Repository configuration check',
+            'rev-parse' => 'Git checkout check',
+            default => 'Git operation',
+        };
+
+        $reason = match (true) {
+            str_contains($diagnostic, 'ssl certificate problem'),
+            str_contains($diagnostic, 'certificate verify failed') => 'The server could not validate GitHub’s HTTPS certificate. Ask the hosting provider to check its CA certificates.',
+            str_contains($diagnostic, 'couldn’t find remote ref'),
+            str_contains($diagnostic, "couldn't find remote ref"),
+            str_contains($diagnostic, 'remote branch') && str_contains($diagnostic, 'not found') => 'The configured branch was not found on GitHub. Verify the branch name.',
+            str_contains($diagnostic, 'repository not found'),
+            str_contains($diagnostic, 'authentication failed'),
+            str_contains($diagnostic, 'could not read username') => 'GitHub did not allow access to this repository. Verify its visibility and authentication settings.',
+            str_contains($diagnostic, 'could not resolve host'),
+            str_contains($diagnostic, 'failed to connect'),
+            str_contains($diagnostic, 'connection timed out'),
+            str_contains($diagnostic, 'network is unreachable') => 'The server could not reach GitHub. Check outbound HTTPS and DNS access on this host.',
+            str_contains($diagnostic, 'dubious ownership'),
+            str_contains($diagnostic, 'safe.directory') => 'Git rejected the checkout directory. Ask the hosting provider to verify its ownership and safe-directory configuration.',
+            str_contains($diagnostic, 'permission denied'),
+            str_contains($diagnostic, 'could not lock'),
+            str_contains($diagnostic, 'access is denied') => 'The server could not access Git metadata. Check the application files’ ownership and permissions.',
+            ($arguments[0] ?? '') === 'rev-parse' => 'The application directory is not a readable Git checkout. A ZIP deployment or incomplete .git metadata can cause this. Ask the hosting administrator to verify or restore the full Git metadata; this page will not replace it.',
+            default => 'Check GitHub access, the configured branch, and server Git permissions. No application files were updated.',
+        };
+
+        return $operation.' failed. '.$reason;
+    }
+
     private function unavailableMessage(): string
     {
-        if (! app()->isProduction()) {
-            return 'Repository operations are intentionally disabled in local and test environments.';
+        if (! $this->supportsGitActions()) {
+            return 'Repository operations are intentionally disabled in the automated testing environment.';
         }
 
         if (! $this->settings()['valid'] || ! $this->settings()['enabled']) {
-            return 'Repository operations are disabled. Enable them from Repository settings in a production Git checkout.';
+            return 'Repository operations are disabled. Enable them from Repository settings in production.';
         }
 
         if (! function_exists('proc_open')) {
             return 'The PHP runtime cannot launch Git. Ask the hosting administrator whether process execution is available.';
         }
 
-        if (! file_exists(base_path('.git'))) {
-            return 'This cPanel release package has no .git directory. Use the verified release artifact deployment process for this installation.';
+        if (! $this->repositoryExists()) {
+            return 'Save enabled repository settings to initialize Git metadata without replacing deployed files.';
         }
 
         return 'The Git checkout, remote, or configured branch could not be verified.';
     }
 
-    /** @return array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, credential: ?string, valid: bool} */
+    /** @return array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, credential: ?string, run_migrations: bool, clear_cache: bool, health_check: bool, valid: bool} */
     private function settings(): array
     {
         if ($this->storedSettings !== null) {
@@ -533,13 +791,16 @@ class GitRepositoryService
             'remote' => (string) config('git_repository.remote', 'origin'),
             'authentication' => (string) config('git_repository.authentication', 'none'),
             'credential' => null,
+            'run_migrations' => (bool) config('git_repository.run_migrations', false),
+            'clear_cache' => (bool) config('git_repository.clear_cache', true),
+            'health_check' => (bool) config('git_repository.health_check', true),
             'valid' => true,
         ];
 
         if (! $this->isSafeRepositoryUrl($defaults['repository_url'])
             || ! preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $defaults['remote'])
             || ! in_array($defaults['repository_type'], ['public', 'private'], true)
-            || ! in_array($defaults['authentication'], ['none', 'personal_access_token'], true)) {
+            || ! in_array($defaults['authentication'], ['none', 'personal_access_token', 'ssh_deploy_key'], true)) {
             $defaults['enabled'] = false;
             $defaults['valid'] = false;
         }
@@ -565,7 +826,7 @@ class GitRepositoryService
             return $this->storedSettings = [...$defaults, 'enabled' => false, 'valid' => false];
         }
 
-        if (is_array($stored) && ! array_key_exists('repository_type', $stored)) {
+        if (is_array($stored)) {
             $stored = [...$defaults, ...$stored];
         }
 
@@ -573,7 +834,7 @@ class GitRepositoryService
             || ! is_bool($stored['enabled'] ?? null)
             || ! is_string($stored['branch'] ?? null)
             || strlen($stored['branch']) > 100
-            || preg_match('/\A[A-Za-z0-9._-]+\z/', $stored['branch']) !== 1
+            || preg_match('/\A[A-Za-z0-9._\/-]+\z/', $stored['branch']) !== 1
             || ! is_string($stored['repository_type'] ?? null)
             || ! in_array($stored['repository_type'], ['public', 'private'], true)
             || ! is_string($stored['repository_url'] ?? null)
@@ -581,10 +842,15 @@ class GitRepositoryService
             || ! is_string($stored['remote'] ?? null)
             || preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $stored['remote']) !== 1
             || ! is_string($stored['authentication'] ?? null)
-            || ! in_array($stored['authentication'], ['none', 'personal_access_token'], true)
+            || ! in_array($stored['authentication'], ['none', 'personal_access_token', 'ssh_deploy_key'], true)
+            || ! is_bool($stored['run_migrations'] ?? null)
+            || ! is_bool($stored['clear_cache'] ?? null)
+            || ! is_bool($stored['health_check'] ?? null)
             || ! (is_null($stored['credential'] ?? null) || is_string($stored['credential']))
-            || ($stored['repository_type'] === 'private' && $stored['authentication'] !== 'personal_access_token')
+            || ($stored['repository_type'] === 'private' && ! in_array($stored['authentication'], ['personal_access_token', 'ssh_deploy_key'], true))
             || ($stored['repository_type'] === 'private' && ! is_string($stored['credential'] ?? null))
+            || ($stored['authentication'] === 'personal_access_token' && ! is_string($stored['credential'] ?? null))
+            || ($stored['authentication'] === 'ssh_deploy_key' && (! is_string($stored['credential'] ?? null) || preg_match('#\Agit@github\.com:#i', $stored['repository_url']) !== 1))
             || ($stored['authentication'] === 'none' && ($stored['credential'] ?? null) !== null)) {
             return $this->storedSettings = [...$defaults, 'enabled' => false, 'valid' => false];
         }
@@ -605,11 +871,14 @@ class GitRepositoryService
             'remote' => $stored['remote'],
             'authentication' => $stored['authentication'],
             'credential' => $credential,
+            'run_migrations' => $stored['run_migrations'],
+            'clear_cache' => $stored['clear_cache'],
+            'health_check' => $stored['health_check'],
             'valid' => true,
         ];
     }
 
-    /** @param array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, credential: ?string} $settings */
+    /** @param array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, credential: ?string, run_migrations: bool, clear_cache: bool, health_check: bool} $settings */
     private function writeSettings(array $settings): void
     {
         $disk = Storage::disk('local');
@@ -685,26 +954,40 @@ class GitRepositoryService
 
     private function canConfigure(): bool
     {
-        return app()->isProduction()
+        return $this->supportsGitActions()
             && function_exists('proc_open')
-            && file_exists(base_path('.git'));
+            && $this->gitAvailable();
+    }
+
+    private function supportsGitActions(): bool
+    {
+        return app()->environment(['local', 'production']);
     }
 
     private function configurationMessage(): ?string
     {
-        if (! app()->isProduction()) {
-            return 'Settings and Git actions are disabled in local and test environments.';
+        if (! $this->supportsGitActions()) {
+            return 'Settings and Git actions are disabled in the automated testing environment.';
         }
 
         if (! function_exists('proc_open')) {
             return 'The PHP runtime does not allow launching Git processes.';
         }
 
-        if (! file_exists(base_path('.git'))) {
-            return 'This cPanel ZIP has no .git metadata. Git updates need a full Git checkout; the current ZIP deployment cannot update files from this page.';
+        if (! $this->gitAvailable()) {
+            return 'The hosting PHP runtime cannot start the Git executable. Ask the hosting administrator to confirm Git and process execution are available.';
         }
 
         return null;
+    }
+
+    private function gitAvailable(): bool
+    {
+        try {
+            return $this->executeGit(['--version'])['code'] === 0;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function branch(): string
@@ -727,11 +1010,41 @@ class GitRepositoryService
     {
         $settings = $this->settings();
 
-        if ($settings['authentication'] !== 'personal_access_token' || $settings['credential'] === null) {
+        return $this->authenticationEnvironmentFor($settings['authentication'], $settings['credential']);
+    }
+
+    /** @return array<string, string> */
+    private function authenticationEnvironmentFor(string $authentication, ?string $credential): array
+    {
+        if ($authentication === 'ssh_deploy_key' && $credential !== null) {
+            $directory = storage_path('app/private/git-repository');
+            File::ensureDirectoryExists($directory);
+            $directoryPath = realpath($directory);
+
+            if ($directoryPath === false || is_link($directory)) {
+                throw new RuntimeException('The private SSH key directory is unsafe.');
+            }
+
+            $keyPath = $directoryPath.DIRECTORY_SEPARATOR.'deploy-key-'.bin2hex(random_bytes(12));
+            if (file_put_contents($keyPath, $credential, LOCK_EX) === false || ! chmod($keyPath, 0600)) {
+                if (is_file($keyPath)) {
+                    unlink($keyPath);
+                }
+
+                throw new RuntimeException('The temporary SSH deploy key could not be protected.');
+            }
+
+            return [
+                'GIT_SSH_COMMAND' => 'ssh -i '.escapeshellarg($keyPath).' -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes',
+                'CLINIC_GIT_TEMP_KEY_PATH' => $keyPath,
+            ];
+        }
+
+        if ($authentication !== 'personal_access_token' || $credential === null) {
             return [];
         }
 
-        $authorization = base64_encode('x-access-token:'.$settings['credential']);
+        $authorization = base64_encode('x-access-token:'.$credential);
 
         return [
             'GIT_CONFIG_COUNT' => '1',
@@ -742,7 +1055,7 @@ class GitRepositoryService
 
     private function isSafeRepositoryUrl(string $url): bool
     {
-        return preg_match('#\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?\z#i', $url) === 1;
+        return preg_match('#\A(?:https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?|git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?)\z#i', $url) === 1;
     }
 
     /** @return list<array{hash: string, short: string, author: string, date: string, subject: string}> */

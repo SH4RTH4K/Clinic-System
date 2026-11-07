@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\GitRepositoryService;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +36,7 @@ class GitRepositoryTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_super_admin_can_view_repository_status_but_local_git_actions_are_disabled(): void
+    public function test_super_admin_can_view_repository_status_but_git_actions_are_disabled_in_testing(): void
     {
         $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
         $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
@@ -50,12 +52,15 @@ class GitRepositoryTest extends TestCase
                 ->where('repository.status', 'Disabled')
                 ->where('repository.pull_available', false)
                 ->where('settings.can_configure', false)
-                ->where('settings.configuration_message', 'Settings and Git actions are disabled in local and test environments.')
+                ->where('settings.configuration_message', 'Settings and Git actions are disabled in the automated testing environment.')
                 ->where('settings.branch', 'hardening')
+                ->where('settings.run_migrations', false)
+                ->where('settings.clear_cache', true)
+                ->where('settings.health_check', true)
                 ->has('history', 0));
     }
 
-    public function test_repository_check_is_rejected_outside_production_without_running_git(): void
+    public function test_repository_check_is_rejected_in_automated_tests_without_running_git(): void
     {
         $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
         $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
@@ -64,10 +69,63 @@ class GitRepositoryTest extends TestCase
             ->from(route('admin.git_repository.index'))
             ->post(route('admin.git_repository.check'))
             ->assertRedirect(route('admin.git_repository.index'))
-            ->assertSessionHas('error', 'Git-changing actions are disabled outside production.');
+            ->assertSessionHas('error', 'Git settings and actions are disabled in the automated testing environment.');
     }
 
-    public function test_repository_settings_cannot_be_saved_from_local_or_test_environment(): void
+    public function test_git_connection_failure_shows_safe_actionable_diagnostic_without_raw_process_output(): void
+    {
+        $service = app(GitRepositoryService::class);
+        $method = new \ReflectionMethod($service, 'gitFailureMessage');
+
+        $message = $method->invoke($service, ['fetch'], [
+            'code' => 128,
+            'output' => '',
+            'error' => "fatal: unable to access 'https://github.com/owner/repository.git': Could not resolve host: github.com; token=test-secret; /home/clinic/private",
+        ]);
+
+        $this->assertSame(
+            'GitHub connection check failed. The server could not reach GitHub. Check outbound HTTPS and DNS access on this host.',
+            $message,
+        );
+        $this->assertStringNotContainsString('test-secret', $message);
+        $this->assertStringNotContainsString('/home/clinic/private', $message);
+    }
+
+    public function test_missing_remote_branch_has_a_specific_safe_git_diagnostic(): void
+    {
+        $service = app(GitRepositoryService::class);
+        $method = new \ReflectionMethod($service, 'gitFailureMessage');
+
+        $message = $method->invoke($service, ['fetch'], [
+            'code' => 128,
+            'output' => '',
+            'error' => "fatal: couldn't find remote ref refs/heads/missing-branch",
+        ]);
+
+        $this->assertSame(
+            'GitHub connection check failed. The configured branch was not found on GitHub. Verify the branch name.',
+            $message,
+        );
+    }
+
+    public function test_git_checkout_failure_explains_that_valid_git_metadata_is_required(): void
+    {
+        $service = app(GitRepositoryService::class);
+        $method = new \ReflectionMethod($service, 'gitFailureMessage');
+
+        $message = $method->invoke($service, ['rev-parse', '--show-toplevel'], [
+            'code' => 128,
+            'output' => '',
+            'error' => 'fatal: not a git repository (or any of the parent directories): .git',
+        ]);
+
+        $this->assertSame(
+            'Git checkout check failed. The application directory is not a readable Git checkout. A ZIP deployment or incomplete .git metadata can cause this. Ask the hosting administrator to verify or restore the full Git metadata; this page will not replace it.',
+            $message,
+        );
+    }
+
+    public function test_repository_settings_cannot_be_saved_from_automated_testing_environment(): void
     {
         Storage::fake('local');
         $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
@@ -77,9 +135,26 @@ class GitRepositoryTest extends TestCase
             ->from(route('admin.git_repository.index'))
             ->post(route('admin.git_repository.settings'), $this->settingsPayload())
             ->assertRedirect(route('admin.git_repository.index'))
-            ->assertSessionHas('error', 'Repository settings can only be changed in production.');
+            ->assertSessionHas('error', 'Git settings and actions are disabled in the automated testing environment.');
 
         Storage::disk('local')->assertMissing('system/git-repository/settings.json');
+    }
+
+    public function test_super_admin_can_save_repository_settings_in_local_environment(): void
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+        Storage::fake('local');
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+        $this->actingAs($user)
+            ->withoutMiddleware(PreventRequestForgery::class)
+            ->from(route('admin.git_repository.index'))
+            ->post(route('admin.git_repository.settings'), $this->settingsPayload())
+            ->assertRedirect(route('admin.git_repository.index'))
+            ->assertSessionHas('success', 'Git Repository settings saved in private application storage.');
+
+        Storage::disk('local')->assertExists('system/git-repository/settings.json');
     }
 
     public function test_repository_settings_reject_invalid_branch_names(): void
@@ -108,6 +183,25 @@ class GitRepositoryTest extends TestCase
             ]))
             ->assertRedirect(route('admin.git_repository.index'))
             ->assertSessionHasErrors('repository_url')
+            ->assertSessionMissing('_old_input.credential');
+    }
+
+    public function test_repository_settings_accept_a_github_ssh_url_and_branch_path_syntax(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+        $this->actingAs($user)
+            ->from(route('admin.git_repository.index'))
+            ->post(route('admin.git_repository.settings'), $this->settingsPayload([
+                'branch' => 'release/clinic-2026',
+                'repository_type' => 'private',
+                'repository_url' => 'git@github.com:SH4RTH4K/Clinic-System.git',
+                'authentication' => 'ssh_deploy_key',
+                'credential' => "-----BEGIN OPENSSH PRIVATE KEY-----\nfake-test-key\n-----END OPENSSH PRIVATE KEY-----",
+            ]))
+            ->assertRedirect(route('admin.git_repository.index'))
+            ->assertSessionHas('error', 'Git settings and actions are disabled in the automated testing environment.')
             ->assertSessionMissing('_old_input.credential');
     }
 
@@ -178,6 +272,9 @@ class GitRepositoryTest extends TestCase
             'authentication' => 'none',
             'credential' => '',
             'clear_credential' => false,
+            'run_migrations' => false,
+            'clear_cache' => true,
+            'health_check' => true,
         ], $overrides);
     }
 }

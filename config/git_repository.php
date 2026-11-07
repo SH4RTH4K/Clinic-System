@@ -8,4 +8,7 @@ return [
     'repository_type' => env('GIT_REPOSITORY_TYPE', 'public'),
     'authentication' => env('GIT_REPOSITORY_AUTHENTICATION', 'none'),
     'binary' => env('GIT_REPOSITORY_BINARY', 'git'),
+    'run_migrations' => (bool) env('GIT_REPOSITORY_RUN_MIGRATIONS', false),
+    'clear_cache' => (bool) env('GIT_REPOSITORY_CLEAR_CACHE', true),
+    'health_check' => (bool) env('GIT_REPOSITORY_HEALTH_CHECK', true),
 ];

@@ -70,6 +70,9 @@ export default function GitRepository({ repository, settings, history = [] }) {
         authentication: settings.authentication,
         credential: '',
         clear_credential: false,
+        run_migrations: settings.run_migrations,
+        clear_cache: settings.clear_cache,
+        health_check: settings.health_check,
     });
 
     useEffect(() => {
@@ -82,8 +85,11 @@ export default function GitRepository({ repository, settings, history = [] }) {
             authentication: settings.authentication,
             credential: '',
             clear_credential: false,
+            run_migrations: settings.run_migrations,
+            clear_cache: settings.clear_cache,
+            health_check: settings.health_check,
         });
-    }, [settings.enabled, settings.branch, settings.remote, settings.repository_type, settings.repository_url, settings.authentication]);
+    }, [settings.enabled, settings.branch, settings.remote, settings.repository_type, settings.repository_url, settings.authentication, settings.run_migrations, settings.clear_cache, settings.health_check]);
 
     const run = (action) => {
         setBusy(true);
@@ -101,8 +107,43 @@ export default function GitRepository({ repository, settings, history = [] }) {
         });
     };
 
+    const testConnection = () => {
+        let checkStarted = false;
+        const checkRepository = () => {
+            checkStarted = true;
+            router.post(route('admin.git_repository.check'), {}, {
+                preserveScroll: true,
+                onFinish: () => setBusy(false),
+            });
+        };
+
+        setBusy(true);
+        form.post(route('admin.git_repository.settings'), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                form.setData('credential', '');
+                if (page.props.flash?.error) {
+                    setBusy(false);
+                    return;
+                }
+
+                checkRepository();
+            },
+            onError: () => setBusy(false),
+            onFinish: () => {
+                if (!checkStarted) {
+                    setBusy(false);
+                }
+            },
+        });
+    };
+
     const deployReviewedUpdate = () => {
-        if (window.confirm('Apply the reviewed fast-forward backend update? This action will not run migrations or change frontend assets.')) {
+        const migrationNotice = form.data.run_migrations
+            ? ' Forward database migrations are enabled and may change the production schema.'
+            : ' If incoming changes include migrations, deployment will be blocked.';
+
+        if (window.confirm(`Apply the reviewed fast-forward update to the deployed application?${migrationNotice} This action cannot roll back database changes.`)) {
             run('pull');
         }
     };
@@ -137,7 +178,7 @@ export default function GitRepository({ repository, settings, history = [] }) {
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-orange-600">Connection</p>
                             <h2 className="mt-1 text-lg font-semibold text-slate-900">Repository settings</h2>
-                            <p className="mt-1 text-sm text-slate-600">Configure the Clinic GitHub repository. Settings are stored privately; optional HTTPS access tokens are encrypted and never returned to the browser.</p>
+                            <p className="mt-1 text-sm text-slate-600">Configure the Clinic GitHub repository. Private tokens and deploy keys are encrypted and never returned to the browser.</p>
                         </div>
                         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${settings.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                             {settings.enabled ? 'Integration enabled' : 'Integration disabled'}
@@ -208,7 +249,7 @@ export default function GitRepository({ repository, settings, history = [] }) {
                                 className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-normal text-slate-800 disabled:bg-slate-100"
                             />
                             {form.errors.repository_url && <span className="mt-1 block text-xs text-rose-700">{form.errors.repository_url}</span>}
-                            <span className="mt-1 block font-normal text-slate-500">GitHub HTTPS URLs only. The URL must match the configured Git remote. This page never pushes to GitHub.</span>
+                            <span className="mt-1 block font-normal text-slate-500">Use a GitHub HTTPS URL or SSH clone URL. First-time setup adds private Git metadata only; it does not check out or replace application files.</span>
                         </label>
 
                         <div className="grid gap-3 md:grid-cols-2">
@@ -222,6 +263,7 @@ export default function GitRepository({ repository, settings, history = [] }) {
                                 >
                                     <option value="none">None (public repository)</option>
                                     <option value="personal_access_token">Personal access token</option>
+                                    <option value="ssh_deploy_key">SSH deploy key</option>
                                 </select>
                             </label>
                             <label className="block text-xs font-semibold text-slate-600">
@@ -232,12 +274,12 @@ export default function GitRepository({ repository, settings, history = [] }) {
                                     onChange={(event) => form.setData('credential', event.target.value)}
                                     disabled={!settings.can_configure || form.processing || form.data.authentication === 'none'}
                                     autoComplete="new-password"
-                                    maxLength={4096}
-                                    placeholder={settings.has_credential ? 'Saved securely; leave blank to keep it' : 'Required for private repositories'}
+                                    maxLength={10000}
+                                    placeholder={settings.has_credential ? 'Saved securely; leave blank to keep it' : form.data.authentication === 'ssh_deploy_key' ? 'Paste the private deploy key' : 'Required for private repositories'}
                                     className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-normal text-slate-800 disabled:bg-slate-100"
                                 />
                                 {form.errors.credential && <span className="mt-1 block text-xs text-rose-700">{form.errors.credential}</span>}
-                                <span className="mt-1 block font-normal text-slate-500">Encrypted using the application key; never returned to the browser. Keep APP_KEY unchanged.</span>
+                                <span className="mt-1 block font-normal text-slate-500">Encrypted using the application key. SSH also requires the host to already trust GitHub in known_hosts. Keep APP_KEY unchanged.</span>
                             </label>
                         </div>
 
@@ -256,14 +298,34 @@ export default function GitRepository({ repository, settings, history = [] }) {
 
                         {form.errors.authentication && <p className="text-xs text-rose-700">{form.errors.authentication}</p>}
 
+                        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                            {[
+                                ['run_migrations', 'Run migrations after deployment'],
+                                ['clear_cache', 'Clear and rebuild application cache'],
+                                ['health_check', 'Run a database health check'],
+                            ].map(([field, label]) => (
+                                <label key={field} className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.data[field]}
+                                        onChange={(event) => form.setData(field, event.target.checked)}
+                                        disabled={!settings.can_configure || form.processing}
+                                        className="rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+                                    />
+                                    {label}
+                                </label>
+                            ))}
+                            <p className="basis-full text-xs text-amber-800">Migrations default to off. Enabling them allows this page to alter the configured production database during deployment.</p>
+                        </div>
+
                         <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
                             <button type="submit" disabled={!settings.can_configure || form.processing} className="inline-flex min-h-10 items-center justify-center rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50">
                                 {form.processing ? 'Saving...' : 'Save settings'}
                             </button>
-                            <ActionButton tone="light" disabled={busy || !repository.enabled} onClick={() => run('check')}>
+                            <ActionButton tone="light" disabled={busy || !settings.can_configure || !form.data.enabled} onClick={testConnection}>
                                 {busy ? 'Checking...' : 'Test connection'}
                             </ActionButton>
-                            <p className="text-xs text-slate-500">Only public access and HTTPS personal access tokens are supported. SSH-key authentication is not configured.</p>
+                            <p className="text-xs text-slate-500">Turn integration on to test. Current settings are saved securely before the connection check. This page never pushes to GitHub.</p>
                         </div>
 
                         {!settings.can_configure && (
@@ -305,7 +367,7 @@ export default function GitRepository({ repository, settings, history = [] }) {
                         <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">03</span>
                             <h3 className="mt-3 text-sm font-semibold text-slate-900">Deploy reviewed update</h3>
-                            <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">Fast-forward eligible backend-only changes. Database migrations and frontend assets remain a separate release step.</p>
+                            <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">Apply the reviewed fast-forward update, then run only the selected post-deployment checks.</p>
                             <ActionButton tone="cyan" disabled={busy || !repository.pull_available} onClick={deployReviewedUpdate}>
                                 Deploy reviewed update
                             </ActionButton>
@@ -389,11 +451,11 @@ export default function GitRepository({ repository, settings, history = [] }) {
                             </tbody>
                         </table>
                     </div>
-                    <p className="border-t border-slate-100 px-4 py-3 text-xs leading-5 text-slate-500 sm:px-5">History is stored in private application storage. Source rollback is not available here; it does not reverse database migrations.</p>
+                    <p className="border-t border-slate-100 px-4 py-3 text-xs leading-5 text-slate-500 sm:px-5">History is stored in private application storage. Git updates are fast-forward only; this page does not push to GitHub or reverse database migrations.</p>
                 </section>
 
                 <aside className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950">
-                    Git operations are disabled in local and test environments. Pull is limited to PHP files under <code>app/</code> and <code>routes/</code>. Migrations, frontend assets, dependencies, resets, rollback, and push are not run from this page.
+                    Git integration is available in local and production environments when Git and PHP process execution are available. It is disabled in automated tests. The page protects environment files, private storage, uploads, and dependency directories. Untracked files are preserved; conflicting updates stop safely. Database migrations run only when explicitly enabled in settings.
                 </aside>
             </div>
         </AdminLayout>
