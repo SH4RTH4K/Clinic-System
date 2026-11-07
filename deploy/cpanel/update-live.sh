@@ -4,7 +4,12 @@ umask 077
 
 repository_root="$(git rev-parse --show-toplevel)"
 cd "$repository_root"
+repository_root="$(pwd -P)"
 release_commit="$(git rev-parse HEAD)"
+if [[ -n "${CLINIC_DEPLOY_EXPECTED_COMMIT:-}" && "$release_commit" != "$CLINIC_DEPLOY_EXPECTED_COMMIT" ]]; then
+    printf '%s\n' 'The source commit changed after review; deployment stopped.' >&2
+    exit 1
+fi
 account_root="${CLINIC_ACCOUNT_ROOT:-${HOME:?}}"
 private_path="$account_root/private"
 public_path="$account_root/public_html"
@@ -30,6 +35,15 @@ if [[ ! -f "$private_path/.env" || ! -f "$private_path/vendor/autoload.php" || !
     printf '%s\n' 'This update task requires an initialized clinic installation.' >&2
     exit 1
 fi
+
+register_source_checkout() {
+    local registration
+    registration="$(mktemp "$private_path/.git-source-XXXXXXXX")"
+    printf '%s\n' "$repository_root" > "$registration"
+    chmod 600 "$registration"
+    mv -f -- "$registration" "$private_path/DEPLOYED_GIT_REPOSITORY"
+}
+
 if [[ -L "$private_path" || -L "$public_path" || -e "$private_path/storage/framework/maintenance.php" || -e "$private_path/storage/framework/down" ]]; then
     printf '%s\n' 'Review the existing maintenance mode or linked installation before updating.' >&2
     exit 1
@@ -46,6 +60,7 @@ application_sources_match() {
 if [[ -f "$private_path/DEPLOYED_COMMIT" ]]; then
     deployed_commit="$(cat "$private_path/DEPLOYED_COMMIT")"
     if [[ "$deployed_commit" =~ ^[a-f0-9]{40}$ ]] && application_sources_match "$deployed_commit"; then
+        register_source_checkout
         printf '%s\n' "$release_commit" > "$private_path/DEPLOYED_COMMIT"
         printf 'Application files already current; deployment recorded as %s.\n' "${release_commit:0:12}"
         exit 0
@@ -109,6 +124,11 @@ for migration in "$release_path"/private/database/migrations/*; do
     fi
     migration_paths+=("$migration")
 done
+
+if (( ${#migration_paths[@]} )) && [[ "${CLINIC_DEPLOY_ALLOW_MIGRATIONS:-1}" != 1 ]]; then
+    printf '%s\n' 'Reviewed database migrations require a separately enabled deployment setting.' >&2
+    exit 1
+fi
 
 backup_path="$(mktemp -d "$backup_base/update-${release_commit:0:12}-XXXXXXXX")"
 staging_path="$(mktemp -d "$release_base/.update-XXXXXXXX")"
@@ -204,6 +224,7 @@ for command in config:clear route:clear view:clear config:cache route:cache view
     artisan "$command" >/dev/null
 done
 artisan up >/dev/null
+register_source_checkout
 printf '%s\n' "$release_commit" > "$private_path/DEPLOYED_COMMIT"
 deployment_complete=1
 printf 'Live application updated to %s. Recovery files: %s\n' "${release_commit:0:12}" "$backup_path"

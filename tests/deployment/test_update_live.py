@@ -90,6 +90,9 @@ if [[ "$2" == up ]]; then rm -f storage/framework/maintenance.php storage/framew
         self.assertTrue((self.account / 'public_html/build/new-hash.js').exists())
         self.assertIn('handler', (self.account / 'public_html/.htaccess').read_text())
         self.assertEqual((self.account / 'private/DEPLOYED_COMMIT').read_text().strip(), self.commit)
+        source_marker = self.account / 'private/DEPLOYED_GIT_REPOSITORY'
+        self.assertEqual(source_marker.read_text().strip(), str(self.repo.resolve()))
+        self.assertEqual(source_marker.stat().st_mode & 0o777, 0o600)
         self.assert_runtime_preserved()
         commands = (self.root / 'commands').read_text().splitlines()
         self.assertEqual(commands, ['down', 'config:clear', 'route:clear', 'view:clear', 'config:cache', 'route:cache', 'view:cache', 'up'])
@@ -103,6 +106,16 @@ if [[ "$2" == up ]]; then rm -f storage/framework/maintenance.php storage/framew
         self.assertEqual((self.account / 'private/app/fixture').read_text(), 'old')
         self.assertEqual((self.account / 'public_html/build/manifest.json').read_text(), 'old manifest')
         self.assertFalse((self.account / 'private/DEPLOYED_COMMIT').exists())
+        self.assertFalse((self.account / 'private/DEPLOYED_GIT_REPOSITORY').exists())
+        self.assert_runtime_preserved()
+
+    def test_reviewed_commit_mismatch_stops_before_live_changes(self):
+        result = self.deploy(CLINIC_DEPLOY_EXPECTED_COMMIT='0' * 40)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('source commit changed after review', result.stderr)
+        self.assertFalse((self.root / 'commands').exists())
+        self.assertFalse((self.account / 'private/DEPLOYED_GIT_REPOSITORY').exists())
         self.assert_runtime_preserved()
 
     def test_schema_change_stops_before_maintenance_or_writes(self):
@@ -130,6 +143,17 @@ if [[ "$2" == up ]]; then rm -f storage/framework/maintenance.php storage/framew
         self.assertEqual(commands[:4], ['down', 'system-health:backup', 'migrate', 'config:clear'])
         self.assertEqual((self.account / 'private/app/fixture').read_text(), 'new')
         self.assertTrue((self.account / 'private/database/migrations/new.php').exists())
+        self.assert_runtime_preserved()
+
+    def test_reviewed_migration_needs_explicit_web_deployment_permission(self):
+        self.review_new_migration()
+
+        result = self.deploy(CLINIC_DEPLOY_ALLOW_MIGRATIONS='0')
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('require a separately enabled deployment setting', result.stderr)
+        self.assertFalse((self.root / 'commands').exists())
+        self.assertFalse((self.account / 'private/DEPLOYED_GIT_REPOSITORY').exists())
         self.assert_runtime_preserved()
 
     def test_modified_reviewed_migration_is_rejected_before_backup_or_maintenance(self):

@@ -15,6 +15,10 @@ class GitRepositoryService
 
     private const HISTORY_PATH = 'system/git-repository/history.json';
 
+    private const SOURCE_MARKER = 'DEPLOYED_GIT_REPOSITORY';
+
+    private const DEPLOYED_COMMIT_MARKER = 'DEPLOYED_COMMIT';
+
     /** @var array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, credential: ?string, valid: bool}|null */
     private ?array $storedSettings = null;
 
@@ -34,6 +38,7 @@ class GitRepositoryService
             'branch' => $settings['branch'],
             'repository_url' => $settings['repository_url'],
             'local_commit' => null,
+            'source_commit' => null,
             'remote_commit' => null,
             'incoming_commits' => 0,
             'incoming_commit_details' => [],
@@ -61,7 +66,7 @@ class GitRepositoryService
         try {
             if (! $this->repositoryExists()) {
                 $snapshot['status'] = 'Not connected';
-                $snapshot['message'] = 'Save repository settings to initialize Git metadata without replacing deployed files.';
+                $snapshot['message'] = 'The live application has no registered cPanel source checkout. Deploy this version once through cPanel Git Version Control.';
 
                 return $snapshot;
             }
@@ -70,14 +75,24 @@ class GitRepositoryService
             $this->assertConfiguredRemote();
 
             $currentBranch = trim($this->runGit(['branch', '--show-current']));
-            $snapshot['local_commit'] = trim($this->runGit(['rev-parse', 'HEAD']));
+            $sourceCommit = trim($this->runGit(['rev-parse', 'HEAD']));
+            $deployedCommit = $this->deployedCommit() ?? $sourceCommit;
+            $snapshot['source_commit'] = $sourceCommit;
+            $snapshot['local_commit'] = $deployedCommit;
             $changes = $this->workingTreeChanges();
             $snapshot['working_tree_changes'] = count($changes);
             $snapshot['working_tree_paths'] = array_map(static fn (string $change): string => trim(substr($change, 3)), $changes);
 
             if ($currentBranch !== $settings['branch']) {
                 $snapshot['status'] = 'Wrong branch';
-                $snapshot['message'] = 'The deployed checkout is not on the configured branch.';
+                $snapshot['message'] = 'The registered source checkout is not on the configured branch.';
+
+                return $snapshot;
+            }
+
+            if (! $this->isAncestor($deployedCommit, $sourceCommit)) {
+                $snapshot['status'] = 'Branches diverged';
+                $snapshot['message'] = 'The deployed commit is not an ancestor of the registered source checkout.';
 
                 return $snapshot;
             }
@@ -91,20 +106,21 @@ class GitRepositoryService
             }
 
             $snapshot['remote_commit'] = $remoteRef;
-            $incomingCount = (int) trim($this->runGit(['rev-list', '--count', 'HEAD..'.$this->remoteTrackingBranch()]));
+            $incomingCount = (int) trim($this->runGit(['rev-list', '--count', $deployedCommit.'..'.$this->remoteTrackingBranch()]));
             $snapshot['incoming_commits'] = $incomingCount;
-            $snapshot['incoming_commit_details'] = $incomingCount > 0 ? $this->commitList('HEAD..'.$this->remoteTrackingBranch()) : [];
+            $snapshot['incoming_commit_details'] = $incomingCount > 0 ? $this->commitList($deployedCommit.'..'.$this->remoteTrackingBranch()) : [];
 
             if ($changes !== []) {
                 $snapshot['status'] = 'Local changes detected';
-                $snapshot['message'] = 'Pull is blocked until the deployed checkout has no local or untracked changes.';
+                $snapshot['message'] = 'The registered source checkout has tracked changes. Review them before updating.';
 
                 return $snapshot;
             }
 
-            if ((int) trim($this->runGit(['rev-list', '--count', $this->remoteTrackingBranch().'..HEAD'])) > 0) {
+            if (! $this->isAncestor($deployedCommit, $this->remoteTrackingBranch())
+                || ! $this->isAncestor($sourceCommit, $this->remoteTrackingBranch())) {
                 $snapshot['status'] = 'Branches diverged';
-                $snapshot['message'] = 'The deployed branch contains commits that are not on the configured remote branch.';
+                $snapshot['message'] = 'The source or deployed commit has diverged from the configured remote branch.';
 
                 return $snapshot;
             }
@@ -112,16 +128,16 @@ class GitRepositoryService
             $snapshot['status'] = $incomingCount > 0 ? 'Update available' : 'Up to date';
             $snapshot['message'] = $incomingCount > 0
                 ? $incomingCount.' fast-forward update(s) are available.'
-                : 'The deployed checkout is up to date.';
-            $snapshot['deploy_available'] = $incomingCount > 0 && $this->incomingChangesAreSafe();
+                : 'The live application is up to date with the configured remote branch.';
+            $snapshot['deploy_available'] = $incomingCount > 0 && $this->incomingChangesAreSafe($deployedCommit);
             $snapshot['pull_available'] = $snapshot['deploy_available'];
 
             if ($incomingCount > 0 && ! $snapshot['deploy_available']) {
-                $snapshot['message'] = 'This update is blocked by a safety check. Review local changes, protected paths, migration settings, and compiled frontend assets before deploying.';
+                $snapshot['message'] = 'This update is blocked by a safety check. Review protected paths, migration settings, and frontend build requirements before deploying.';
             }
-        } catch (RuntimeException) {
+        } catch (RuntimeException $exception) {
             $snapshot['status'] = 'Unavailable';
-            $snapshot['message'] = $this->unavailableMessage();
+            $snapshot['message'] = $exception->getMessage();
         }
 
         return $snapshot;
@@ -250,12 +266,12 @@ class GitRepositoryService
         }
 
         if ($settings['enabled']) {
-            if ($this->repositoryExists()) {
-                $this->assertRepositoryReady();
-                $this->assertConfiguredRemote($settings);
-            } else {
-                $this->initializeRepository($settings, $credential);
+            if (! $this->repositoryExists()) {
+                throw new RuntimeException('The live application has no registered source checkout. Deploy this version once through cPanel Git Version Control.');
             }
+
+            $this->assertRepositoryReady();
+            $this->assertConfiguredRemote($settings);
         }
 
         $this->writeSettings([
@@ -291,7 +307,7 @@ class GitRepositoryService
         }
 
         try {
-            $previousCommit = trim($this->runGit(['rev-parse', 'HEAD']));
+            $previousCommit = $this->deployedCommit() ?? trim($this->runGit(['rev-parse', 'HEAD']));
             $targetCommit = null;
             $commitsApplied = 0;
 
@@ -299,7 +315,7 @@ class GitRepositoryService
                 $snapshot = $this->check();
                 $targetCommit = $snapshot['remote_commit'];
                 $commitsApplied = (int) $snapshot['incoming_commits'];
-                $incomingMigrations = $this->incomingChangesContainMigrations();
+                $incomingMigrations = $this->incomingChangesContainMigrations($previousCommit);
 
                 if ($snapshot['status'] !== 'Update available' || ! $snapshot['deploy_available']) {
                     throw new RuntimeException((string) $snapshot['message']);
@@ -308,12 +324,20 @@ class GitRepositoryService
                 $this->runGit(['merge', '--ff-only', $this->remoteTrackingBranch()]);
                 $checks = ['Clean tracked checkout', 'Untracked files preserved', 'Approved GitHub URL', 'Fast-forward only'];
 
-                if ($incomingMigrations && $this->settings()['run_migrations']) {
+                if ($this->isSplitDeployment()) {
+                    $this->runSplitDeployment((string) $targetCommit);
+                    $checks[] = 'Verified cPanel release installed';
+                    $checks[] = 'Application caches rebuilt';
+
+                    if ($incomingMigrations) {
+                        $checks[] = 'Reviewed forward migrations completed';
+                    }
+                } elseif ($incomingMigrations && $this->settings()['run_migrations']) {
                     $this->runArtisan(['migrate', '--force']);
                     $checks[] = 'Forward migrations completed';
                 }
 
-                if ($this->settings()['clear_cache']) {
+                if (! $this->isSplitDeployment() && $this->settings()['clear_cache']) {
                     $this->runArtisan(['optimize:clear']);
                     $checks[] = 'Application caches cleared';
                 }
@@ -380,12 +404,14 @@ class GitRepositoryService
 
     private function assertRepositoryReady(): void
     {
-        if (! file_exists(base_path('.git')) || is_link(base_path('.git'))) {
+        $repositoryRoot = $this->repositoryRoot();
+
+        if (! file_exists($repositoryRoot.DIRECTORY_SEPARATOR.'.git') || is_link($repositoryRoot.DIRECTORY_SEPARATOR.'.git')) {
             throw new RuntimeException('This deployed installation is not a full Git checkout.');
         }
 
         $root = realpath(trim($this->runGit(['rev-parse', '--show-toplevel'])));
-        $applicationRoot = realpath(base_path());
+        $applicationRoot = realpath($repositoryRoot);
 
         if ($root === false || $applicationRoot === false || $root !== $applicationRoot) {
             throw new RuntimeException('Git repository root does not match the Laravel application directory.');
@@ -394,35 +420,74 @@ class GitRepositoryService
 
     private function repositoryExists(): bool
     {
-        return file_exists(base_path('.git'));
+        return file_exists($this->repositoryRoot().DIRECTORY_SEPARATOR.'.git');
     }
 
-    /** @param array<string, mixed> $settings */
-    private function initializeRepository(array $settings, ?string $credential): void
+    private function isSplitDeployment(): bool
     {
-        $gitPath = base_path('.git');
+        return file_exists(base_path(self::SOURCE_MARKER)) || is_link(base_path(self::SOURCE_MARKER));
+    }
 
-        if (file_exists($gitPath) || is_link($gitPath)) {
-            throw new RuntimeException('Existing Git metadata could not be safely verified.');
+    private function repositoryRoot(): string
+    {
+        if (! $this->isSplitDeployment()) {
+            return base_path();
         }
 
-        $this->runGit(['init', '--quiet']);
-
-        try {
-            $this->runGit(['remote', 'add', $settings['remote'], $settings['repository_url']]);
-            $this->runGit([
-                'fetch', '--no-tags', '--no-recurse-submodules', '--', $settings['repository_url'],
-                '+refs/heads/'.$settings['branch'].':refs/remotes/'.$settings['remote'].'/'.$settings['branch'],
-            ], $this->authenticationEnvironmentFor($settings['authentication'], $credential));
-            $trackingRef = 'refs/remotes/'.$settings['remote'].'/'.$settings['branch'];
-            $this->runGit(['branch', '--force', $settings['branch'], $trackingRef]);
-            $this->runGit(['symbolic-ref', 'HEAD', 'refs/heads/'.$settings['branch']]);
-            $this->runGit(['reset', '--mixed', $trackingRef]);
-            $this->assertRepositoryReady();
-            $this->assertConfiguredRemote($settings);
-        } catch (\Throwable) {
-            throw new RuntimeException('Git metadata setup failed without checking out or replacing application files. Review server Git support and repository settings before retrying.');
+        $marker = base_path(self::SOURCE_MARKER);
+        if (is_link($marker) || ! is_file($marker) || filesize($marker) > 4096) {
+            throw new RuntimeException('The cPanel source checkout registration is invalid.');
         }
+
+        $registeredPath = trim((string) file_get_contents($marker));
+        $repositoryRoot = realpath($registeredPath);
+        $accountRoot = realpath(dirname(base_path()));
+        $applicationRoot = realpath(base_path());
+
+        if ($repositoryRoot === false || $accountRoot === false || $applicationRoot === false
+            || is_link($registeredPath)
+            || ! str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR)
+            || $repositoryRoot === $applicationRoot
+            || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)
+            || str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR.'public_html'.DIRECTORY_SEPARATOR)) {
+            throw new RuntimeException('The registered cPanel source checkout is outside the private account area.');
+        }
+
+        return $repositoryRoot;
+    }
+
+    private function deployedCommit(): ?string
+    {
+        if (! $this->isSplitDeployment()) {
+            return null;
+        }
+
+        $marker = base_path(self::DEPLOYED_COMMIT_MARKER);
+        if (is_link($marker) || ! is_file($marker) || filesize($marker) > 80) {
+            throw new RuntimeException('The deployed commit marker is missing or invalid.');
+        }
+
+        $commit = trim((string) file_get_contents($marker));
+        if (preg_match('/\A[a-f0-9]{40}\z/', $commit) !== 1) {
+            throw new RuntimeException('The deployed commit marker does not contain a valid commit.');
+        }
+
+        return $commit;
+    }
+
+    private function isAncestor(string $ancestor, string $descendant): bool
+    {
+        $result = $this->executeGit(['merge-base', '--is-ancestor', $ancestor, $descendant]);
+
+        if ($result['code'] === 0) {
+            return true;
+        }
+
+        if ($result['code'] === 1) {
+            return false;
+        }
+
+        throw new RuntimeException('The source checkout could not verify commit ancestry.');
     }
 
     /** @param array{remote: string, branch: string, repository_url: string} $settings */
@@ -476,9 +541,13 @@ class GitRepositoryService
         return array_values(array_filter(preg_split('/\R/', trim($output)) ?: []));
     }
 
-    private function incomingChangesAreSafe(): bool
+    private function incomingChangesAreSafe(string $fromCommit): bool
     {
-        $output = $this->runGit(['diff', '--name-status', '--no-renames', 'HEAD', $this->remoteTrackingBranch()]);
+        if ($this->isSplitDeployment() && ! $this->settings()['clear_cache']) {
+            return false;
+        }
+
+        $output = $this->runGit(['diff', '--name-status', '--no-renames', $fromCommit, $this->remoteTrackingBranch()]);
         $changes = array_values(array_filter(preg_split('/\R/', trim($output)) ?: []));
 
         if ($changes === []) {
@@ -497,7 +566,7 @@ class GitRepositoryService
             }
         }
 
-        $rawChanges = $this->runGit(['diff', '--raw', '--no-renames', 'HEAD', $this->remoteTrackingBranch()]);
+        $rawChanges = $this->runGit(['diff', '--raw', '--no-renames', $fromCommit, $this->remoteTrackingBranch()]);
         foreach (array_filter(preg_split('/\R/', trim($rawChanges)) ?: []) as $rawChange) {
             if (preg_match('/\A:([0-7]{6}) ([0-7]{6}) [a-f0-9]+ [a-f0-9]+ ([A-Z])\t.+\z/i', $rawChange, $matches) !== 1) {
                 return false;
@@ -510,25 +579,35 @@ class GitRepositoryService
             }
         }
 
-        return $this->incomingFrontendBuildIsValid()
-            && (! $this->incomingChangesContainMigrations()
-                || ($this->settings()['run_migrations'] && $this->incomingMigrationsAreForwardOnly()));
+        return $this->incomingFrontendBuildIsValid($fromCommit)
+            && (! $this->incomingChangesContainMigrations($fromCommit)
+                || ($this->settings()['run_migrations'] && $this->incomingMigrationsAreForwardOnly($fromCommit)));
     }
 
-    private function incomingFrontendBuildIsValid(): bool
+    private function incomingFrontendBuildIsValid(string $fromCommit): bool
     {
-        $changedPaths = preg_split('/\R/', trim($this->runGit([
-            'diff', '--name-only', 'HEAD', $this->remoteTrackingBranch(), '--',
+        $changedPaths = trim($this->runGit([
+            'diff', '--name-only', $fromCommit, $this->remoteTrackingBranch(), '--',
             'resources/js', 'resources/css', 'vite.config.js', 'package.json', 'package-lock.json',
-        ]))) ?: [];
+        ]));
 
-        if ($changedPaths === []) {
+        if ($this->isSplitDeployment()) {
+            foreach (['deploy/cpanel/update-live.sh', 'deploy/cpanel/build-release.sh', 'package-lock.json'] as $requiredPath) {
+                if ($this->executeGit(['cat-file', '-e', $this->remoteTrackingBranch().':'.$requiredPath])['code'] !== 0) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if ($changedPaths === '') {
             return true;
         }
 
         $manifestPath = 'public/build/manifest.json';
         $manifestChanges = preg_split('/\R/', trim($this->runGit([
-            'diff', '--name-only', 'HEAD', $this->remoteTrackingBranch(), '--', $manifestPath,
+            'diff', '--name-only', $fromCommit, $this->remoteTrackingBranch(), '--', $manifestPath,
         ]))) ?: [];
 
         if (! in_array($manifestPath, $manifestChanges, true)) {
@@ -595,16 +674,16 @@ class GitRepositoryService
             || in_array(pathinfo($basename, PATHINFO_EXTENSION), ['pem', 'key', 'p12', 'pfx'], true);
     }
 
-    private function incomingChangesContainMigrations(): bool
+    private function incomingChangesContainMigrations(string $fromCommit): bool
     {
-        $output = $this->runGit(['diff', '--name-only', 'HEAD', $this->remoteTrackingBranch(), '--', 'database/migrations']);
+        $output = $this->runGit(['diff', '--name-only', $fromCommit, $this->remoteTrackingBranch(), '--', 'database/migrations']);
 
         return trim($output) !== '';
     }
 
-    private function incomingMigrationsAreForwardOnly(): bool
+    private function incomingMigrationsAreForwardOnly(string $fromCommit): bool
     {
-        $output = $this->runGit(['diff', '--name-status', '--no-renames', 'HEAD', $this->remoteTrackingBranch(), '--', 'database/migrations']);
+        $output = $this->runGit(['diff', '--name-status', '--no-renames', $fromCommit, $this->remoteTrackingBranch(), '--', 'database/migrations']);
         $changes = array_values(array_filter(preg_split('/\R/', trim($output)) ?: []));
 
         if ($changes === []) {
@@ -619,6 +698,55 @@ class GitRepositoryService
         }
 
         return true;
+    }
+
+    private function runSplitDeployment(string $targetCommit): void
+    {
+        $repositoryRoot = $this->repositoryRoot();
+        $script = $repositoryRoot.DIRECTORY_SEPARATOR.'deploy/cpanel/update-live.sh';
+        $accountRoot = realpath(dirname(base_path()));
+
+        if (preg_match('/\A[a-f0-9]{40}\z/', $targetCommit) !== 1 || $accountRoot === false || ! is_file($script) || is_link($script)) {
+            throw new RuntimeException('The reviewed cPanel deployment task is unavailable. No live files were changed by this page.');
+        }
+
+        try {
+            $process = new Process(['/bin/bash', $script], $repositoryRoot, [
+                'HOME' => $accountRoot,
+                'CLINIC_ACCOUNT_ROOT' => $accountRoot,
+                'CLINIC_DEPLOY_EXPECTED_COMMIT' => $targetCommit,
+                'CLINIC_DEPLOY_ALLOW_MIGRATIONS' => $this->settings()['run_migrations'] ? '1' : '0',
+            ], null, 1800);
+            $process->run();
+        } catch (\Throwable) {
+            throw new RuntimeException('The hosting PHP runtime could not start the verified cPanel deployment task.');
+        }
+
+        if (! $process->isSuccessful()) {
+            throw new RuntimeException($this->deploymentFailureMessage($process->getErrorOutput()));
+        }
+
+        if ($this->deployedCommit() !== $targetCommit) {
+            throw new RuntimeException('The deployment task finished without recording the reviewed commit as live.');
+        }
+    }
+
+    private function deploymentFailureMessage(string $errorOutput): string
+    {
+        $error = strtolower($errorOutput);
+
+        return match (true) {
+            str_contains($error, 'another deployment is running') => 'A cPanel deployment is already running. Wait for it to finish before retrying.',
+            str_contains($error, 'new migration needs review'),
+            str_contains($error, 'historical migration changed or removed') => 'The release contains database migration changes that need separate review before deployment.',
+            str_contains($error, 'reviewed database migrations require') => 'Enable reviewed migrations explicitly before deploying this database change.',
+            str_contains($error, 'php 8.3'),
+            str_contains($error, 'php 8.3 command-line') => 'The host does not provide the PHP 8.3 command-line runtime required by this release.',
+            str_contains($error, 'node.js 22'),
+            str_contains($error, 'required deployment tool is unavailable: npm') => 'The host cannot build the locked frontend assets. Use a verified release artifact instead.',
+            str_contains($error, 'this update task requires an initialized clinic installation') => 'The live cPanel installation is incomplete. Review its private application and public document root.',
+            default => 'The cPanel deployment task stopped. Review protected server deployment logs before retrying.',
+        };
     }
 
     /** @param list<string> $arguments */
@@ -647,10 +775,8 @@ class GitRepositoryService
 
     /**
      * @param  list<string>  $arguments
+     * @param  array<string, string>  $environment
      * @return array{code: int, output: string, error: string}
-     */
-    /** @param list<string> $arguments
-     * @param  array<string, string|null>  $environment
      */
     private function executeGit(array $arguments, array $environment = []): array
     {
@@ -662,24 +788,31 @@ class GitRepositoryService
             throw new RuntimeException('A Git executable is not configured.');
         }
 
+        $workingDirectory = in_array($arguments[0] ?? '', ['--version', 'check-ref-format'], true)
+            ? base_path()
+            : $this->repositoryRoot();
+
         try {
             $process = new Process(array_merge([
                 $binary,
-                '-c', 'core.hooksPath=/dev/null',
+                '-c', 'core.hooksPath='.(DIRECTORY_SEPARATOR === '\\' ? 'NUL' : '/dev/null'),
                 '-c', 'credential.helper=',
-            ], $arguments), base_path(), array_merge([
+            ], $arguments), $workingDirectory, array_merge([
                 'GIT_TERMINAL_PROMPT' => '0',
                 'GIT_CONFIG_NOSYSTEM' => '1',
-                'GIT_CONFIG_GLOBAL' => '/dev/null',
+                'GIT_CONFIG_GLOBAL' => DIRECTORY_SEPARATOR === '\\' ? 'NUL' : '/dev/null',
                 'GIT_OPTIONAL_LOCKS' => '0',
-                'GIT_DIR' => null,
-                'GIT_WORK_TREE' => null,
-                'GIT_INDEX_FILE' => null,
-                'GIT_CONFIG' => null,
-                'GIT_CONFIG_PARAMETERS' => null,
-                'GIT_CONFIG_COUNT' => null,
-                'GIT_CONFIG_KEY_0' => null,
-                'GIT_CONFIG_VALUE_0' => null,
+                'GIT_DIR' => false,
+                'GIT_WORK_TREE' => false,
+                'GIT_INDEX_FILE' => false,
+                'GIT_CONFIG' => false,
+                'GIT_CONFIG_PARAMETERS' => false,
+                'GIT_CONFIG_COUNT' => false,
+                'GIT_CONFIG_KEY_0' => false,
+                'GIT_CONFIG_VALUE_0' => false,
+                'GIT_SSH_COMMAND' => false,
+                'GIT_ASKPASS' => false,
+                'SSH_ASKPASS' => false,
             ], $environment), null, 60);
             $process->run();
 
@@ -702,9 +835,9 @@ class GitRepositoryService
         }
     }
 
-    /** @param list<string> $arguments */
-    /** @param list<string> $arguments
-     * @param  array<string, string|null>  $environment
+    /**
+     * @param  list<string>  $arguments
+     * @param  array<string, string>  $environment
      */
     private function runGit(array $arguments, array $environment = []): string
     {
@@ -748,8 +881,8 @@ class GitRepositoryService
             str_contains($diagnostic, 'permission denied'),
             str_contains($diagnostic, 'could not lock'),
             str_contains($diagnostic, 'access is denied') => 'The server could not access Git metadata. Check the application files’ ownership and permissions.',
-            ($arguments[0] ?? '') === 'rev-parse' => 'The application directory is not a readable Git checkout. A ZIP deployment or incomplete .git metadata can cause this. Ask the hosting administrator to verify or restore the full Git metadata; this page will not replace it.',
-            default => 'Check GitHub access, the configured branch, and server Git permissions. No application files were updated.',
+            ($arguments[0] ?? '') === 'rev-parse' => 'The registered source directory is not a readable Git checkout. Verify that the cPanel source repository still exists and is accessible.',
+            default => 'Check GitHub access, the configured branch, and server Git permissions.',
         };
 
         return $operation.' failed. '.$reason;
@@ -762,7 +895,7 @@ class GitRepositoryService
         }
 
         if (! $this->settings()['valid'] || ! $this->settings()['enabled']) {
-            return 'Repository operations are disabled. Enable them from Repository settings in production.';
+            return 'Repository operations are disabled. Enable them from Repository settings.';
         }
 
         if (! function_exists('proc_open')) {
@@ -770,7 +903,7 @@ class GitRepositoryService
         }
 
         if (! $this->repositoryExists()) {
-            return 'Save enabled repository settings to initialize Git metadata without replacing deployed files.';
+            return 'The live application has no registered cPanel source checkout.';
         }
 
         return 'The Git checkout, remote, or configured branch could not be verified.';

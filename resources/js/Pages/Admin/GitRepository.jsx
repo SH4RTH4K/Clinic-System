@@ -249,7 +249,7 @@ export default function GitRepository({ repository, settings, history = [] }) {
                                 className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-normal text-slate-800 disabled:bg-slate-100"
                             />
                             {form.errors.repository_url && <span className="mt-1 block text-xs text-rose-700">{form.errors.repository_url}</span>}
-                            <span className="mt-1 block font-normal text-slate-500">Use a GitHub HTTPS URL or SSH clone URL. First-time setup adds private Git metadata only; it does not check out or replace application files.</span>
+                            <span className="mt-1 block font-normal text-slate-500">Use a GitHub HTTPS URL or SSH clone URL. On cPanel, a verified deployment registers the separate source checkout. Saving settings never initializes Git inside the live application.</span>
                         </label>
 
                         <div className="grid gap-3 md:grid-cols-2">
@@ -344,7 +344,10 @@ export default function GitRepository({ repository, settings, history = [] }) {
                             <p className="mt-1 text-sm text-slate-600">Fetch first, review the incoming commits and checkout state, then apply only an eligible fast-forward.</p>
                         </div>
                         <div className="text-left text-xs text-slate-500 sm:text-right">
-                            <p>Local <code className="font-semibold text-slate-800">{shortCommit(repository.local_commit)}</code></p>
+                            <p>Live <code className="font-semibold text-slate-800">{shortCommit(repository.local_commit)}</code></p>
+                            {repository.source_commit && repository.source_commit !== repository.local_commit && (
+                                <p>Source <code className="font-semibold text-slate-800">{shortCommit(repository.source_commit)}</code></p>
+                            )}
                             <p>Remote <code className="font-semibold text-slate-800">{shortCommit(repository.remote_commit)}</code></p>
                         </div>
                     </div>
@@ -361,13 +364,13 @@ export default function GitRepository({ repository, settings, history = [] }) {
                         <article className={`rounded-xl border p-4 ${repository.working_tree_changes > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
                             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">02</span>
                             <h3 className="mt-3 text-sm font-semibold text-slate-900">Review server state</h3>
-                            <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">{repository.working_tree_changes > 0 ? `${repository.working_tree_changes} local or untracked change(s) block an update.` : 'Only a clean, non-diverged checkout can be updated.'}</p>
+                            <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">{repository.working_tree_changes > 0 ? `${repository.working_tree_changes} tracked source change(s) block an update.` : 'Only a clean, non-diverged source checkout can be updated.'}</p>
                             <StatusPill status={repository.status} />
                         </article>
                         <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">03</span>
                             <h3 className="mt-3 text-sm font-semibold text-slate-900">Deploy reviewed update</h3>
-                            <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">Apply the reviewed fast-forward update, then run only the selected post-deployment checks.</p>
+                            <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">Apply the reviewed update through the verified deployment path and record the result.</p>
                             <ActionButton tone="cyan" disabled={busy || !repository.pull_available} onClick={deployReviewedUpdate}>
                                 Deploy reviewed update
                             </ActionButton>

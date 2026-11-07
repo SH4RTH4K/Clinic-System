@@ -7,9 +7,11 @@ use App\Services\GitRepositoryService;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class GitRepositoryTest extends TestCase
@@ -120,7 +122,7 @@ class GitRepositoryTest extends TestCase
         ]);
 
         $this->assertSame(
-            'Git checkout check failed. The application directory is not a readable Git checkout. A ZIP deployment or incomplete .git metadata can cause this. Ask the hosting administrator to verify or restore the full Git metadata; this page will not replace it.',
+            'Git checkout check failed. The registered source directory is not a readable Git checkout. Verify that the cPanel source repository still exists and is accessible.',
             $message,
         );
     }
@@ -155,6 +157,88 @@ class GitRepositoryTest extends TestCase
             ->assertSessionHas('success', 'Git Repository settings saved in private application storage.');
 
         Storage::disk('local')->assertExists('system/git-repository/settings.json');
+    }
+
+    public function test_registered_cpanel_checkout_compares_the_deployed_commit_with_the_remote(): void
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+        Storage::fake('local');
+
+        $originalBasePath = base_path();
+        $accountRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-git-'.bin2hex(random_bytes(8));
+        $privatePath = $accountRoot.DIRECTORY_SEPARATOR.'private';
+        $sourcePath = $accountRoot.DIRECTORY_SEPARATOR.'repositories'.DIRECTORY_SEPARATOR.'clinic';
+
+        File::ensureDirectoryExists($privatePath);
+        File::ensureDirectoryExists($sourcePath);
+
+        try {
+            $this->fixtureGit($sourcePath, ['init', '--quiet', '--initial-branch=hardening']);
+            File::ensureDirectoryExists($sourcePath.DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'cpanel');
+            File::ensureDirectoryExists($sourcePath.DIRECTORY_SEPARATOR.'resources'.DIRECTORY_SEPARATOR.'js');
+            file_put_contents($sourcePath.DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'cpanel'.DIRECTORY_SEPARATOR.'update-live.sh', 'synthetic updater');
+            file_put_contents($sourcePath.DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'cpanel'.DIRECTORY_SEPARATOR.'build-release.sh', 'synthetic builder');
+            file_put_contents($sourcePath.DIRECTORY_SEPARATOR.'package-lock.json', '{}');
+            $frontendPath = $sourcePath.DIRECTORY_SEPARATOR.'resources'.DIRECTORY_SEPARATOR.'js'.DIRECTORY_SEPARATOR.'Dashboard.jsx';
+            file_put_contents($frontendPath, 'first');
+            $this->fixtureGit($sourcePath, ['add', 'deploy/cpanel/update-live.sh', 'deploy/cpanel/build-release.sh', 'package-lock.json', 'resources/js/Dashboard.jsx']);
+            $this->fixtureGit($sourcePath, ['-c', 'user.name=Clinic Test', '-c', 'user.email=test@local.invalid', 'commit', '--quiet', '-m', 'first']);
+            $deployedCommit = $this->fixtureGit($sourcePath, ['rev-parse', 'HEAD']);
+
+            file_put_contents($frontendPath, 'second');
+            $this->fixtureGit($sourcePath, ['add', 'resources/js/Dashboard.jsx']);
+            $this->fixtureGit($sourcePath, ['-c', 'user.name=Clinic Test', '-c', 'user.email=test@local.invalid', 'commit', '--quiet', '-m', 'second']);
+            $sourceCommit = $this->fixtureGit($sourcePath, ['rev-parse', 'HEAD']);
+            $this->fixtureGit($sourcePath, ['remote', 'add', 'origin', 'https://github.com/SH4RTH4K/Clinic-System.git']);
+            $this->fixtureGit($sourcePath, ['update-ref', 'refs/remotes/origin/hardening', $sourceCommit]);
+
+            file_put_contents($privatePath.DIRECTORY_SEPARATOR.'DEPLOYED_GIT_REPOSITORY', $sourcePath.PHP_EOL);
+            file_put_contents($privatePath.DIRECTORY_SEPARATOR.'DEPLOYED_COMMIT', $deployedCommit.PHP_EOL);
+
+            $this->app->setBasePath($privatePath);
+            $service = app(GitRepositoryService::class);
+            $service->saveSettings($this->settingsPayload(['enabled' => true, 'health_check' => false]));
+            $snapshot = $service->snapshot();
+
+            Storage::disk('local')->assertExists('system/git-repository/settings.json');
+            $this->assertSame('Update available', $snapshot['status']);
+            $this->assertSame($deployedCommit, $snapshot['local_commit']);
+            $this->assertSame($sourceCommit, $snapshot['source_commit']);
+            $this->assertSame($sourceCommit, $snapshot['remote_commit']);
+            $this->assertSame(1, $snapshot['incoming_commits']);
+            $this->assertTrue($snapshot['deploy_available']);
+
+            file_put_contents($privatePath.DIRECTORY_SEPARATOR.'DEPLOYED_COMMIT', $sourceCommit.PHP_EOL);
+            $currentSnapshot = $service->snapshot();
+            $this->assertSame('Up to date', $currentSnapshot['status']);
+            $this->assertSame(0, $currentSnapshot['incoming_commits']);
+        } finally {
+            $this->app->setBasePath($originalBasePath);
+            File::deleteDirectory($accountRoot);
+        }
+    }
+
+    public function test_enabling_a_zip_installation_does_not_initialize_git_inside_live_files(): void
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+        Storage::fake('local');
+
+        $originalBasePath = base_path();
+        $applicationPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-zip-'.bin2hex(random_bytes(8));
+        File::ensureDirectoryExists($applicationPath);
+
+        try {
+            $this->app->setBasePath($applicationPath);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('The live application has no registered source checkout.');
+
+            app(GitRepositoryService::class)->saveSettings($this->settingsPayload(['enabled' => true]));
+        } finally {
+            $this->assertFalse(file_exists($applicationPath.DIRECTORY_SEPARATOR.'.git'));
+            $this->app->setBasePath($originalBasePath);
+            File::deleteDirectory($applicationPath);
+        }
     }
 
     public function test_repository_settings_reject_invalid_branch_names(): void
@@ -276,5 +360,14 @@ class GitRepositoryTest extends TestCase
             'clear_cache' => true,
             'health_check' => true,
         ], $overrides);
+    }
+
+    /** @param list<string> $arguments */
+    private function fixtureGit(string $directory, array $arguments): string
+    {
+        $process = new Process(['git', ...$arguments], $directory);
+        $process->mustRun();
+
+        return trim($process->getOutput());
     }
 }
