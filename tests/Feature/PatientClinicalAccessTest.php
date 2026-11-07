@@ -35,7 +35,7 @@ class PatientClinicalAccessTest extends TestCase
         }
     }
 
-    public function test_default_receptionist_can_register_and_schedule_with_demographics_only(): void
+    public function test_default_receptionist_can_register_patient_and_schedule_request_with_confirmed_slot(): void
     {
         $this->seedApplicationDefaults();
         $patient = $this->patientWithClinicalHistory();
@@ -103,10 +103,16 @@ class PatientClinicalAccessTest extends TestCase
 
         $this->actingAs($receptionist)->get(route('admin.appointment_requests.index'))->assertOk();
         $this->actingAs($receptionist)
-            ->put(route('admin.appointment_requests.update', $appointment), ['status' => 'scheduled'])
+            ->put(route('admin.appointment_requests.update', $appointment), [
+                'status' => 'scheduled',
+                'scheduled_date' => now()->addDay()->toDateString(),
+                'scheduled_time' => '10:30',
+            ])
             ->assertRedirect();
 
         $this->assertSame('scheduled', $appointment->fresh()->status);
+        $this->assertSame(now()->addDay()->toDateString(), $appointment->fresh()->scheduled_date->toDateString());
+        $this->assertSame('10:30', $appointment->fresh()->scheduled_time);
         $this->assertSame($receptionist->id, $appointment->fresh()->handled_by);
     }
 

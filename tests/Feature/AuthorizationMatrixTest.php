@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppointmentRequest;
 use App\Models\Patient;
 use App\Models\User;
 use App\Models\Visit;
@@ -375,11 +376,59 @@ class AuthorizationMatrixTest extends TestCase
             ->assertStatus(200);
     }
 
+    public function test_appointments_full_workflow_allowed_for_super_admin_without_explicit_permissions(): void
+    {
+        $superAdminRole = Role::findByName('Super Admin');
+        $superAdminRole->revokePermissionTo(['appointments.view', 'appointments.update']);
+        $superAdmin = $this->userWithRole('Super Admin');
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic appointment contact',
+            'phone' => '01700000000',
+            'preferred_date' => '2026-11-09',
+            'preferred_time' => '10:00:00',
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.appointment_requests.index'))
+            ->assertOk();
+
+        $this->actingAs($superAdmin)
+            ->put(route('admin.appointment_requests.update', $appointmentRequest), ['status' => 'contacted'])
+            ->assertRedirect();
+
+        $this->assertSame('contacted', $appointmentRequest->fresh()->status);
+        $this->assertSame($superAdmin->id, $appointmentRequest->fresh()->handled_by);
+
+        $this->actingAs($superAdmin)
+            ->post(route('admin.appointment_requests.convert', $appointmentRequest))
+            ->assertRedirect(route('admin.patients.create', [
+                'name' => 'Synthetic appointment contact',
+                'phone' => '01700000000',
+            ]));
+    }
+
     public function test_appointments_forbidden_for_accountant(): void
     {
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic appointment contact',
+            'phone' => '01700000000',
+            'preferred_date' => '2026-11-09',
+            'preferred_time' => '10:00:00',
+            'status' => 'pending',
+        ]);
+
         $this->actingAs($this->userWithRole('Accountant'))
             ->get('/admin/appointment-requests')
-            ->assertStatus(403);
+            ->assertForbidden();
+
+        $this->actingAs($this->userWithRole('Accountant'))
+            ->put(route('admin.appointment_requests.update', $appointmentRequest), ['status' => 'scheduled'])
+            ->assertForbidden();
+
+        $this->actingAs($this->userWithRole('Accountant'))
+            ->post(route('admin.appointment_requests.convert', $appointmentRequest))
+            ->assertForbidden();
     }
 
     public function test_appointments_redirects_guest(): void

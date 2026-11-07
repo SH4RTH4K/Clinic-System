@@ -251,10 +251,15 @@ Route::middleware(['auth', 'role:Super Admin'])->prefix('system/git-repository')
 });
 
 // Appointments
-Route::middleware(['auth', 'permission:appointments.view'])->group(function () {
+Route::middleware(['auth', 'role_or_permission:Super Admin|appointments.view'])->group(function () {
     Route::get('/appointment-requests', [AdminApptController::class, 'index'])->name('appointment_requests.index');
 });
-Route::middleware(['auth', 'permission:appointments.update'])->group(function () {
+Route::middleware(['auth', 'role_or_permission:Super Admin|appointments.create'])->group(function () {
+    Route::get('/appointment-requests/create', [AdminApptController::class, 'create'])->name('appointment_requests.create');
+    Route::post('/appointment-requests', [AdminApptController::class, 'store'])->name('appointment_requests.store');
+});
+Route::middleware(['auth', 'role_or_permission:Super Admin|appointments.update'])->group(function () {
+    Route::get('/appointment-requests/{appointmentRequest}/edit', [AdminApptController::class, 'edit'])->name('appointment_requests.edit');
     Route::put('/appointment-requests/{appointmentRequest}', [AdminApptController::class, 'update'])->name('appointment_requests.update');
     Route::post('/appointment-requests/{appointmentRequest}/convert', [AdminApptController::class, 'convertToPatient'])->name('appointment_requests.convert');
 });

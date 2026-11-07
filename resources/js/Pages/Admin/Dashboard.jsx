@@ -34,6 +34,7 @@ const statCards = [
         bg: 'bg-rose-50',
         route: 'admin.appointment_requests.index',
         permission: 'appointments.view',
+        superAdminAccess: true,
         metaLabel: 'needs follow-up',
     },
     {
@@ -97,7 +98,7 @@ function StatusPill({ status }) {
 
 function StatCard({ card, metrics }) {
     return (
-        <PermissionLink permission={card.permission} href={route(card.route)} className={`${card.bg} block rounded-lg border border-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}>
+        <PermissionLink permission={card.permission} superAdminAccess={card.superAdminAccess} href={route(card.route)} className={`${card.bg} block rounded-lg border border-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}>
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{card.label}</p>
@@ -202,7 +203,7 @@ export default function Dashboard({
                                 <h3 className="text-base font-bold text-slate-900">Appointments</h3>
                                 <p className="text-sm text-slate-500">{appointmentTotal} total requests</p>
                             </div>
-                            <PermissionLink permission="appointments.view" href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+                            <PermissionLink permission="appointments.view" superAdminAccess href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
                                 Manage
                             </PermissionLink>
                         </div>
@@ -234,7 +235,7 @@ export default function Dashboard({
                     <section className="rounded-lg bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-slate-900">Recent Requests</h3>
-                            <PermissionLink permission="appointments.view" href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+                            <PermissionLink permission="appointments.view" superAdminAccess href={route('admin.appointment_requests.index')} className="text-sm font-semibold text-blue-700 hover:text-blue-900">
                                 Open
                             </PermissionLink>
                         </div>
@@ -351,7 +352,7 @@ export default function Dashboard({
                     </PermissionLink>
                     )}
                     {access.appointments && (
-                    <PermissionLink permission="appointments.view" href={route('admin.appointment_requests.index', { status: 'pending' })} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <PermissionLink permission="appointments.view" superAdminAccess href={route('admin.appointment_requests.index', { status: 'pending' })} className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Next Action</p>
                         <p className="mt-4 text-lg font-bold text-slate-900">Follow up pending requests</p>
                         <p className="text-sm text-slate-500">{metrics.pending_requests ?? 0} waiting now</p>

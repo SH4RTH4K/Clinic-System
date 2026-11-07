@@ -1,8 +1,11 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import usePermission from '@/Components/usePermission';
 
-export default function PermissionLink({ permission, href, className = '', children, ...props }) {
-    const canAccess = usePermission()(permission);
+export default function PermissionLink({ permission, href, className = '', children, superAdminAccess = false, ...props }) {
+    const { auth = {} } = usePage().props;
+    const can = usePermission();
+    const canAccess = can(permission)
+        || (superAdminAccess && (auth.roles || []).includes('Super Admin'));
 
     if (!canAccess) {
         return (
