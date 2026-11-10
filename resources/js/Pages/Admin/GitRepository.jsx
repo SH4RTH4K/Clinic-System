@@ -249,7 +249,7 @@ export default function GitRepository({ repository, settings, history = [] }) {
                                 className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-normal text-slate-800 disabled:bg-slate-100"
                             />
                             {form.errors.repository_url && <span className="mt-1 block text-xs text-rose-700">{form.errors.repository_url}</span>}
-                            <span className="mt-1 block font-normal text-slate-500">Use a GitHub HTTPS URL or SSH clone URL. On cPanel, a verified deployment registers the separate source checkout. Saving settings never initializes Git inside the live application.</span>
+                            <span className="mt-1 block font-normal text-slate-500">Use a GitHub HTTPS URL or SSH clone URL. When enabled, the application creates and protects its own private checkout under Laravel storage; cPanel Git Version Control is not required.</span>
                         </label>
 
                         <div className="grid gap-3 md:grid-cols-2">
@@ -368,9 +368,9 @@ export default function GitRepository({ repository, settings, history = [] }) {
                             <StatusPill status={repository.status} />
                             {repository.source_reconnect_available && ['Unavailable', 'Not connected'].includes(repository.status) && (
                                 <div className="mt-3">
-                                    <p className="mb-2 text-xs leading-5 text-slate-600">Find the matching repository and branch in the private cPanel repositories directory. This updates only the source registration.</p>
+                                    <p className="mb-2 text-xs leading-5 text-slate-600">Initialize or reconnect the private application-managed checkout. Existing live application files are not replaced by this action.</p>
                                     <ActionButton tone="blue" disabled={busy} onClick={() => run('reconnect_source')}>
-                                        {busy ? 'Reconnecting...' : 'Reconnect source checkout'}
+                                        {busy ? 'Preparing checkout...' : 'Initialize managed checkout'}
                                     </ActionButton>
                                 </div>
                             )}
@@ -466,7 +466,7 @@ export default function GitRepository({ repository, settings, history = [] }) {
                 </section>
 
                 <aside className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950">
-                    Git integration is available in local and production environments when Git and PHP process execution are available. It is disabled in automated tests. The page protects environment files, private storage, uploads, and dependency directories. Untracked files are preserved; conflicting updates stop safely. Database migrations run only when explicitly enabled in settings.
+                    Git integration is available in local and production environments when Git and PHP process execution are available. It is disabled in automated tests. The application keeps its Git checkout in private storage, protects environment files, uploads, and dependency directories, preserves untracked files, and stops safely on conflicting updates. Database migrations run only when explicitly enabled in settings.
                 </aside>
             </div>
         </AdminLayout>

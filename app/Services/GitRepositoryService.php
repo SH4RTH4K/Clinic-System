@@ -19,6 +19,8 @@ class GitRepositoryService
 
     private const DEPLOYED_COMMIT_MARKER = 'DEPLOYED_COMMIT';
 
+    private const MANAGED_SOURCE_PATH = 'git-repository/source';
+
     /** @var array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, credential: ?string, valid: bool}|null */
     private ?array $storedSettings = null;
 
@@ -67,7 +69,7 @@ class GitRepositoryService
         try {
             if (! $this->repositoryExists()) {
                 $snapshot['status'] = 'Not connected';
-                $snapshot['message'] = 'The live application has no registered cPanel source checkout. Deploy this version once through cPanel Git Version Control.';
+                $snapshot['message'] = 'No private application-managed Git checkout is connected. Save the enabled settings to initialize one.';
 
                 return $snapshot;
             }
@@ -167,8 +169,16 @@ class GitRepositoryService
     {
         $this->assertOperationsAllowed();
 
+        if (! $this->isSplitDeployment() && ! $this->managedRepositoryExists() && $this->isCpanelSplitDeployment()) {
+            $this->initializeManagedCheckout($this->settings());
+            $this->assertRepositoryReady();
+            $this->assertConfiguredRemote();
+
+            return;
+        }
+
         if (! $this->isCpanelSplitDeployment()) {
-            throw new RuntimeException('Source checkout reconnection is available only for a split cPanel deployment.');
+            throw new RuntimeException('A private application-managed checkout can only be initialized from an enabled split deployment.');
         }
 
         $matchingCheckouts = $this->matchingSourceCheckouts();
@@ -291,7 +301,17 @@ class GitRepositoryService
 
         if ($settings['enabled']) {
             if (! $this->repositoryExists()) {
-                throw new RuntimeException('The live application has no registered source checkout. Deploy this version once through cPanel Git Version Control.');
+                if (! $this->isCpanelSplitDeployment() || $this->isSplitDeployment()) {
+                    throw new RuntimeException('The live application has no registered source checkout. Enable this from a split deployment so the application can create its private managed checkout.');
+                }
+
+                $this->initializeManagedCheckout([
+                    'branch' => $settings['branch'],
+                    'remote' => $settings['remote'],
+                    'repository_url' => $settings['repository_url'],
+                    'authentication' => $settings['authentication'],
+                    'credential' => $credential,
+                ]);
             }
 
             $this->assertRepositoryReady();
@@ -348,9 +368,9 @@ class GitRepositoryService
                 $this->runGit(['merge', '--ff-only', $this->remoteTrackingBranch()]);
                 $checks = ['Clean tracked checkout', 'Untracked files preserved', 'Approved GitHub URL', 'Fast-forward only'];
 
-                if ($this->isSplitDeployment()) {
+                if ($this->isCpanelSplitDeployment()) {
                     $this->runSplitDeployment((string) $targetCommit);
-                    $checks[] = 'Verified cPanel release installed';
+                    $checks[] = 'Verified application release installed';
                     $checks[] = 'Application caches rebuilt';
 
                     if ($incomingMigrations) {
@@ -361,7 +381,7 @@ class GitRepositoryService
                     $checks[] = 'Forward migrations completed';
                 }
 
-                if (! $this->isSplitDeployment() && $this->settings()['clear_cache']) {
+                if (! $this->isCpanelSplitDeployment() && $this->settings()['clear_cache']) {
                     $this->runArtisan(['optimize:clear']);
                     $checks[] = 'Application caches cleared';
                 }
@@ -447,6 +467,77 @@ class GitRepositoryService
         return file_exists($this->repositoryRoot().DIRECTORY_SEPARATOR.'.git');
     }
 
+    private function managedRepositoryPath(): string
+    {
+        return Storage::disk('local')->path(self::MANAGED_SOURCE_PATH);
+    }
+
+    private function managedRepositoryExists(): bool
+    {
+        $path = $this->managedRepositoryPath();
+
+        return is_dir($path)
+            && ! is_link($path)
+            && is_dir($path.DIRECTORY_SEPARATOR.'.git')
+            && ! is_link($path.DIRECTORY_SEPARATOR.'.git');
+    }
+
+    /** @param array{branch: string, remote: string, repository_url: string, authentication: string, credential: ?string} $settings */
+    private function initializeManagedCheckout(array $settings): void
+    {
+        $targetPath = $this->managedRepositoryPath();
+        $parentPath = dirname($targetPath);
+
+        if (is_link($parentPath) || is_link($targetPath)) {
+            throw new RuntimeException('The private Git checkout directory is unsafe.');
+        }
+
+        if (file_exists($targetPath)) {
+            throw new RuntimeException('A private Git checkout already exists but is not readable. Review it before retrying.');
+        }
+
+        File::ensureDirectoryExists($parentPath, 0700);
+        $temporaryPath = $parentPath.DIRECTORY_SEPARATOR.'.source-'.bin2hex(random_bytes(12));
+
+        try {
+            $result = $this->executeGitInDirectory(base_path(), [
+                'clone',
+                '--no-tags',
+                '--single-branch',
+                '--branch',
+                $settings['branch'],
+                '--',
+                $settings['repository_url'],
+                $temporaryPath,
+            ], $this->authenticationEnvironmentFor($settings['authentication'], $settings['credential']));
+
+            if ($result['code'] !== 0) {
+                throw new RuntimeException($this->gitFailureMessage(['clone'], $result));
+            }
+
+            if ($settings['remote'] !== 'origin') {
+                $rename = $this->executeGitInDirectory($temporaryPath, ['remote', 'rename', 'origin', $settings['remote']]);
+
+                if ($rename['code'] !== 0) {
+                    throw new RuntimeException($this->gitFailureMessage(['remote'], $rename));
+                }
+            }
+
+            $root = $this->executeGitInDirectory($temporaryPath, ['rev-parse', '--show-toplevel']);
+            if ($root['code'] !== 0 || realpath(trim($root['output'])) !== realpath($temporaryPath)) {
+                throw new RuntimeException('The private Git checkout could not be verified safely.');
+            }
+
+            if (! @rename($temporaryPath, $targetPath)) {
+                throw new RuntimeException('The private Git checkout could not be installed safely.');
+            }
+        } finally {
+            if (is_dir($temporaryPath) && ! is_link($temporaryPath)) {
+                File::deleteDirectory($temporaryPath);
+            }
+        }
+    }
+
     private function isSplitDeployment(): bool
     {
         return file_exists(base_path(self::SOURCE_MARKER)) || is_link(base_path(self::SOURCE_MARKER));
@@ -454,30 +545,34 @@ class GitRepositoryService
 
     private function repositoryRoot(): string
     {
-        if (! $this->isSplitDeployment()) {
-            return base_path();
+        if ($this->isSplitDeployment()) {
+            $marker = base_path(self::SOURCE_MARKER);
+            if (is_link($marker) || ! is_file($marker) || filesize($marker) > 4096) {
+                throw new RuntimeException('The registered source checkout is invalid.');
+            }
+
+            $registeredPath = trim((string) file_get_contents($marker));
+            $repositoryRoot = realpath($registeredPath);
+            $accountRoot = realpath(dirname(base_path()));
+            $applicationRoot = realpath(base_path());
+
+            if ($repositoryRoot === false || $accountRoot === false || $applicationRoot === false
+                || is_link($registeredPath)
+                || ! str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR)
+                || $repositoryRoot === $applicationRoot
+                || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)
+                || str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR.'public_html'.DIRECTORY_SEPARATOR)) {
+                throw new RuntimeException('The registered source checkout is outside the private account area.');
+            }
+
+            return $repositoryRoot;
         }
 
-        $marker = base_path(self::SOURCE_MARKER);
-        if (is_link($marker) || ! is_file($marker) || filesize($marker) > 4096) {
-            throw new RuntimeException('The cPanel source checkout registration is invalid.');
+        if ($this->managedRepositoryExists()) {
+            return (string) realpath($this->managedRepositoryPath());
         }
 
-        $registeredPath = trim((string) file_get_contents($marker));
-        $repositoryRoot = realpath($registeredPath);
-        $accountRoot = realpath(dirname(base_path()));
-        $applicationRoot = realpath(base_path());
-
-        if ($repositoryRoot === false || $accountRoot === false || $applicationRoot === false
-            || is_link($registeredPath)
-            || ! str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR)
-            || $repositoryRoot === $applicationRoot
-            || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)
-            || str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR.'public_html'.DIRECTORY_SEPARATOR)) {
-            throw new RuntimeException('The registered cPanel source checkout is outside the private account area.');
-        }
-
-        return $repositoryRoot;
+        return base_path();
     }
 
     private function isCpanelSplitDeployment(): bool
@@ -498,6 +593,10 @@ class GitRepositoryService
         if (! $settings['valid'] || ! $settings['enabled'] || ! $this->supportsGitActions()
             || ! function_exists('proc_open') || ! $this->gitAvailable() || ! $this->isCpanelSplitDeployment()) {
             return false;
+        }
+
+        if (! $this->isSplitDeployment() && ! $this->managedRepositoryExists()) {
+            return true;
         }
 
         $accountRoot = realpath(dirname(base_path()));
@@ -895,7 +994,7 @@ class GitRepositoryService
         $accountRoot = realpath(dirname(base_path()));
 
         if (preg_match('/\A[a-f0-9]{40}\z/', $targetCommit) !== 1 || $accountRoot === false || ! is_file($script) || is_link($script)) {
-            throw new RuntimeException('The reviewed cPanel deployment task is unavailable. No live files were changed by this page.');
+            throw new RuntimeException('The reviewed application deployment task is unavailable. No live files were changed by this page.');
         }
 
         try {
@@ -907,7 +1006,7 @@ class GitRepositoryService
             ], null, 1800);
             $process->run();
         } catch (\Throwable) {
-            throw new RuntimeException('The hosting PHP runtime could not start the verified cPanel deployment task.');
+            throw new RuntimeException('The hosting PHP runtime could not start the verified application deployment task.');
         }
 
         if (! $process->isSuccessful()) {
@@ -924,7 +1023,7 @@ class GitRepositoryService
         $error = strtolower($errorOutput);
 
         return match (true) {
-            str_contains($error, 'another deployment is running') => 'A cPanel deployment is already running. Wait for it to finish before retrying.',
+            str_contains($error, 'another deployment is running') => 'An application deployment is already running. Wait for it to finish before retrying.',
             str_contains($error, 'new migration needs review'),
             str_contains($error, 'historical migration changed or removed') => 'The release contains database migration changes that need separate review before deployment.',
             str_contains($error, 'reviewed database migrations require') => 'Enable reviewed migrations explicitly before deploying this database change.',
@@ -932,8 +1031,8 @@ class GitRepositoryService
             str_contains($error, 'php 8.3 command-line') => 'The host does not provide the PHP 8.3 command-line runtime required by this release.',
             str_contains($error, 'node.js 22'),
             str_contains($error, 'required deployment tool is unavailable: npm') => 'The host cannot build the locked frontend assets. Use a verified release artifact instead.',
-            str_contains($error, 'this update task requires an initialized clinic installation') => 'The live cPanel installation is incomplete. Review its private application and public document root.',
-            default => 'The cPanel deployment task stopped. Review protected server deployment logs before retrying.',
+            str_contains($error, 'this update task requires an initialized clinic installation') => 'The live installation is incomplete. Review its private application and public document root.',
+            default => 'The application deployment task stopped. Review protected server deployment logs before retrying.',
         };
     }
 
@@ -1056,6 +1155,7 @@ class GitRepositoryService
         $diagnostic = strtolower($result['error'].' '.$result['output']);
         $operation = match ($arguments[0] ?? '') {
             'fetch' => 'GitHub connection check',
+            'clone' => 'Git repository initialization',
             'remote' => 'Repository configuration check',
             'rev-parse' => 'Git checkout check',
             default => 'Git operation',
@@ -1079,7 +1179,7 @@ class GitRepositoryService
             str_contains($diagnostic, 'permission denied'),
             str_contains($diagnostic, 'could not lock'),
             str_contains($diagnostic, 'access is denied') => 'The server could not access Git metadata. Check the application files’ ownership and permissions.',
-            ($arguments[0] ?? '') === 'rev-parse' => 'The registered source directory is not a readable Git checkout. Use Reconnect source checkout to locate a matching private cPanel repository, or ask the hosting administrator to restore the checkout.',
+            ($arguments[0] ?? '') === 'rev-parse' => 'The private source directory is not a readable Git checkout. Save the settings again to initialize or reconnect it.',
             default => 'Check GitHub access, the configured branch, and server Git permissions.',
         };
 
@@ -1101,7 +1201,7 @@ class GitRepositoryService
         }
 
         if (! $this->repositoryExists()) {
-            return 'The live application has no registered cPanel source checkout.';
+            return 'No private application-managed Git checkout is connected. Save the enabled settings to initialize one.';
         }
 
         return 'The Git checkout, remote, or configured branch could not be verified.';

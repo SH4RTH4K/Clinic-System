@@ -50,7 +50,7 @@ class GitRepositoryController extends Controller
         try {
             $repository->reconnectSourceCheckout();
 
-            return back()->with('success', 'The cPanel source checkout was reconnected. Check GitHub to verify the repository status.');
+            return back()->with('success', 'The private application-managed Git checkout is ready. Check GitHub to verify the repository status.');
         } catch (RuntimeException $exception) {
             return back()->with('error', $exception->getMessage());
         }
