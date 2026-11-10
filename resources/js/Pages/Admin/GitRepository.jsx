@@ -366,6 +366,14 @@ export default function GitRepository({ repository, settings, history = [] }) {
                             <h3 className="mt-3 text-sm font-semibold text-slate-900">Review server state</h3>
                             <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">{repository.working_tree_changes > 0 ? `${repository.working_tree_changes} tracked source change(s) block an update.` : 'Only a clean, non-diverged source checkout can be updated.'}</p>
                             <StatusPill status={repository.status} />
+                            {repository.source_reconnect_available && ['Unavailable', 'Not connected'].includes(repository.status) && (
+                                <div className="mt-3">
+                                    <p className="mb-2 text-xs leading-5 text-slate-600">Find the matching repository and branch in the private cPanel repositories directory. This updates only the source registration.</p>
+                                    <ActionButton tone="blue" disabled={busy} onClick={() => run('reconnect_source')}>
+                                        {busy ? 'Reconnecting...' : 'Reconnect source checkout'}
+                                    </ActionButton>
+                                </div>
+                            )}
                         </article>
                         <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">03</span>

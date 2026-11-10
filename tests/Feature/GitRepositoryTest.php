@@ -36,10 +36,15 @@ class GitRepositoryTest extends TestCase
         $this->actingAs($user)
             ->post(route('admin.git_repository.check'))
             ->assertForbidden();
+
+        $this->actingAs($user)
+            ->post(route('admin.git_repository.reconnect_source'))
+            ->assertForbidden();
     }
 
     public function test_super_admin_can_view_repository_status_but_git_actions_are_disabled_in_testing(): void
     {
+        Storage::fake('local');
         $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
         $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
 
@@ -122,7 +127,7 @@ class GitRepositoryTest extends TestCase
         ]);
 
         $this->assertSame(
-            'Git checkout check failed. The registered source directory is not a readable Git checkout. Verify that the cPanel source repository still exists and is accessible.',
+            'Git checkout check failed. The registered source directory is not a readable Git checkout. Use Reconnect source checkout to locate a matching private cPanel repository, or ask the hosting administrator to restore the checkout.',
             $message,
         );
     }
@@ -212,6 +217,170 @@ class GitRepositoryTest extends TestCase
             $currentSnapshot = $service->snapshot();
             $this->assertSame('Up to date', $currentSnapshot['status']);
             $this->assertSame(0, $currentSnapshot['incoming_commits']);
+        } finally {
+            $this->app->setBasePath($originalBasePath);
+            File::deleteDirectory($accountRoot);
+        }
+    }
+
+    public function test_super_admin_can_reconnect_a_stale_cpanel_registration_to_the_unique_matching_checkout(): void
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+        Storage::fake('local');
+
+        $originalBasePath = base_path();
+        $accountRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-git-reconnect-'.bin2hex(random_bytes(8));
+        $privatePath = $accountRoot.DIRECTORY_SEPARATOR.'private';
+        $sourcePath = $accountRoot.DIRECTORY_SEPARATOR.'repositories'.DIRECTORY_SEPARATOR.'Clinic-Systemrepositories'.DIRECTORY_SEPARATOR.'Clinic-System-release';
+        $registrationPath = $privatePath.DIRECTORY_SEPARATOR.'DEPLOYED_GIT_REPOSITORY';
+
+        File::ensureDirectoryExists($privatePath);
+        File::ensureDirectoryExists(dirname($sourcePath));
+        File::ensureDirectoryExists($sourcePath);
+
+        try {
+            $this->fixtureGit($sourcePath, ['init', '--quiet', '--initial-branch=hardening']);
+            file_put_contents($sourcePath.DIRECTORY_SEPARATOR.'README.md', 'synthetic source checkout');
+            $this->fixtureGit($sourcePath, ['add', 'README.md']);
+            $this->fixtureGit($sourcePath, ['-c', 'user.name=Clinic Test', '-c', 'user.email=test@local.invalid', 'commit', '--quiet', '-m', 'initial']);
+            $this->fixtureGit($sourcePath, ['remote', 'add', 'origin', 'https://github.com/SH4RTH4K/Clinic-System.git']);
+            file_put_contents($registrationPath, $accountRoot.DIRECTORY_SEPARATOR.'repositories'.DIRECTORY_SEPARATOR.'deleted-checkout'.PHP_EOL);
+            $this->app->setBasePath($privatePath);
+            Storage::disk('local')->put('system/git-repository/settings.json', json_encode([
+                'enabled' => true,
+                'branch' => 'hardening',
+                'remote' => 'origin',
+                'repository_type' => 'public',
+                'repository_url' => 'https://github.com/SH4RTH4K/Clinic-System.git',
+                'authentication' => 'none',
+                'credential' => null,
+                'run_migrations' => false,
+                'clear_cache' => true,
+                'health_check' => true,
+            ], JSON_THROW_ON_ERROR));
+
+            $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+            $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+            $this->withoutVite()
+                ->actingAs($user)
+                ->get(route('admin.git_repository.index'))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('repository.status', 'Unavailable')
+                    ->where('repository.source_reconnect_available', true));
+
+            $this->withoutMiddleware(PreventRequestForgery::class)
+                ->actingAs($user)
+                ->from(route('admin.git_repository.index'))
+                ->post(route('admin.git_repository.reconnect_source'))
+                ->assertRedirect(route('admin.git_repository.index'))
+                ->assertSessionHas('success', 'The cPanel source checkout was reconnected. Check GitHub to verify the repository status.');
+
+            $this->assertSame(realpath($sourcePath), trim((string) file_get_contents($registrationPath)));
+        } finally {
+            $this->app->setBasePath($originalBasePath);
+            File::deleteDirectory($accountRoot);
+        }
+    }
+
+    public function test_source_reconnection_does_not_change_registration_when_no_matching_checkout_exists(): void
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+        Storage::fake('local');
+
+        $originalBasePath = base_path();
+        $accountRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-git-no-match-'.bin2hex(random_bytes(8));
+        $privatePath = $accountRoot.DIRECTORY_SEPARATOR.'private';
+        $registrationPath = $privatePath.DIRECTORY_SEPARATOR.'DEPLOYED_GIT_REPOSITORY';
+
+        File::ensureDirectoryExists($privatePath);
+        File::ensureDirectoryExists($accountRoot.DIRECTORY_SEPARATOR.'repositories');
+
+        try {
+            file_put_contents($registrationPath, 'old-source-path'.PHP_EOL);
+            $this->app->setBasePath($privatePath);
+            Storage::disk('local')->put('system/git-repository/settings.json', json_encode([
+                'enabled' => true,
+                'branch' => 'hardening',
+                'remote' => 'origin',
+                'repository_type' => 'public',
+                'repository_url' => 'https://github.com/SH4RTH4K/Clinic-System.git',
+                'authentication' => 'none',
+                'credential' => null,
+                'run_migrations' => false,
+                'clear_cache' => true,
+                'health_check' => true,
+            ], JSON_THROW_ON_ERROR));
+
+            $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+            $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+            $this->withoutMiddleware(PreventRequestForgery::class)
+                ->actingAs($user)
+                ->from(route('admin.git_repository.index'))
+                ->post(route('admin.git_repository.reconnect_source'))
+                ->assertRedirect(route('admin.git_repository.index'))
+                ->assertSessionHas('error', 'No readable cPanel Git checkout matched the saved repository and branch. Restore the source checkout under the account repositories directory, then reconnect.');
+
+            $this->assertSame('old-source-path', trim((string) file_get_contents($registrationPath)));
+        } finally {
+            $this->app->setBasePath($originalBasePath);
+            File::deleteDirectory($accountRoot);
+        }
+    }
+
+    public function test_source_reconnection_refuses_ambiguous_matching_cpanel_checkouts(): void
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+        Storage::fake('local');
+
+        $originalBasePath = base_path();
+        $accountRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-git-ambiguous-'.bin2hex(random_bytes(8));
+        $privatePath = $accountRoot.DIRECTORY_SEPARATOR.'private';
+        $registrationPath = $privatePath.DIRECTORY_SEPARATOR.'DEPLOYED_GIT_REPOSITORY';
+        $repositoriesPath = $accountRoot.DIRECTORY_SEPARATOR.'repositories';
+
+        File::ensureDirectoryExists($privatePath);
+        File::ensureDirectoryExists($repositoriesPath);
+
+        try {
+            foreach (['checkout-one', 'checkout-two'] as $checkoutName) {
+                $sourcePath = $repositoriesPath.DIRECTORY_SEPARATOR.$checkoutName;
+                File::ensureDirectoryExists($sourcePath);
+                $this->fixtureGit($sourcePath, ['init', '--quiet', '--initial-branch=hardening']);
+                file_put_contents($sourcePath.DIRECTORY_SEPARATOR.'README.md', $checkoutName);
+                $this->fixtureGit($sourcePath, ['add', 'README.md']);
+                $this->fixtureGit($sourcePath, ['-c', 'user.name=Clinic Test', '-c', 'user.email=test@local.invalid', 'commit', '--quiet', '-m', 'initial']);
+                $this->fixtureGit($sourcePath, ['remote', 'add', 'origin', 'https://github.com/SH4RTH4K/Clinic-System.git']);
+            }
+
+            file_put_contents($registrationPath, 'existing-registration'.PHP_EOL);
+            $this->app->setBasePath($privatePath);
+            Storage::disk('local')->put('system/git-repository/settings.json', json_encode([
+                'enabled' => true,
+                'branch' => 'hardening',
+                'remote' => 'origin',
+                'repository_type' => 'public',
+                'repository_url' => 'https://github.com/SH4RTH4K/Clinic-System.git',
+                'authentication' => 'none',
+                'credential' => null,
+                'run_migrations' => false,
+                'clear_cache' => true,
+                'health_check' => true,
+            ], JSON_THROW_ON_ERROR));
+
+            $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+            $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+            $this->withoutMiddleware(PreventRequestForgery::class)
+                ->actingAs($user)
+                ->from(route('admin.git_repository.index'))
+                ->post(route('admin.git_repository.reconnect_source'))
+                ->assertRedirect(route('admin.git_repository.index'))
+                ->assertSessionHas('error', 'More than one cPanel Git checkout matched the saved repository and branch. Keep one authoritative checkout or ask the hosting administrator to resolve the duplicate.');
+
+            $this->assertSame('existing-registration', trim((string) file_get_contents($registrationPath)));
         } finally {
             $this->app->setBasePath($originalBasePath);
             File::deleteDirectory($accountRoot);

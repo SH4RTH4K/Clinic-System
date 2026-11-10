@@ -46,6 +46,7 @@ class GitRepositoryService
             'working_tree_paths' => [],
             'pull_available' => false,
             'deploy_available' => false,
+            'source_reconnect_available' => $this->sourceReconnectAvailable($settings),
         ];
 
         if (! $settings['valid']) {
@@ -160,6 +161,29 @@ class GitRepositoryService
         ], $this->authenticationEnvironment());
 
         return $this->snapshot();
+    }
+
+    public function reconnectSourceCheckout(): void
+    {
+        $this->assertOperationsAllowed();
+
+        if (! $this->isCpanelSplitDeployment()) {
+            throw new RuntimeException('Source checkout reconnection is available only for a split cPanel deployment.');
+        }
+
+        $matchingCheckouts = $this->matchingSourceCheckouts();
+
+        if ($matchingCheckouts === []) {
+            throw new RuntimeException('No readable cPanel Git checkout matched the saved repository and branch. Restore the source checkout under the account repositories directory, then reconnect.');
+        }
+
+        if (count($matchingCheckouts) > 1) {
+            throw new RuntimeException('More than one cPanel Git checkout matched the saved repository and branch. Keep one authoritative checkout or ask the hosting administrator to resolve the duplicate.');
+        }
+
+        $this->writeSourceRegistration($matchingCheckouts[0]);
+        $this->assertRepositoryReady();
+        $this->assertConfiguredRemote();
     }
 
     /** @return array{enabled: bool, branch: string, repository_type: string, repository_url: string, remote: string, authentication: string, has_credential: bool, run_migrations: bool, clear_cache: bool, health_check: bool, can_configure: bool, configuration_message: ?string} */
@@ -454,6 +478,170 @@ class GitRepositoryService
         }
 
         return $repositoryRoot;
+    }
+
+    private function isCpanelSplitDeployment(): bool
+    {
+        $deployedCommitMarker = base_path(self::DEPLOYED_COMMIT_MARKER);
+        $applicationPublicPath = base_path('public');
+        $accountPublicPath = dirname(base_path()).DIRECTORY_SEPARATOR.'public_html';
+
+        return $this->isSplitDeployment()
+            || file_exists($deployedCommitMarker)
+            || is_link($deployedCommitMarker)
+            || (! is_dir($applicationPublicPath) && is_dir($accountPublicPath));
+    }
+
+    /** @param array{valid: bool, enabled: bool} $settings */
+    private function sourceReconnectAvailable(array $settings): bool
+    {
+        if (! $settings['valid'] || ! $settings['enabled'] || ! $this->supportsGitActions()
+            || ! function_exists('proc_open') || ! $this->gitAvailable() || ! $this->isCpanelSplitDeployment()) {
+            return false;
+        }
+
+        $accountRoot = realpath(dirname(base_path()));
+        if ($accountRoot === false) {
+            return false;
+        }
+
+        $repositoriesPath = $accountRoot.DIRECTORY_SEPARATOR.'repositories';
+
+        return ! is_link($repositoriesPath) && is_dir($repositoriesPath) && is_readable($repositoriesPath);
+    }
+
+    /** @return list<string> */
+    private function matchingSourceCheckouts(): array
+    {
+        $accountRoot = realpath(dirname(base_path()));
+        $repositoriesEntry = $accountRoot === false ? false : $accountRoot.DIRECTORY_SEPARATOR.'repositories';
+        $repositoriesPath = $repositoriesEntry === false ? false : realpath($repositoriesEntry);
+
+        if ($accountRoot === false || $repositoriesPath === false || is_link($repositoriesEntry)
+            || ! str_starts_with($repositoriesPath, $accountRoot.DIRECTORY_SEPARATOR) || ! is_readable($repositoriesPath)) {
+            throw new RuntimeException('The cPanel account repositories directory is missing or unreadable. Ask the hosting administrator to restore access to that directory.');
+        }
+
+        $directories = [[$repositoriesPath, 0]];
+        $matchingCheckouts = [];
+        $visitedDirectories = 0;
+        $maximumDepth = 4;
+        $maximumDirectories = 2000;
+
+        while ($directories !== []) {
+            [$directory, $depth] = array_pop($directories);
+
+            try {
+                $entries = new \FilesystemIterator($directory, \FilesystemIterator::SKIP_DOTS);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            foreach ($entries as $entry) {
+                if (! $entry->isDir() || $entry->isLink()) {
+                    continue;
+                }
+
+                $candidate = $entry->getPathname();
+                $gitDirectory = $candidate.DIRECTORY_SEPARATOR.'.git';
+
+                if (! is_link($gitDirectory) && is_dir($gitDirectory)) {
+                    if ($this->isMatchingSourceCheckout($candidate, $repositoriesPath)) {
+                        $matchingCheckouts[] = realpath($candidate);
+                    }
+
+                    continue;
+                }
+
+                if ($depth < $maximumDepth) {
+                    $directories[] = [$candidate, $depth + 1];
+                    $visitedDirectories++;
+
+                    if ($visitedDirectories > $maximumDirectories) {
+                        throw new RuntimeException('The cPanel repositories directory contains too many folders to search safely. Keep the Clinic checkout near the repositories directory and retry.');
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($matchingCheckouts, 'is_string')));
+    }
+
+    private function isMatchingSourceCheckout(string $candidate, string $repositoriesPath): bool
+    {
+        $candidateRoot = realpath($candidate);
+
+        if ($candidateRoot === false || ! str_starts_with($candidateRoot, $repositoriesPath.DIRECTORY_SEPARATOR)) {
+            return false;
+        }
+
+        $topLevel = $this->executeGitInDirectory($candidateRoot, ['rev-parse', '--show-toplevel']);
+        if ($topLevel['code'] !== 0 || realpath($topLevel['output']) !== $candidateRoot) {
+            return false;
+        }
+
+        $branch = $this->executeGitInDirectory($candidateRoot, ['branch', '--show-current']);
+        if ($branch['code'] !== 0 || trim($branch['output']) !== $this->branch()) {
+            return false;
+        }
+
+        $remoteUrl = $this->executeGitInDirectory($candidateRoot, ['remote', 'get-url', $this->remote()]);
+
+        return $remoteUrl['code'] === 0
+            && $this->normalizeRepositoryUrl(trim($remoteUrl['output'])) === $this->normalizeRepositoryUrl($this->repositoryUrl());
+    }
+
+    private function writeSourceRegistration(string $repositoryRoot): void
+    {
+        $applicationRoot = realpath(base_path());
+        $accountRoot = realpath(dirname(base_path()));
+        $markerPath = base_path(self::SOURCE_MARKER);
+
+        if ($applicationRoot === false || $accountRoot === false || is_link(base_path()) || is_link($markerPath)
+            || (file_exists($markerPath) && ! is_file($markerPath))
+            || ! str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR)
+            || $repositoryRoot === $applicationRoot
+            || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)
+            || str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR.'public_html'.DIRECTORY_SEPARATOR)) {
+            throw new RuntimeException('The matching source checkout is not in an approved private cPanel location.');
+        }
+
+        $contents = $repositoryRoot.PHP_EOL;
+
+        if (DIRECTORY_SEPARATOR === '\\') {
+            if (@file_put_contents($markerPath, $contents, LOCK_EX) !== strlen($contents)) {
+                throw new RuntimeException('The source checkout registration could not be written safely. Check private application directory permissions.');
+            }
+
+            return;
+        }
+
+        $temporaryPath = dirname($markerPath).DIRECTORY_SEPARATOR.'.git-source-'.bin2hex(random_bytes(12)).'.tmp';
+        $handle = @fopen($temporaryPath, 'x');
+
+        if ($handle === false) {
+            throw new RuntimeException('A private temporary source registration could not be created.');
+        }
+
+        try {
+            $written = @fwrite($handle, $contents);
+            $flushed = @fflush($handle);
+            $closed = @fclose($handle);
+            $handle = false;
+
+            if (! @chmod($temporaryPath, 0600) || $written !== strlen($contents) || ! $flushed || ! $closed
+                || ! @rename($temporaryPath, $markerPath)) {
+                throw new RuntimeException('The source checkout registration could not be replaced safely. Check private application directory permissions.');
+            }
+        } finally {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+
+            if (is_file($temporaryPath) && ! is_link($temporaryPath)) {
+                unlink($temporaryPath);
+            }
+        }
     }
 
     private function deployedCommit(): ?string
@@ -780,6 +968,20 @@ class GitRepositoryService
      */
     private function executeGit(array $arguments, array $environment = []): array
     {
+        $workingDirectory = in_array($arguments[0] ?? '', ['--version', 'check-ref-format'], true)
+            ? base_path()
+            : $this->repositoryRoot();
+
+        return $this->executeGitInDirectory($workingDirectory, $arguments, $environment);
+    }
+
+    /**
+     * @param  list<string>  $arguments
+     * @param  array<string, string>  $environment
+     * @return array{code: int, output: string, error: string}
+     */
+    private function executeGitInDirectory(string $workingDirectory, array $arguments, array $environment = []): array
+    {
         $binary = trim((string) config('git_repository.binary', 'git'));
         $temporaryKeyPath = $environment['CLINIC_GIT_TEMP_KEY_PATH'] ?? null;
         unset($environment['CLINIC_GIT_TEMP_KEY_PATH']);
@@ -787,10 +989,6 @@ class GitRepositoryService
         if ($binary === '') {
             throw new RuntimeException('A Git executable is not configured.');
         }
-
-        $workingDirectory = in_array($arguments[0] ?? '', ['--version', 'check-ref-format'], true)
-            ? base_path()
-            : $this->repositoryRoot();
 
         try {
             $process = new Process(array_merge([
@@ -881,7 +1079,7 @@ class GitRepositoryService
             str_contains($diagnostic, 'permission denied'),
             str_contains($diagnostic, 'could not lock'),
             str_contains($diagnostic, 'access is denied') => 'The server could not access Git metadata. Check the application files’ ownership and permissions.',
-            ($arguments[0] ?? '') === 'rev-parse' => 'The registered source directory is not a readable Git checkout. Verify that the cPanel source repository still exists and is accessible.',
+            ($arguments[0] ?? '') === 'rev-parse' => 'The registered source directory is not a readable Git checkout. Use Reconnect source checkout to locate a matching private cPanel repository, or ask the hosting administrator to restore the checkout.',
             default => 'Check GitHub access, the configured branch, and server Git permissions.',
         };
 

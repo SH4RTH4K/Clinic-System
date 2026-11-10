@@ -247,6 +247,7 @@ Route::middleware(['auth', 'role:Super Admin'])->prefix('system/git-repository')
     Route::get('/', [GitRepositoryController::class, 'index'])->name('index');
     Route::post('/settings', [GitRepositoryController::class, 'updateSettings'])->middleware('throttle:6,1')->name('settings');
     Route::post('/check', [GitRepositoryController::class, 'check'])->middleware('throttle:6,1')->name('check');
+    Route::post('/reconnect-source', [GitRepositoryController::class, 'reconnectSourceCheckout'])->middleware('throttle:3,1')->name('reconnect_source');
     Route::post('/pull', [GitRepositoryController::class, 'pull'])->middleware('throttle:2,1')->name('pull');
 });
 

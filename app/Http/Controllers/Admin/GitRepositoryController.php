@@ -45,6 +45,17 @@ class GitRepositoryController extends Controller
         }
     }
 
+    public function reconnectSourceCheckout(GitRepositoryService $repository): RedirectResponse
+    {
+        try {
+            $repository->reconnectSourceCheckout();
+
+            return back()->with('success', 'The cPanel source checkout was reconnected. Check GitHub to verify the repository status.');
+        } catch (RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+    }
+
     public function pull(GitRepositoryService $repository): RedirectResponse
     {
         try {
