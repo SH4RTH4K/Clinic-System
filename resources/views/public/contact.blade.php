@@ -1,51 +1,42 @@
 @extends('layouts.public')
+
 @section('content')
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Contact Us</h1>
-    <div class="grid md:grid-cols-2 gap-8">
-        <div class="bg-white p-6 rounded shadow-sm">
-            <h3 class="text-xl font-bold mb-4">Get in Touch</h3>
-            <p class="text-gray-600 mb-2"><strong>Address:</strong> {{ $settings->address ?? '123 Healing Street, Wellness City' }}</p>
-            <p class="text-gray-600 mb-2"><strong>Phone:</strong> {{ $settings->phone ?? '(123) 456-7890' }}</p>
-            
-            <h4 class="font-bold mt-6 mb-2">Visiting Hours</h4>
-            <div class="text-gray-600 space-y-1 text-sm whitespace-pre-line">
-                {{ $settings->visiting_hours ?? "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday: 10:00 AM - 4:00 PM\nSunday: Closed" }}
-            </div>
-        </div>
-        <div class="bg-white p-6 rounded shadow-sm">
-            <h3 class="text-xl font-bold mb-4">Send us a Message</h3>
-            <form action="{{ route('appointment.store') }}" method="POST" class="space-y-4">
-                @csrf
-                <div style="display:none;" aria-hidden="true">
-                    <input type="text" name="website" tabindex="-1" autocomplete="off" value="" />
+    <div class="mx-auto max-w-5xl">
+        <h1 class="mb-6 text-3xl font-bold text-gray-800">Contact Us</h1>
+
+        <div class="grid gap-8 md:grid-cols-2">
+            <section class="rounded-lg bg-white p-6 shadow-sm" aria-labelledby="contact-details-heading">
+                <h2 id="contact-details-heading" class="mb-4 text-xl font-bold">Get in Touch</h2>
+
+                <p class="mb-3 text-gray-600">
+                    <strong>Address:</strong>
+                    {{ $settings->address ?? '123 Healing Street, Wellness City' }}
+                </p>
+                <p class="mb-3 text-gray-600">
+                    <strong>Phone:</strong>
+                    @if(!empty($settings->phone))
+                        <a class="text-primary-700 hover:underline" href="tel:{{ $settings->phone }}">{{ $settings->phone }}</a>
+                    @else
+                        (123) 456-7890
+                    @endif
+                </p>
+
+                <h3 class="mb-2 mt-6 font-bold">Visiting Hours</h3>
+                <div class="space-y-1 whitespace-pre-line text-sm text-gray-600">
+                    {{ $settings->visiting_hours ?? "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday: 10:00 AM - 4:00 PM\nSunday: Closed" }}
                 </div>
-                @if(session('success'))
-                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                        {{ session('success') }}
-                    </div>
-                @endif
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" name="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Phone</label>
-                    <input type="text" name="phone" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Preferred Date</label>
-                    <input type="date" name="preferred_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Preferred Time</label>
-                    <input type="time" name="preferred_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Message</label>
-                    <textarea name="message" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2"></textarea>
-                </div>
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Request Appointment</button>
-            </form>
+            </section>
+
+            <section class="flex flex-col items-start justify-center rounded-lg bg-white p-6 shadow-sm" aria-labelledby="appointment-link-heading">
+                <h2 id="appointment-link-heading" class="text-xl font-bold">Need an appointment?</h2>
+                <p class="mb-5 mt-2 text-gray-600">
+                    Send a scheduling request with your preferred date and time. The clinic will contact you to confirm availability.
+                </p>
+                <a href="{{ route('appointment.request.form') }}"
+                   class="inline-flex items-center rounded-lg bg-primary-600 px-5 py-3 font-semibold text-white transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                    Request an Appointment
+                </a>
+            </section>
         </div>
     </div>
 @endsection

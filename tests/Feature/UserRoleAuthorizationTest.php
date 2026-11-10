@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -177,6 +178,60 @@ class UserRoleAuthorizationTest extends TestCase
                 'is_active' => true,
             ])
             ->assertRedirect(route('admin.users.index'));
+    }
+
+    public static function shortPasswords(): array
+    {
+        return [
+            'one character' => ['1'],
+            'two characters' => ['12'],
+        ];
+    }
+
+    #[DataProvider('shortPasswords')]
+    public function test_super_admin_can_create_user_with_any_password_length(string $password): void
+    {
+        $superAdmin = $this->userWithRole('Super Admin');
+
+        $this->actingAs($superAdmin)
+            ->from(route('admin.users.create'))
+            ->post(route('admin.users.store'), [
+                'name' => 'Weak Password Test User',
+                'username' => 'weak_password_test_user',
+                'email' => 'weak-password-test@example.invalid',
+                'password' => $password,
+                'password_confirmation' => $password,
+                'roles' => ['Doctor'],
+                'is_active' => true,
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $createdUser = User::query()->where('username', 'weak_password_test_user')->firstOrFail();
+        $this->assertTrue(Hash::check($password, $createdUser->password));
+    }
+
+    #[DataProvider('shortPasswords')]
+    public function test_super_admin_can_reset_user_password_to_any_length(string $password): void
+    {
+        $superAdmin = $this->userWithRole('Super Admin');
+        $target = $this->userWithRole('Doctor');
+        $originalPasswordHash = $target->password;
+
+        $this->actingAs($superAdmin)
+            ->from(route('admin.users.edit', $target))
+            ->put(route('admin.users.update', $target), [
+                'name' => $target->name,
+                'username' => $target->username,
+                'email' => $target->email,
+                'roles' => ['Doctor'],
+                'is_active' => true,
+                'password' => $password,
+                'password_confirmation' => $password,
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertNotSame($originalPasswordHash, $target->fresh()->password);
+        $this->assertTrue(Hash::check($password, $target->fresh()->password));
     }
 
     // -------------------------------------------------------------------------

@@ -41,4 +41,9 @@ class PublicController extends Controller
     {
         return view('public.contact');
     }
+
+    public function appointmentRequest(): View
+    {
+        return view('public.appointment-request');
+    }
 }

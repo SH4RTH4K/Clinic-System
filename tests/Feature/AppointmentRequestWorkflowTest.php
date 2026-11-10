@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\AppointmentRequest;
 use App\Models\AppointmentRequestEvent;
+use App\Models\ClinicSetting;
+use App\Models\Patient;
+use App\Models\PatientNumberingProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -21,15 +24,32 @@ class AppointmentRequestWorkflowTest extends TestCase
         parent::setUp();
         $this->withoutVite();
 
-        foreach (['appointments.view', 'appointments.create', 'appointments.update'] as $permissionName) {
+        foreach (['appointments.view', 'appointments.create', 'appointments.update', 'appointments.delete'] as $permissionName) {
             Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
         }
 
         Role::firstOrCreate(['name' => 'Receptionist', 'guard_name' => 'web'])
-            ->givePermissionTo(['appointments.view', 'appointments.create', 'appointments.update']);
+            ->givePermissionTo(['appointments.view', 'appointments.create', 'appointments.update', 'appointments.delete']);
         Role::firstOrCreate(['name' => 'Accountant', 'guard_name' => 'web'])
             ->givePermissionTo([]);
         Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
+    }
+
+    public function test_public_contact_page_links_to_separate_appointment_request_page(): void
+    {
+        $this->get(route('contact'))
+            ->assertOk()
+            ->assertSee('Contact Us')
+            ->assertSee(route('appointment.request.form'))
+            ->assertDontSee('Preferred Date')
+            ->assertDontSee('name="preferred_date"', false);
+
+        $this->get(route('appointment.request.form'))
+            ->assertOk()
+            ->assertSee('Appointment Request')
+            ->assertSee('name="preferred_date"', false)
+            ->assertSee('name="preferred_time"', false)
+            ->assertSee('action="'.route('appointment.store').'"', false);
     }
 
     public function test_receptionist_can_open_staff_appointment_intake_form(): void
@@ -231,13 +251,13 @@ class AppointmentRequestWorkflowTest extends TestCase
     {
         $this->travelTo('2026-11-08 09:00:00');
 
-        $this->from('/')->post('/appointment-requests', [
+        $this->from(route('appointment.request.form'))->post('/appointment-requests', [
             'name' => 'Synthetic Website Visitor',
             'phone' => '01700000000',
             'preferred_date' => '2026-11-10',
             'preferred_time' => '10:00',
             'source' => 'phone',
-        ])->assertRedirect('/');
+        ])->assertRedirect(route('appointment.request.form'));
 
         $appointmentRequest = AppointmentRequest::query()->where('name', 'Synthetic Website Visitor')->firstOrFail();
         $this->assertSame('website', $appointmentRequest->source);
@@ -267,8 +287,97 @@ class AppointmentRequestWorkflowTest extends TestCase
             ->put(route('admin.appointment_requests.update', $appointmentRequest), ['status' => 'contacted'])
             ->assertForbidden();
 
+        $this->actingAs($accountant)
+            ->delete(route('admin.appointment_requests.destroy', $appointmentRequest))
+            ->assertForbidden();
+
         $this->assertSame('pending', $appointmentRequest->fresh()->status);
+        $this->assertDatabaseHas('appointment_requests', [
+            'id' => $appointmentRequest->id,
+            'status' => 'pending',
+        ]);
         $this->assertDatabaseCount('appointment_request_events', 0);
+    }
+
+    public function test_receptionist_can_archive_request_from_active_list_and_preserve_audit_history(): void
+    {
+        $receptionist = $this->userWithRole('Receptionist');
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic Caller',
+            'phone' => '01700000000',
+            'preferred_date' => '2026-11-09',
+            'preferred_time' => '09:30:00',
+            'scheduled_date' => '2026-11-10',
+            'scheduled_time' => '10:00:00',
+            'source' => 'phone',
+            'created_by' => $receptionist->id,
+            'status' => 'scheduled',
+        ]);
+        $appointmentRequest->events()->create([
+            'performed_by' => $receptionist->id,
+            'performed_by_name' => $receptionist->name,
+            'event_type' => 'scheduled',
+            'previous_status' => 'pending',
+            'new_status' => 'scheduled',
+            'new_scheduled_date' => '2026-11-10',
+            'new_scheduled_time' => '10:00:00',
+        ]);
+
+        $this->actingAs($receptionist)
+            ->delete(route('admin.appointment_requests.destroy', $appointmentRequest))
+            ->assertRedirect(route('admin.appointment_requests.index'))
+            ->assertSessionHas('success', 'Appointment request removed from the active list. Its audit history was preserved.');
+
+        $this->assertDatabaseHas('appointment_requests', [
+            'id' => $appointmentRequest->id,
+            'status' => 'scheduled',
+        ]);
+        $this->assertDatabaseCount('appointment_request_events', 2);
+        $this->assertDatabaseHas('appointment_request_events', [
+            'appointment_request_id' => $appointmentRequest->id,
+            'performed_by' => $receptionist->id,
+            'performed_by_name' => $receptionist->name,
+            'event_type' => 'archived',
+            'previous_status' => 'scheduled',
+            'new_status' => 'scheduled',
+        ]);
+        $archivedEvent = AppointmentRequestEvent::query()
+            ->where('appointment_request_id', $appointmentRequest->id)
+            ->where('event_type', 'archived')
+            ->firstOrFail();
+        $this->assertSame('2026-11-10', $archivedEvent->previous_scheduled_date->toDateString());
+        $this->assertSame('2026-11-10', $archivedEvent->new_scheduled_date->toDateString());
+
+        $this->actingAs($receptionist)
+            ->get(route('admin.appointment_requests.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/AppointmentRequests/Index')
+                ->has('requests.data', 0));
+    }
+
+    public function test_super_admin_can_remove_appointment_request_without_delete_permission(): void
+    {
+        $superAdmin = $this->userWithRole('Super Admin');
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic Walk-in',
+            'phone' => '01700000000',
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->delete(route('admin.appointment_requests.destroy', $appointmentRequest))
+            ->assertRedirect(route('admin.appointment_requests.index'));
+
+        $this->assertDatabaseHas('appointment_requests', [
+            'id' => $appointmentRequest->id,
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('appointment_request_events', [
+            'appointment_request_id' => $appointmentRequest->id,
+            'performed_by' => $superAdmin->id,
+            'event_type' => 'archived',
+        ]);
     }
 
     public function test_manage_page_displays_original_slot_and_change_history(): void
@@ -305,6 +414,181 @@ class AppointmentRequestWorkflowTest extends TestCase
                 ->where('appointmentRequest.scheduled_date', '2026-11-10')
                 ->where('appointmentRequest.creator_name', $receptionist->name)
                 ->has('appointmentRequest.events', 1));
+    }
+
+    public function test_patient_created_from_request_is_linked_and_cannot_be_converted_twice(): void
+    {
+        $this->createClinicSetting();
+        $receptionist = $this->userWithRole('Receptionist');
+        $this->grantPermissions($receptionist, ['patients.create', 'patients.view']);
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic Caller',
+            'phone' => '01700000000',
+            'source' => 'phone',
+            'status' => 'pending',
+        ]);
+        $profile = PatientNumberingProfile::query()->where('is_active', true)->where('is_default', true)->firstOrFail();
+
+        $this->actingAs($receptionist)
+            ->post(route('admin.appointment_requests.convert', $appointmentRequest))
+            ->assertRedirect(route('admin.patients.create', ['appointment_request_id' => $appointmentRequest->id]));
+
+        $this->actingAs($receptionist)
+            ->get(route('admin.patients.create', ['appointment_request_id' => $appointmentRequest->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Patients/Create')
+                ->where('appointmentRequestId', $appointmentRequest->id)
+                ->where('defaults.name', 'Synthetic Caller')
+                ->where('defaults.phone', '01700000000'));
+
+        $this->actingAs($receptionist)
+            ->post(route('admin.patients.store'), [
+                'appointment_request_id' => $appointmentRequest->id,
+                'patient_numbering_profile_id' => $profile->id,
+                'name' => 'Synthetic Caller',
+                'phone' => '01700000000',
+                'gender' => 'female',
+            ])
+            ->assertRedirect(route('admin.appointment_requests.index'));
+
+        $patient = Patient::query()->where('name', 'Synthetic Caller')->firstOrFail();
+        $this->assertDatabaseCount('patients', 1);
+        $this->assertDatabaseHas('appointment_requests', [
+            'id' => $appointmentRequest->id,
+            'converted_patient_id' => $patient->id,
+        ]);
+        $this->assertDatabaseHas('appointment_request_events', [
+            'appointment_request_id' => $appointmentRequest->id,
+            'performed_by' => $receptionist->id,
+            'event_type' => 'converted',
+        ]);
+
+        $this->actingAs($receptionist)
+            ->post(route('admin.appointment_requests.convert', $appointmentRequest))
+            ->assertRedirect(route('admin.appointment_requests.index'))
+            ->assertSessionHas('warning');
+
+        $this->assertDatabaseCount('patients', 1);
+        $this->actingAs($receptionist)
+            ->get(route('admin.appointment_requests.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/AppointmentRequests/Index')
+                ->where('requests.data.0.converted_patient_id', $patient->id)
+                ->where('requests.data.0.existing_patient_match_id', null));
+    }
+
+    public function test_unique_existing_patient_match_can_be_linked_without_creating_a_duplicate(): void
+    {
+        $receptionist = $this->userWithRole('Receptionist');
+        $this->grantPermissions($receptionist, ['patients.view']);
+        $patient = Patient::factory()->create([
+            'name' => ' synthetic existing patient ',
+            'phone' => ' 01700000000 ',
+        ]);
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic Existing Patient',
+            'phone' => '01700000000',
+            'source' => 'website',
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($receptionist)
+            ->get(route('admin.appointment_requests.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/AppointmentRequests/Index')
+                ->where('requests.data.0.existing_patient_match_id', $patient->id));
+
+        $this->actingAs($receptionist)
+            ->post(route('admin.appointment_requests.link_patient', $appointmentRequest), ['patient_id' => $patient->id])
+            ->assertRedirect(route('admin.appointment_requests.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('patients', 1);
+        $this->assertDatabaseHas('appointment_requests', [
+            'id' => $appointmentRequest->id,
+            'converted_patient_id' => $patient->id,
+        ]);
+        $this->assertDatabaseHas('appointment_request_events', [
+            'appointment_request_id' => $appointmentRequest->id,
+            'performed_by' => $receptionist->id,
+            'event_type' => 'patient_linked',
+        ]);
+    }
+
+    public function test_ambiguous_patient_matches_block_conversion(): void
+    {
+        $receptionist = $this->userWithRole('Receptionist');
+        $this->grantPermissions($receptionist, ['patients.view', 'patients.create']);
+        Patient::factory()->count(2)->create([
+            'name' => 'Synthetic Shared Contact',
+            'phone' => '01700000000',
+        ]);
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic Shared Contact',
+            'phone' => '01700000000',
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($receptionist)
+            ->get(route('admin.appointment_requests.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/AppointmentRequests/Index')
+                ->where('requests.data.0.existing_patient_match_id', null)
+                ->where('requests.data.0.has_ambiguous_patient_match', true));
+
+        $this->actingAs($receptionist)
+            ->post(route('admin.appointment_requests.convert', $appointmentRequest))
+            ->assertRedirect(route('admin.appointment_requests.index'))
+            ->assertSessionHas('warning');
+
+        $this->assertDatabaseCount('patients', 2);
+        $this->assertDatabaseHas('appointment_requests', [
+            'id' => $appointmentRequest->id,
+            'converted_patient_id' => null,
+        ]);
+    }
+
+    public function test_linking_existing_patient_requires_patient_view_permission(): void
+    {
+        $receptionist = $this->userWithRole('Receptionist');
+        $patient = Patient::factory()->create([
+            'name' => 'Synthetic Restricted Match',
+            'phone' => '01700000000',
+        ]);
+        $appointmentRequest = AppointmentRequest::query()->create([
+            'name' => 'Synthetic Restricted Match',
+            'phone' => '01700000000',
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($receptionist)
+            ->post(route('admin.appointment_requests.link_patient', $appointmentRequest), ['patient_id' => $patient->id])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('appointment_requests', [
+            'id' => $appointmentRequest->id,
+            'converted_patient_id' => null,
+        ]);
+    }
+
+    private function grantPermissions(User $user, array $permissionNames): void
+    {
+        $permissions = collect($permissionNames)->map(fn (string $permissionName) => Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web'])
+        );
+
+        $user->givePermissionTo($permissions);
+    }
+
+    private function createClinicSetting(): void
+    {
+        ClinicSetting::create([
+            'clinic_name_en' => 'Synthetic Clinic',
+            'doctor_name' => 'Dr. Synthetic',
+            'doctor_credentials' => 'DHMS',
+            'address' => 'Synthetic address',
+            'phone' => '01700000000',
+        ]);
     }
 
     private function userWithRole(string $roleName): User

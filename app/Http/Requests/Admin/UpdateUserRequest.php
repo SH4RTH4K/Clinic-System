@@ -5,7 +5,6 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -38,7 +37,7 @@ class UpdateUserRequest extends FormRequest
 
         // Only validate password fields when a new password is being set.
         if ($this->filled('password')) {
-            $rules['password'] = ['required', 'confirmed', Password::defaults()];
+            $rules['password'] = ['required', 'string', 'max:255', 'confirmed'];
         }
 
         return $rules;

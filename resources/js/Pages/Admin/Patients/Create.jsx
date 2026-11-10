@@ -5,9 +5,10 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { calculateAgeFromDob, calculateDobFromAge } from './ageHelpers';
 import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
-export default function Create({ defaults = {}, fieldConfig = {}, relationshipOptions = [], numberingProfiles = [] }) {
+export default function Create({ defaults = {}, appointmentRequestId = null, fieldConfig = {}, relationshipOptions = [], numberingProfiles = [] }) {
     const { data, setData, post, errors, processing } = useForm({
         patient_numbering_profile_id: String(numberingProfiles.find((profile) => profile.is_default)?.id || numberingProfiles[0]?.id || ''),
+        appointment_request_id: appointmentRequestId || '',
         name: defaults?.name || '',
         guardian_name: '',
         guardian_relationship: '',
@@ -92,6 +93,15 @@ export default function Create({ defaults = {}, fieldConfig = {}, relationshipOp
 
                 <div className="bg-white p-6 shadow-xs border border-gray-200 rounded-lg">
                     <form onSubmit={submit} className="space-y-6">
+                        {appointmentRequestId && (
+                            <>
+                                <input type="hidden" name="appointment_request_id" value={data.appointment_request_id} />
+                                <div className="rounded-md border border-primary-200 bg-primary-50 p-4 text-sm text-primary-900">
+                                    This patient will be linked to the appointment request. Saving creates one patient record and prevents converting the same request again.
+                                    {errors.appointment_request_id && <p className="mt-1 text-red-700">{errors.appointment_request_id}</p>}
+                                </div>
+                            </>
+                        )}
                         <section className="rounded-lg border border-primary-100 bg-primary-50/40 p-4">
                             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">Patient category &amp; number</h3>
                             <p className="mt-1 text-sm text-gray-600">Choose a category. The matching profile will generate this patient's permanent ID.</p>

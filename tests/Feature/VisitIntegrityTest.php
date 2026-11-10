@@ -243,6 +243,22 @@ class VisitIntegrityTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_patient_search_matches_mobile_number_without_returning_phone(): void
+    {
+        $patient = Patient::factory()->create([
+            'name' => 'Mobile Search Patient',
+            'phone' => '01712345678',
+        ]);
+
+        $response = $this->actingAs($this->userWithRole('Doctor'))
+            ->getJson('/admin/patients/search?q=01712345678')
+            ->assertStatus(200);
+
+        $patients = $response->json();
+        $this->assertSame($patient->id, $patients[0]['id']);
+        $this->assertArrayNotHasKey('phone', $patients[0]);
+    }
+
     // -------------------------------------------------------------------------
     // Test 10: Patient search does not return known_allergies or address
     // -------------------------------------------------------------------------

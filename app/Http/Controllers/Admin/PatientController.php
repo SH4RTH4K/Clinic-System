@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePatientRequest;
 use App\Http\Requests\Admin\UpdatePatientRequest;
+use App\Models\AppointmentRequest;
 use App\Models\ClinicSetting;
 use App\Models\Patient;
 use App\Models\PatientNumberingProfile;
 use App\Models\PrescriptionItem;
 use App\Models\User;
 use App\Models\Visit;
+use App\Services\Admin\AppointmentRequestPatientMatcher;
 use App\Services\Admin\ClinicalAccessAuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -59,6 +61,7 @@ class PatientController extends Controller
 
         $patients = Patient::select('id', 'patient_no', 'patient_series', 'patient_code', 'patient_category', 'name', 'age_years', 'age_months', 'age_days', 'gender')
             ->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')
+                ->orWhere('phone', 'like', '%'.$term.'%')
                 ->orWhere('patient_no', 'like', '%'.$term.'%')
                 ->orWhere('patient_series', 'like', '%'.$term.'%')
                 ->orWhere('patient_code', 'like', '%'.$term.'%'))
@@ -69,8 +72,31 @@ class PatientController extends Controller
         return response()->json($patients);
     }
 
-    public function create(Request $request)
+    public function create(Request $request, AppointmentRequestPatientMatcher $patientMatcher)
     {
+        $appointmentRequest = null;
+
+        if ($request->filled('appointment_request_id')) {
+            $request->validate([
+                'appointment_request_id' => ['required', 'integer', 'exists:appointment_requests,id'],
+            ]);
+
+            $user = $request->user();
+            abort_unless($user?->hasRole('Super Admin') || $user?->can('appointments.update'), 403);
+
+            $appointmentRequest = AppointmentRequest::query()->findOrFail($request->integer('appointment_request_id'));
+
+            if ($appointmentRequest->converted_patient_id !== null) {
+                return redirect()->route('admin.appointment_requests.index')
+                    ->with('warning', 'This appointment request has already been linked to a patient. No duplicate patient was created.');
+            }
+
+            if ($patientMatcher->matchesFor($appointmentRequest)->isNotEmpty()) {
+                return redirect()->route('admin.appointment_requests.index')
+                    ->with('warning', 'A matching patient already exists. Link the existing record rather than creating a duplicate.');
+            }
+        }
+
         $canViewClinicalRecords = $request->user()?->can('clinical_records.view') === true;
         $numberingProfiles = PatientNumberingProfile::query()
             ->where('is_active', true)
@@ -93,7 +119,10 @@ class PatientController extends Controller
             });
 
         return Inertia::render('Admin/Patients/Create', [
-            'defaults' => $request->only(['name', 'phone']),
+            'defaults' => $appointmentRequest === null
+                ? $request->only(['name', 'phone'])
+                : ['name' => $appointmentRequest->name, 'phone' => $appointmentRequest->phone],
+            'appointmentRequestId' => $appointmentRequest?->id,
             'fieldConfig' => $this->patientFormConfig($canViewClinicalRecords),
             'canViewClinicalRecords' => $canViewClinicalRecords,
             'relationshipOptions' => ClinicSetting::currentPatientRelationshipOptions(),
@@ -101,12 +130,34 @@ class PatientController extends Controller
         ]);
     }
 
-    public function store(StorePatientRequest $request)
+    public function store(StorePatientRequest $request, AppointmentRequestPatientMatcher $patientMatcher)
     {
         $validated = $request->validated();
+        $appointmentRequestId = $validated['appointment_request_id'] ?? null;
+        unset($validated['appointment_request_id']);
 
         $patient = null;
-        DB::transaction(function () use ($validated, &$patient) {
+        DB::transaction(function () use ($validated, $appointmentRequestId, $patientMatcher, &$patient): void {
+            $appointmentRequest = null;
+
+            if ($appointmentRequestId !== null) {
+                $appointmentRequest = AppointmentRequest::query()
+                    ->lockForUpdate()
+                    ->findOrFail($appointmentRequestId);
+
+                if ($appointmentRequest->converted_patient_id !== null) {
+                    throw ValidationException::withMessages([
+                        'appointment_request_id' => 'This appointment request has already been converted to a patient.',
+                    ]);
+                }
+
+                if ($patientMatcher->matchesFor($appointmentRequest)->isNotEmpty()) {
+                    throw ValidationException::withMessages([
+                        'appointment_request_id' => 'A matching patient already exists. Return to appointment requests and link the existing record.',
+                    ]);
+                }
+            }
+
             $profile = PatientNumberingProfile::query()
                 ->where('is_active', true)
                 ->lockForUpdate()
@@ -132,7 +183,33 @@ class PatientController extends Controller
                 'patient_code' => $patientCode,
                 'created_by' => Auth::id(),
             ]));
+
+            if ($appointmentRequest !== null) {
+                $appointmentRequest->converted_patient_id = $patient->id;
+                $appointmentRequest->save();
+                $appointmentRequest->events()->create([
+                    'performed_by' => Auth::id(),
+                    'performed_by_name' => Auth::user()?->name,
+                    'event_type' => 'converted',
+                    'previous_status' => $appointmentRequest->status,
+                    'new_status' => $appointmentRequest->status,
+                    'previous_scheduled_date' => $appointmentRequest->scheduled_date?->toDateString(),
+                    'previous_scheduled_time' => $appointmentRequest->scheduled_time === null
+                        ? null
+                        : substr((string) $appointmentRequest->scheduled_time, 0, 5),
+                    'new_scheduled_date' => $appointmentRequest->scheduled_date?->toDateString(),
+                    'new_scheduled_time' => $appointmentRequest->scheduled_time === null
+                        ? null
+                        : substr((string) $appointmentRequest->scheduled_time, 0, 5),
+                    'reason' => 'A patient record was created from this appointment request.',
+                ]);
+            }
         });
+
+        if ($appointmentRequestId !== null) {
+            return redirect()->route('admin.appointment_requests.index')
+                ->with('success', 'Patient created and linked to the appointment request.');
+        }
 
         return redirect()->route('admin.patients.index')->with('success', 'Patient created successfully.');
     }

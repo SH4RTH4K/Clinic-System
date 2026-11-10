@@ -70,7 +70,15 @@ export default function Create({
     const [patientQuery, setPatientQuery] = useState(initialPatientLabel);
     const [patientResults, setPatientResults] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
+    const [patientSearchStatus, setPatientSearchStatus] = useState('idle');
     const searchTimeout = useRef(null);
+    const patientSearchAbortController = useRef(null);
+    const patientSearchContainer = useRef(null);
+
+    useEffect(() => () => {
+        clearTimeout(searchTimeout.current);
+        patientSearchAbortController.current?.abort();
+    }, []);
 
     // Notify other open tabs when the signed-in account changes.
     useEffect(() => {
@@ -188,20 +196,38 @@ export default function Create({
         setData('patient_id', '');
         setSelectedPatient(null);
         clearTimeout(searchTimeout.current);
-        if (value.length < 2) {
-            setPatientResults([]);
-            setShowDropdown(false);
+        patientSearchAbortController.current?.abort();
+        setPatientResults([]);
+        setShowDropdown(false);
+        setPatientSearchStatus('idle');
+
+        const query = value.trim();
+
+        if (query.length < 2) {
             return;
         }
+
+        setShowDropdown(true);
+        setPatientSearchStatus('loading');
         searchTimeout.current = setTimeout(() => {
+            const abortController = new AbortController();
+            patientSearchAbortController.current = abortController;
+
             axios
-                .get(route('admin.patients.search', { q: value }))
+                .get(route('admin.patients.search', { q: query }), { signal: abortController.signal })
                 .then((res) => {
                     setPatientResults(res.data);
                     setShowDropdown(true);
+                    setPatientSearchStatus('complete');
                 })
-                .catch(() => {
+                .catch((error) => {
+                    if (axios.isCancel(error)) {
+                        return;
+                    }
+
                     setPatientResults([]);
+                    setShowDropdown(true);
+                    setPatientSearchStatus('error');
                 });
         }, 300);
     };
@@ -247,6 +273,10 @@ export default function Create({
         }));
         setPatientQuery('');
         setPatientResults([]);
+        setShowDropdown(false);
+        setPatientSearchStatus('idle');
+        clearTimeout(searchTimeout.current);
+        patientSearchAbortController.current?.abort();
     };
 
     const handleAgePartChange = (field, val) => {
@@ -590,16 +620,36 @@ export default function Create({
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="relative">
+                                        <div className="relative" ref={patientSearchContainer}>
                                             <div className="relative">
                                                 <input
                                                     type="text"
                                                     value={patientQuery}
                                                     onChange={(e) => handlePatientSearch(e.target.value)}
                                                     onFocus={() => {
-                                                        if (patientResults.length > 0) setShowDropdown(true);
+                                                        if (patientQuery.trim().length >= 2 && patientSearchStatus !== 'idle') {
+                                                            setShowDropdown(true);
+                                                        }
                                                     }}
-                                                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                                                    onBlur={() => setTimeout(() => {
+                                                        if (!patientSearchContainer.current?.contains(document.activeElement)) {
+                                                            setShowDropdown(false);
+                                                        }
+                                                    }, 250)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === 'Escape') {
+                                                            setShowDropdown(false);
+                                                        } else if (event.key === 'Enter') {
+                                                            event.preventDefault();
+                                                        }
+                                                    }}
+                                                    role="combobox"
+                                                    aria-label="Search patient by name, phone, or ID"
+                                                    aria-autocomplete="list"
+                                                    aria-expanded={showDropdown}
+                                                    aria-controls={showDropdown && patientResults.length > 0 ? 'visit-patient-search-results' : undefined}
+                                                    aria-haspopup="listbox"
+                                                    inputMode="search"
                                                     className="w-full rounded-lg border-gray-300 shadow-xs text-sm pl-10 pr-4 py-2.5 focus:border-primary-500 focus:ring-primary-500"
                                                     placeholder="Search patient by Name, Phone, or ID (e.g. Fazlul, 017..., 101A)..."
                                                     required
@@ -610,27 +660,40 @@ export default function Create({
                                             </div>
 
                                             {showDropdown && patientResults.length > 0 && (
-                                                <ul className="absolute z-30 bg-white border border-gray-200 rounded-xl shadow-xl w-full mt-1.5 max-h-56 overflow-y-auto divide-y divide-gray-100">
+                                                <ul id="visit-patient-search-results" role="listbox" className="absolute z-50 bg-white border border-gray-200 rounded-xl shadow-xl w-full mt-1.5 max-h-56 overflow-y-auto divide-y divide-gray-100">
                                                     {patientResults.map((p) => (
-                                                        <li
-                                                            key={p.id}
-                                                            onMouseDown={() => selectPatient(p)}
-                                                            className="px-4 py-2.5 cursor-pointer hover:bg-primary-50 transition flex items-center justify-between"
-                                                        >
-                                                            <div>
-                                                                <span className="font-bold text-primary-900 text-sm">
-                                                                    {p.name}
+                                                        <li key={p.id}>
+                                                            <button
+                                                                type="button"
+                                                                role="option"
+                                                                aria-selected="false"
+                                                                onMouseDown={(event) => event.preventDefault()}
+                                                                onClick={() => selectPatient(p)}
+                                                                className="w-full min-h-11 px-4 py-3 cursor-pointer hover:bg-primary-50 focus:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 transition flex items-center justify-between text-left touch-manipulation"
+                                                            >
+                                                                <div>
+                                                                    <span className="font-bold text-primary-900 text-sm">
+                                                                        {p.name}
+                                                                    </span>
+                                                                    <span className="text-gray-500 text-xs ml-2">
+                                                                        ({p.gender}, {p.age_years ?? '?'} yrs)
+                                                                    </span>
+                                                                </div>
+                                                                <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                                                    {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
                                                                 </span>
-                                                                <span className="text-gray-500 text-xs ml-2">
-                                                                    ({p.gender}, {p.age_years ?? '?'} yrs)
-                                                                </span>
-                                                            </div>
-                                                            <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                                                                {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
-                                                            </span>
+                                                            </button>
                                                         </li>
                                                     ))}
                                                 </ul>
+                                            )}
+
+                                            {showDropdown && patientResults.length === 0 && (
+                                                <div role="status" className="absolute z-50 w-full mt-1.5 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-xl">
+                                                    {patientSearchStatus === 'loading' && 'Searching patients...'}
+                                                    {patientSearchStatus === 'complete' && 'No matching patients found.'}
+                                                    {patientSearchStatus === 'error' && 'Patient search is unavailable. Please try again.'}
+                                                </div>
                                             )}
 
                                             {!data.patient_id && patientQuery.length >= 2 && !showDropdown && (

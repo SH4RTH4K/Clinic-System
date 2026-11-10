@@ -263,4 +263,8 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|appointments.update']
     Route::get('/appointment-requests/{appointmentRequest}/edit', [AdminApptController::class, 'edit'])->name('appointment_requests.edit');
     Route::put('/appointment-requests/{appointmentRequest}', [AdminApptController::class, 'update'])->name('appointment_requests.update');
     Route::post('/appointment-requests/{appointmentRequest}/convert', [AdminApptController::class, 'convertToPatient'])->name('appointment_requests.convert');
+    Route::post('/appointment-requests/{appointmentRequest}/link-patient', [AdminApptController::class, 'linkExistingPatient'])->name('appointment_requests.link_patient');
 });
+Route::delete('/appointment-requests/{appointmentRequest}', [AdminApptController::class, 'destroy'])
+    ->middleware(['auth', 'role_or_permission:Super Admin|appointments.delete'])
+    ->name('appointment_requests.destroy');

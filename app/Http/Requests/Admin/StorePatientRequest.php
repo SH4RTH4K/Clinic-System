@@ -9,6 +9,12 @@ class StorePatientRequest extends PatientDataRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('patients.create') ?? false;
+        $user = $this->user();
+
+        return $user !== null
+            && $user->can('patients.create')
+            && (! $this->filled('appointment_request_id')
+                || $user->hasRole('Super Admin')
+                || $user->can('appointments.update'));
     }
 }

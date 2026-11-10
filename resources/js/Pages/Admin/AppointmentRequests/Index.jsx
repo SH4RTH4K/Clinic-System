@@ -3,8 +3,10 @@ import PageHeader from '@/Components/PageHeader';
 import DataTable from '@/Components/DataTable';
 import Pagination from '@/Components/Pagination';
 import StatusBadge from '@/Components/StatusBadge';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import usePermission from '@/Components/usePermission';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 const formatDate = (value) => {
     if (!value) return 'Flexible';
@@ -16,12 +18,17 @@ const formatDate = (value) => {
 const formatTime = (value) => value ? String(value).slice(0, 5) : null;
 
 export default function Index({ requests, filters = {} }) {
-    const { auth = {} } = usePage().props;
+    const { auth = {}, flash = {} } = usePage().props;
     const can = usePermission();
     const isSuperAdmin = (auth.roles || []).includes('Super Admin');
     const canCreate = isSuperAdmin || can('appointments.create');
     const canUpdate = isSuperAdmin || can('appointments.update');
+    const canDelete = isSuperAdmin || can('appointments.delete');
+    const canCreatePatient = isSuperAdmin || can('patients.create');
+    const canViewPatients = isSuperAdmin || can('patients.view');
     const { data, setData, get } = useForm({ status: filters.status || '' });
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [linkTarget, setLinkTarget] = useState(null);
 
     const onFilter = (event) => {
         event.preventDefault();
@@ -32,6 +39,26 @@ export default function Index({ requests, filters = {} }) {
         if (canUpdate) {
             router.post(route('admin.appointment_requests.convert', id));
         }
+    };
+
+    const confirmDelete = () => {
+        if (!canDelete || !deleteTarget) return;
+
+        router.delete(route('admin.appointment_requests.destroy', deleteTarget.id), {
+            preserveScroll: true,
+            onSuccess: () => setDeleteTarget(null),
+        });
+    };
+
+    const confirmLink = () => {
+        if (!canUpdate || !canViewPatients || !linkTarget) return;
+
+        router.post(route('admin.appointment_requests.link_patient', linkTarget.id), {
+            patient_id: linkTarget.patientId,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => setLinkTarget(null),
+        });
     };
 
     const columns = [
@@ -102,13 +129,42 @@ export default function Index({ requests, filters = {} }) {
                             {request.status === 'scheduled' ? 'Manage / Reschedule' : 'Manage / Schedule'}
                         </Link>
                     )}
-                    {canUpdate && (
+                    {canUpdate && request.converted_patient_id ? (
+                        <span className="whitespace-nowrap rounded bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800">
+                            Patient registered
+                        </span>
+                    ) : canUpdate && canViewPatients && request.existing_patient_match_id ? (
+                        <button
+                            type="button"
+                            onClick={() => setLinkTarget({
+                                id: request.id,
+                                patientId: request.existing_patient_match_id,
+                                name: request.name,
+                            })}
+                            className="whitespace-nowrap rounded bg-primary-50 px-2.5 py-1 font-medium text-primary-800 transition hover:bg-primary-100"
+                        >
+                            Link existing patient
+                        </button>
+                    ) : canUpdate && canViewPatients && request.has_ambiguous_patient_match ? (
+                        <span className="max-w-48 text-left text-amber-800" role="status">
+                            Multiple patient matches; review before converting
+                        </span>
+                    ) : canUpdate && canCreatePatient ? (
                         <button
                             type="button"
                             onClick={() => convertToPatient(request.id)}
                             className="whitespace-nowrap rounded bg-primary-50 px-2.5 py-1 font-medium text-primary-800 transition hover:bg-primary-100"
                         >
                             Convert to Patient
+                        </button>
+                    ) : null}
+                    {canDelete && (
+                        <button
+                            type="button"
+                            onClick={() => setDeleteTarget(request)}
+                            className="whitespace-nowrap rounded bg-red-50 px-2.5 py-1 font-medium text-red-700 transition hover:bg-red-100"
+                        >
+                            Delete
                         </button>
                     )}
                 </div>
@@ -134,6 +190,11 @@ export default function Index({ requests, filters = {} }) {
                 />
 
                 <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                    {flash.warning && (
+                        <div role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            {flash.warning}
+                        </div>
+                    )}
                     <form onSubmit={onFilter} className="flex max-w-sm gap-2">
                         <label className="sr-only" htmlFor="appointment-status-filter">Filter appointment requests by status</label>
                         <select
@@ -162,6 +223,28 @@ export default function Index({ requests, filters = {} }) {
 
                     {requests.links && <Pagination links={requests.links} />}
                 </div>
+
+                <ConfirmDialog
+                    isOpen={!!deleteTarget}
+                    title="Delete appointment request?"
+                    message="This removes the request from the active list. Its record and audit history are retained."
+                    confirmLabel="Delete"
+                    isDestructive
+                    onConfirm={confirmDelete}
+                    onCancel={() => setDeleteTarget(null)}
+                />
+
+                <ConfirmDialog
+                    isOpen={!!linkTarget}
+                    title="Link existing patient?"
+                    message={linkTarget
+                        ? `An exact name and phone match was found for ${linkTarget.name}. Link that existing patient to this request? No new patient record will be created.`
+                        : ''}
+                    confirmLabel="Link patient"
+                    isDestructive={false}
+                    onConfirm={confirmLink}
+                    onCancel={() => setLinkTarget(null)}
+                />
             </div>
         </AuthenticatedLayout>
     );

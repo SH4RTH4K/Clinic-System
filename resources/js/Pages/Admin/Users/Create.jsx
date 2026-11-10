@@ -47,12 +47,13 @@ export default function Create({ roles }) {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium">Password</label>
-                                <input type="password" value={data.password} onChange={e => setData('password', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required />
+                                <input type="password" value={data.password} onChange={e => setData('password', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" autoComplete="new-password" required />
+                                <p className="mt-1 text-sm text-gray-600">Set a password for this account. You may use any length.</p>
                                 {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
                             </div>
                             <div>
                                 <label className="block text-sm font-medium">Confirm Password</label>
-                                <input type="password" value={data.password_confirmation} onChange={e => setData('password_confirmation', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required />
+                                <input type="password" value={data.password_confirmation} onChange={e => setData('password_confirmation', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" autoComplete="new-password" required />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Roles</label>

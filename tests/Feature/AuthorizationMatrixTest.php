@@ -403,8 +403,7 @@ class AuthorizationMatrixTest extends TestCase
         $this->actingAs($superAdmin)
             ->post(route('admin.appointment_requests.convert', $appointmentRequest))
             ->assertRedirect(route('admin.patients.create', [
-                'name' => 'Synthetic appointment contact',
-                'phone' => '01700000000',
+                'appointment_request_id' => $appointmentRequest->id,
             ]));
     }
 

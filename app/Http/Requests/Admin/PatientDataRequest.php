@@ -52,6 +52,12 @@ abstract class PatientDataRequest extends FormRequest
                 Rule::exists('patient_numbering_profiles', 'id')
                     ->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')),
             ];
+            $rules['appointment_request_id'] = [
+                'sometimes',
+                'nullable',
+                'integer',
+                Rule::exists('appointment_requests', 'id'),
+            ];
         }
 
         foreach ($fieldRules as $field => $rulesForField) {

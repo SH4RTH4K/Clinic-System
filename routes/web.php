@@ -12,6 +12,8 @@ Route::get('/about', [PublicController::class, 'about'])->name('about');
 Route::get('/doctors', [PublicController::class, 'doctors'])->name('doctors');
 Route::get('/doctor-profiles/{doctor}/photo', [DoctorPhotoController::class, 'showPublic'])->name('doctors.photo');
 Route::get('/contact', [PublicController::class, 'contact'])->name('contact');
+Route::get('/appointment-request', [PublicController::class, 'appointmentRequest'])
+    ->name('appointment.request.form');
 Route::post('/appointment-requests', [AppointmentRequestController::class, 'store'])
     ->name('appointment.store')
     ->middleware('throttle:5,1');

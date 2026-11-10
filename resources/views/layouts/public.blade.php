@@ -42,6 +42,7 @@
                             ['route' => 'about', 'url' => '/about', 'label_en' => 'About', 'label_bn' => 'পরিচিতি'],
                             ['route' => 'doctors', 'url' => '/doctors', 'label_en' => 'Doctors', 'label_bn' => 'ডাক্তারগণ'],
                             ['route' => 'contact', 'url' => '/contact', 'label_en' => 'Contact', 'label_bn' => 'যোগাযোগ'],
+                            ['route' => 'appointment.request.form', 'url' => '/appointment-request', 'label_en' => 'Request Appointment', 'label_bn' => 'অ্যাপয়েন্টমেন্ট অনুরোধ'],
                         ];
                     @endphp
 
@@ -128,7 +129,7 @@
             </p>
             @if(!empty($settings->developer_name))
                 <p class="text-xs text-gray-500">
-                    Developed By: 
+                    Developed By:
                     @if(!empty($settings->developer_link))
                         <a href="{{ $settings->developer_link }}" target="_blank" rel="noopener noreferrer" class="text-primary-400 hover:underline">{{ $settings->developer_name }}</a>
                     @else
