@@ -45,15 +45,14 @@ class RestoreSystemBackupRequest extends FormRequest
             }
 
             $expectedFilenamePattern = match ($type) {
-                'database' => '/^database-\d{8}-\d{6}-[a-f0-9]{16}\.sql\.gz$/iD',
-                'media' => '/^media-\d{8}-\d{6}-[a-f0-9]{16}\.zip$/iD',
-                'full' => '/^full-\d{8}-\d{6}-[a-f0-9]{16}\.zip$/iD',
+                'database' => '/\.sql\.gz$/iD',
+                'media', 'full' => '/\.zip$/iD',
                 default => null,
             };
 
             if ($expectedFilenamePattern === null
                 || preg_match($expectedFilenamePattern, basename($uploadedFile->getClientOriginalName())) !== 1) {
-                $validator->errors()->add('backup_file', 'Choose a backup file created by this application that matches the selected type.');
+                $validator->errors()->add('backup_file', 'Choose a backup file with the correct extension for the selected type. The archive contents will be verified before restore.');
             }
         });
     }

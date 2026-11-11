@@ -187,7 +187,7 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
                         aria-describedby={errors.backup_file ? 'restore-upload-error' : 'restore-upload-help'}
                         className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 bg-white text-sm file:mr-3 file:min-h-10 file:border-0 file:bg-slate-100 file:px-3 file:text-sm file:font-medium file:text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
                     />
-                    <p id="restore-upload-help" className="mt-1 text-xs text-slate-500">Choose a backup created by this application. Maximum upload size is 2 GB and may be lower on your hosting plan.</p>
+                    <p id="restore-upload-help" className="mt-1 text-xs text-slate-500">Choose a compatible .sql.gz or .zip backup. The archive contents are verified before restore. Maximum upload size is 2 GB and may be lower on your hosting plan.</p>
                     {errors.backup_file && <p id="restore-upload-error" className="mt-1 text-xs text-rose-700">{errors.backup_file}</p>}
                 </div>
             </div>

@@ -48,13 +48,12 @@ class SystemBackupRestoreService
 
         $originalFilename = basename($uploadedFile->getClientOriginalName());
         $expectedFilenamePattern = match ($type) {
-            'database' => '/^database-\d{8}-\d{6}-[a-f0-9]{16}\.sql\.gz$/iD',
-            'media' => '/^media-\d{8}-\d{6}-[a-f0-9]{16}\.zip$/iD',
-            'full' => '/^full-\d{8}-\d{6}-[a-f0-9]{16}\.zip$/iD',
+            'database' => '/\.sql\.gz$/iD',
+            'media', 'full' => '/\.zip$/iD',
         };
 
         if (preg_match($expectedFilenamePattern, $originalFilename) !== 1) {
-            throw new RuntimeException('The uploaded backup filename does not match the selected backup type.');
+            throw new RuntimeException('The uploaded backup file extension does not match the selected backup type.');
         }
 
         $backupService = app(DatabaseBackupService::class);

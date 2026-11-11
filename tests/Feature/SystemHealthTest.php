@@ -727,7 +727,7 @@ class SystemHealthTest extends TestCase
 
         try {
             $uploadedBackup = UploadedFile::fake()->createWithContent(
-                basename($backupPath),
+                'media.zip',
                 file_get_contents($backupPath),
             );
             Storage::fake('public');
