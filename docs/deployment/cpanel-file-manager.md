@@ -30,6 +30,18 @@ clinic-system-cpanel-<commit>/
 
 GitHub Actions builds a selected committed revision only. It cannot include uncommitted changes from a developer's working tree. The workflow checks that the committed source and fresh bundle both contain the approved New Visit sidebar entry; a revision without it fails before packaging.
 
+## System Health cPanel application package
+
+The Super Admin **cPanel application package** download is a separate, self-contained application archive. It contains this layout:
+
+```text
+INSTALLATION.md
+private/                 # Laravel source, vendor, bootstrap, and writable skeleton
+public_html/             # public entry point, build assets, fonts, and .htaccess
+```
+
+It deliberately excludes the database, uploaded media, `.env`, logs, tests, local databases, and credentials. Extract the archive in the cPanel account home directory, keep `private/` outside the document root, and copy the contents of `public_html/` into the selected document root. Do not extract `private/` into a served directory. Use the separate Database and Media backup actions when an approved backup procedure requires those data sets.
+
 ## 1. Confirm hosting requirements
 
 Before installing, ask the hosting provider to confirm the domain's PHP 8.3 runtime and extensions. The locked production Composer platform check currently requires PHP 8.3 plus DOM, fileinfo, filter, hash, iconv, libxml, OpenSSL, PCRE, session, tokenizer, XML, XMLWriter, and Phar; the application also needs PDO MySQL for its configured database driver. Composer currently supplies ctype and mbstring through polyfills. `intl`, `gd`, and ZIP are provisioned in CI but are not mandatory in the current Composer platform check; confirm them with the provider before relying on features or host tools that may use them. Confirm the MySQL-compatible server version and collation supported by the account. CI does not establish the host's exact extensions or database behavior.

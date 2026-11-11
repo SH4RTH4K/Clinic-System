@@ -29,15 +29,27 @@ class SystemHealthController extends Controller
         DatabaseBackupService $backupService,
     ): InertiaResponse {
         $health = $healthService->snapshot();
-        $restoreTarget = request()->user()?->hasRole('Super Admin')
+        $isSuperAdmin = request()->user()?->hasRole('Super Admin') ?? false;
+        $restoreTarget = $isSuperAdmin
             ? ($health['database']['name'] ?? null)
             : null;
         unset($health['database']['name']);
 
+        $backupCapabilities = $backupService->capabilities();
+        $backups = $backupService->history();
+
+        if (! $isSuperAdmin) {
+            $backupCapabilities['cpanel'] = false;
+            $backups = array_values(array_filter(
+                $backups,
+                static fn (array $backup): bool => $backup['type'] !== 'cpanel',
+            ));
+        }
+
         return Inertia::render('Admin/SystemHealth', [
             'health' => $health,
-            'backups' => $backupService->history(),
-            'backupCapabilities' => $backupService->capabilities(),
+            'backups' => $backups,
+            'backupCapabilities' => $backupCapabilities,
             'restoreTarget' => $restoreTarget,
             'csrfToken' => csrf_token(),
         ]);
@@ -133,6 +145,8 @@ class SystemHealthController extends Controller
 
     public function download(Request $request, string $filename, DatabaseBackupService $backupService): BinaryFileResponse
     {
+        abort_if($backupService->backupTypeForFilename($filename) === 'cpanel' && ! $request->user()?->hasRole('Super Admin'), 403);
+
         $path = $backupService->pathForDownload($filename);
 
         abort_unless($path !== null, 404);
@@ -268,7 +282,7 @@ class SystemHealthController extends Controller
         $message = $exception->getMessage();
         $safeMessages = [
             'The requested backup type is not supported.',
-            'Media and full backups require the PHP Zip extension.',
+            'Media, full, and cPanel application packages require the PHP Zip extension.',
             'Database backups are supported only for MySQL connections.',
             'Private backup storage is unavailable.',
             'Could not verify the private backup location.',
@@ -281,6 +295,13 @@ class SystemHealthController extends Controller
             'Could not create the full backup archive.',
             'Could not add all components to the full backup archive.',
             'The full backup archive could not be finalized.',
+            'Could not create the cPanel application package.',
+            'The cPanel application package could not be finalized.',
+            'The application directory could not be verified.',
+            'A deployment directory could not be verified.',
+            'A deployment file could not be added to the cPanel application package.',
+            'A deployment file could not be optimized in the cPanel application package.',
+            'A deployment directory marker could not be added to the cPanel application package.',
             'The media storage directory could not be verified.',
             'A media file could not be added to the backup archive.',
             'The database backup could not be written.',

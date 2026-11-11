@@ -17,7 +17,7 @@ class DeleteSystemBackupRequest extends FormRequest
             'filename' => [
                 'required',
                 'string',
-                'regex:/^(database|media|full)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/D',
+                'regex:/^(database|media|full|cpanel)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/D',
             ],
         ];
     }

@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-#[Signature('system-health:backup {type=full : The backup type (database, media, or full)}')]
+#[Signature('system-health:backup {type=full : The backup type (database, media, full, or cpanel application package)}')]
 #[Description('Create a private system backup')]
 class CreateScheduledSystemBackup extends Command
 {

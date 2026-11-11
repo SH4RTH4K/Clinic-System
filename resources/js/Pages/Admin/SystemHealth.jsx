@@ -333,6 +333,9 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                 <BackupButton type="database" label="Database backup" description="Compressed logical export of the configured database." available={backupCapabilities.database} csrfToken={csrfToken} />
                                 <BackupButton type="media" label="Media backup" description="Archive files from the application's upload storage." available={backupCapabilities.media} csrfToken={csrfToken} />
                                 <BackupButton type="full" label="Full backup" description="Database export and media archive in one package." available={backupCapabilities.full} csrfToken={csrfToken} />
+                                {isSuperAdmin && (
+                                    <BackupButton type="cpanel" label="cPanel application package" description="Copy-ready private application and public_html bundle with Composer dependencies. No database, uploads, or .env files are included." available={backupCapabilities.cpanel} csrfToken={csrfToken} />
+                                )}
                             </div>
 
                             <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -370,7 +373,7 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                                 <tr><td colSpan="4" className="px-3 py-8 text-center text-slate-500">No backups exist yet.</td></tr>
                                             ) : backups.map((backup) => (
                                                 <tr key={backup.filename}>
-                                                    <td className="px-3 py-3 font-medium capitalize">{backup.type} backup</td>
+                                                    <td className="px-3 py-3 font-medium">{backup.type === 'cpanel' ? 'cPanel application package' : `${backup.type} backup`}</td>
                                                     <td className="px-3 py-3">{formatBytes(backup.size_bytes)}</td>
                                                     <td className="px-3 py-3">{new Date(backup.created_at).toLocaleString()}</td>
                                                     <td className="px-3 py-3">

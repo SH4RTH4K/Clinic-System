@@ -67,6 +67,7 @@ class SystemHealthTest extends TestCase
                 ->where('health.laravel_version', app()->version())
                 ->where('health.scheduler.enabled', true)
                 ->where('health.scheduler.backup_time', '02:00')
+                ->where('backupCapabilities.cpanel', true)
                 ->has('health.migrations.applied')
                 ->has('csrfToken'));
 
@@ -87,7 +88,8 @@ class SystemHealthTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/SystemHealth')
                 ->where('health.database.status', 'Connected')
-                ->where('health.migrations.status', 'Up to date'));
+                ->where('health.migrations.status', 'Up to date')
+                ->where('backupCapabilities.cpanel', false));
     }
 
     public function test_system_health_reports_views_in_the_active_database_for_restore_safety(): void
@@ -109,6 +111,23 @@ class SystemHealthTest extends TestCase
             DB::statement('DROP VIEW IF EXISTS synthetic_system_health_view');
             Schema::dropIfExists('synthetic_system_health_view_source');
         }
+    }
+
+    public function test_upload_directory_markers_do_not_block_media_restore(): void
+    {
+        Storage::disk('public')->put('.keep', '');
+        Storage::disk('public')->put('.htaccess', 'deny from all');
+
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+        $this->withoutVite()
+            ->actingAs($user)
+            ->get(route('admin.system_health.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('health.storage.uploads.files', 0)
+                ->where('health.storage.uploads.bytes', 0));
     }
 
     public function test_manager_can_set_a_custom_daily_backup_time(): void
@@ -219,7 +238,7 @@ class SystemHealthTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_sqlite_disables_database_backup_and_full_backup_capabilities(): void
+    public function test_sqlite_disables_database_and_full_backup_but_keeps_cpanel_application_package_available(): void
     {
         $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
         $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
@@ -228,6 +247,7 @@ class SystemHealthTest extends TestCase
 
         $this->assertFalse($capabilities['database']);
         $this->assertFalse($capabilities['full']);
+        $this->assertTrue($capabilities['cpanel']);
         $this->assertTrue($capabilities['media']);
 
         $this->actingAs($user)
@@ -239,7 +259,7 @@ class SystemHealthTest extends TestCase
         $this->assertEmpty(app(DatabaseBackupService::class)->history());
     }
 
-    public function test_mysql_enables_database_and_full_backup_capabilities(): void
+    public function test_mysql_enables_database_full_and_cpanel_backup_capabilities(): void
     {
         $connection = \Mockery::mock(Connection::class);
         $connection->shouldReceive('getDriverName')->once()->andReturn('mysql');
@@ -249,6 +269,7 @@ class SystemHealthTest extends TestCase
 
         $this->assertTrue($capabilities['database']);
         $this->assertTrue($capabilities['full']);
+        $this->assertTrue($capabilities['cpanel']);
         $this->assertTrue($capabilities['restore']['database']);
         $this->assertTrue($capabilities['restore']['full']);
     }
@@ -268,6 +289,61 @@ class SystemHealthTest extends TestCase
         $this->assertCount(1, app(DatabaseBackupService::class)->history());
         $this->assertDatabaseHas('activity_log', ['event' => 'backup.created']);
         $this->assertDatabaseHas('activity_log', ['event' => 'backup.downloaded']);
+    }
+
+    public function test_system_health_manager_cannot_create_a_cpanel_deployment_backup(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+
+        $this->actingAs($user)
+            ->post(route('admin.system_health.backup'), ['backup_type' => 'cpanel'])
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_can_create_a_cpanel_deployment_backup(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+        $backupService = \Mockery::mock(DatabaseBackupService::class);
+        $backupService->shouldReceive('create')
+            ->once()
+            ->with('cpanel')
+            ->andReturn(sys_get_temp_dir().DIRECTORY_SEPARATOR.'cpanel-20261111-120000-0123456789abcdef.zip');
+        $backupService->shouldReceive('pruneExpiredBackups')->once()->andReturn(0);
+        $this->app->instance(DatabaseBackupService::class, $backupService);
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.backup'), ['backup_type' => 'cpanel'])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('success', 'The backup was created in private storage.');
+
+        $this->assertDatabaseHas('activity_log', [
+            'event' => 'backup.created',
+        ]);
+    }
+
+    public function test_system_health_manager_cannot_download_a_cpanel_deployment_backup(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+
+        $this->actingAs($user)
+            ->get(route('admin.system_health.backups.download', 'cpanel-20261111-120000-0123456789abcdef.zip'))
+            ->assertForbidden();
+    }
+
+    public function test_system_health_manager_cannot_view_cpanel_deployment_backup_history(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+        $backupPath = app(DatabaseBackupService::class)->privateBackupDirectory()
+            .DIRECTORY_SEPARATOR.'cpanel-20261111-120000-0123456789abcdef.zip';
+        file_put_contents($backupPath, 'synthetic-cpanel-backup');
+
+        $this->withoutVite()
+            ->actingAs($user)
+            ->get(route('admin.system_health.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('backups', []));
     }
 
     public function test_invalid_download_after_create_value_is_rejected(): void
@@ -321,6 +397,8 @@ class SystemHealthTest extends TestCase
             'full' => true,
             'restore' => ['database' => true, 'media' => true, 'full' => true],
         ]);
+        $backupService->shouldReceive('backupStorageStatus')->once()->andReturn('Writable');
+        $backupService->shouldReceive('retentionDays')->once()->andReturn(14);
         $this->app->instance(DatabaseBackupService::class, $backupService);
 
         $this->actingAs($user)
@@ -358,6 +436,8 @@ class SystemHealthTest extends TestCase
             'full' => true,
             'restore' => ['database' => true, 'media' => true, 'full' => true],
         ]);
+        $backupService->shouldReceive('backupStorageStatus')->once()->andReturn('Writable');
+        $backupService->shouldReceive('retentionDays')->once()->andReturn(14);
         $this->app->instance(DatabaseBackupService::class, $backupService);
 
         $this->actingAs($user)
@@ -807,6 +887,30 @@ class SystemHealthTest extends TestCase
         $this->assertFileDoesNotExist($expired);
         $this->assertFileExists($recent);
         $this->assertFileExists($unrecognized);
+    }
+
+    public function test_cpanel_backup_path_and_retention_are_read_from_configuration(): void
+    {
+        $configuredPath = Storage::disk('local')->path('cpanel-private-backups');
+        config([
+            'system_health.backup_path' => $configuredPath,
+            'system_health.backup_retention_days' => 30,
+        ]);
+
+        $backupPath = app(DatabaseBackupService::class)->create('media');
+
+        $this->assertSame(realpath($configuredPath), dirname($backupPath));
+        $this->assertSame(30, app(DatabaseBackupService::class)->retentionDays());
+    }
+
+    public function test_cpanel_backup_path_must_be_absolute(): void
+    {
+        config(['system_health.backup_path' => 'clinic-backups']);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The configured backup path must be absolute.');
+
+        app(DatabaseBackupService::class)->create('media');
     }
 
     private function userWithSystemHealthPermission(): User

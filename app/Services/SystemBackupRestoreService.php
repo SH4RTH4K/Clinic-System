@@ -364,7 +364,9 @@ class SystemBackupRestoreService
             throw new RuntimeException('Media restore stopped because upload storage is a symbolic link.');
         }
 
-        $entries = is_dir($uploadRoot) ? array_diff(scandir($uploadRoot) ?: [], ['.', '..']) : [];
+        $entries = is_dir($uploadRoot)
+            ? array_diff(scandir($uploadRoot) ?: [], ['.', '..', '.htaccess', '.keep'])
+            : [];
 
         if ($entries !== []) {
             throw new RuntimeException('Media restore is allowed only when upload storage contains no files.');

@@ -6,6 +6,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use RecursiveCallbackFilterIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
@@ -14,9 +15,15 @@ use ZipArchive;
 
 class DatabaseBackupService
 {
-    private const BACKUP_TYPES = ['database', 'media', 'full'];
+    private const BACKUP_TYPES = ['database', 'media', 'full', 'cpanel'];
 
-    private const BACKUP_RETENTION_DAYS = 14;
+    private const CPANEL_PRIVATE_DIRECTORIES = ['app', 'bootstrap', 'config', 'lang', 'resources', 'routes', 'vendor'];
+
+    private const COMPRESSED_FILE_EXTENSIONS = ['gz', 'jpeg', 'jpg', 'mp3', 'mp4', 'pdf', 'png', 'webm', 'webp', 'zip'];
+
+    private const DEFAULT_BACKUP_RETENTION_DAYS = 14;
+
+    private const MAX_BACKUP_RETENTION_DAYS = 3650;
 
     public function __construct(private DatabaseBackupSchemaInspector $schemaInspector) {}
 
@@ -26,8 +33,12 @@ class DatabaseBackupService
             throw new RuntimeException('The requested backup type is not supported.');
         }
 
+        if ($type === 'cpanel') {
+            $this->extendCpanelExecutionTime();
+        }
+
         if ($type !== 'database' && ! class_exists(ZipArchive::class)) {
-            throw new RuntimeException('Media and full backups require the PHP Zip extension.');
+            throw new RuntimeException('Media, full, and cPanel application packages require the PHP Zip extension.');
         }
 
         $root = $this->backupRoot();
@@ -39,8 +50,10 @@ class DatabaseBackupService
             $this->writeDatabaseDump($path);
         } elseif ($type === 'media') {
             $this->writeMediaArchive($path);
-        } else {
+        } elseif ($type === 'full') {
             $this->writeFullArchive($path, $root);
+        } else {
+            $this->writeCpanelArchive($path);
         }
 
         if (! touch($path, now()->getTimestamp())) {
@@ -67,7 +80,7 @@ class DatabaseBackupService
         foreach (glob($root.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
             $filename = basename($path);
 
-            if (! is_file($path) || preg_match('/^(database|media|full)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename, $matches) !== 1) {
+            if (! is_file($path) || preg_match('/^(database|media|full|cpanel)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename, $matches) !== 1) {
                 continue;
             }
 
@@ -89,6 +102,32 @@ class DatabaseBackupService
         return $this->backupRoot();
     }
 
+    public function backupStorageStatus(): string
+    {
+        try {
+            $backupRoot = $this->backupRoot(false);
+
+            if ($backupRoot !== null) {
+                return is_writable($backupRoot) ? 'Writable' : 'Check permissions';
+            }
+
+            return is_writable(dirname($this->configuredBackupPath()))
+                ? 'Ready to create'
+                : 'Check permissions';
+        } catch (RuntimeException) {
+            return 'Check permissions';
+        }
+    }
+
+    public function retentionDays(): int
+    {
+        $retentionDays = config('system_health.backup_retention_days', self::DEFAULT_BACKUP_RETENTION_DAYS);
+
+        return is_int($retentionDays) && $retentionDays >= 1 && $retentionDays <= self::MAX_BACKUP_RETENTION_DAYS
+            ? $retentionDays
+            : self::DEFAULT_BACKUP_RETENTION_DAYS;
+    }
+
     public function pruneExpiredBackups(): int
     {
         $root = $this->backupRoot(false);
@@ -97,14 +136,14 @@ class DatabaseBackupService
             return 0;
         }
 
-        $cutoff = now()->subDays(self::BACKUP_RETENTION_DAYS)->getTimestamp();
+        $cutoff = now()->subDays($this->retentionDays())->getTimestamp();
         $removed = 0;
 
         foreach (glob($root.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
             $filename = basename($path);
 
             if (is_link($path) || ! is_file($path)
-                || preg_match('/^(database|media|full)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename) !== 1
+                || preg_match('/^(database|media|full|cpanel)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename) !== 1
                 || (int) filemtime($path) >= $cutoff) {
                 continue;
             }
@@ -117,7 +156,7 @@ class DatabaseBackupService
         return $removed;
     }
 
-    /** @return array{database: bool, media: bool, full: bool, restore: array{database: bool, media: bool, full: bool}} */
+    /** @return array{database: bool, media: bool, full: bool, cpanel: bool, restore: array{database: bool, media: bool, full: bool}} */
     public function capabilities(): array
     {
         try {
@@ -131,6 +170,7 @@ class DatabaseBackupService
             'database' => $databaseSupported,
             'media' => $zipSupported,
             'full' => $databaseSupported && $zipSupported,
+            'cpanel' => $zipSupported,
             'restore' => [
                 'database' => $databaseSupported,
                 'media' => $zipSupported,
@@ -142,7 +182,7 @@ class DatabaseBackupService
     public function pathForDownload(string $filename): ?string
     {
         if (basename($filename) !== $filename
-            || preg_match('/^(database|media|full)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename) !== 1) {
+            || $this->backupTypeForFilename($filename) === null) {
             return null;
         }
 
@@ -159,7 +199,7 @@ class DatabaseBackupService
     public function deleteBackup(string $filename): bool
     {
         if (basename($filename) !== $filename
-            || preg_match('/^(database|media|full)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename) !== 1) {
+            || $this->backupTypeForFilename($filename) === null) {
             return false;
         }
 
@@ -182,6 +222,15 @@ class DatabaseBackupService
         }
 
         return @unlink($path);
+    }
+
+    public function backupTypeForFilename(string $filename): ?string
+    {
+        if (preg_match('/^(database|media|full|cpanel)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[1];
     }
 
     private function writeDatabaseDump(string $path): void
@@ -292,7 +341,8 @@ class DatabaseBackupService
             $archiveIsOpen = true;
             $fullArchiveCreated = true;
 
-            if (! $archive->addFile($databasePath, 'database.sql.gz') || ! $archive->addFile($mediaPath, 'media.zip')) {
+            if (! $this->addStoredFileToArchive($archive, $databasePath, 'database.sql.gz')
+                || ! $this->addStoredFileToArchive($archive, $mediaPath, 'media.zip')) {
                 throw new RuntimeException('Could not add all components to the full backup archive.');
             }
 
@@ -320,6 +370,176 @@ class DatabaseBackupService
                     @unlink($temporaryPath);
                 }
             }
+        }
+    }
+
+    private function writeCpanelArchive(string $path): void
+    {
+        $archive = new ZipArchive;
+        $archiveIsOpen = false;
+        $backupCreated = false;
+
+        try {
+            if ($archive->open($path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
+                throw new RuntimeException('Could not create the cPanel application package.');
+            }
+            $archiveIsOpen = true;
+            $backupCreated = true;
+
+            $this->writeCpanelApplicationBundle($archive);
+
+            if (! $archive->close()) {
+                throw new RuntimeException('The cPanel application package could not be finalized.');
+            }
+            $archiveIsOpen = false;
+        } catch (Throwable $exception) {
+            if ($archiveIsOpen) {
+                $archive->close();
+                $archiveIsOpen = false;
+            }
+
+            if ($backupCreated) {
+                @unlink($path);
+            }
+
+            throw $exception;
+        } finally {
+            if ($archiveIsOpen) {
+                $archive->close();
+            }
+        }
+    }
+
+    private function writeCpanelApplicationBundle(ZipArchive $archive): void
+    {
+        $sourceRoot = realpath(base_path());
+        $publicRoot = realpath(public_path());
+
+        if ($sourceRoot === false || $publicRoot === false) {
+            throw new RuntimeException('The application directory could not be verified.');
+        }
+
+        foreach (['artisan', 'composer.json', 'composer.lock', '.env.production.example'] as $file) {
+            $this->addFileToArchive($archive, $sourceRoot.DIRECTORY_SEPARATOR.$file, 'private/'.$file);
+        }
+
+        foreach (self::CPANEL_PRIVATE_DIRECTORIES as $directory) {
+            $directoryPath = $sourceRoot.DIRECTORY_SEPARATOR.$directory;
+
+            if (is_dir($directoryPath)) {
+                $this->addDirectoryContentsToArchive(
+                    $archive,
+                    $directoryPath,
+                    'private/'.$directory,
+                    $directory === 'bootstrap' ? ['cache'] : [],
+                );
+            }
+        }
+
+        $migrationsPath = $sourceRoot.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations';
+
+        if (is_dir($migrationsPath)) {
+            $this->addDirectoryContentsToArchive($archive, $migrationsPath, 'private/database/migrations');
+        }
+
+        $bootstrapCache = $sourceRoot.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache';
+
+        foreach (['packages.php', 'services.php'] as $manifest) {
+            $manifestPath = $bootstrapCache.DIRECTORY_SEPARATOR.$manifest;
+
+            if (is_file($manifestPath)) {
+                $this->addFileToArchive($archive, $manifestPath, 'private/bootstrap/cache/'.$manifest);
+            }
+        }
+
+        foreach ([
+            'private/storage/app/public/.keep',
+            'private/storage/framework/cache/data/.keep',
+            'private/storage/framework/sessions/.keep',
+            'private/storage/framework/views/.keep',
+            'private/storage/logs/.keep',
+        ] as $archivePath) {
+            $this->addEmptyFileToArchive($archive, $archivePath);
+        }
+
+        $storageHtaccess = $sourceRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'.htaccess';
+
+        if (is_file($storageHtaccess)) {
+            $this->addFileToArchive($archive, $storageHtaccess, 'private/storage/app/public/.htaccess');
+        }
+
+        $this->addDirectoryContentsToArchive($archive, $publicRoot, 'public_html', ['storage', 'hot', 'index.php']);
+        $entryPoint = $sourceRoot.DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'cpanel'.DIRECTORY_SEPARATOR.'index.php';
+        $this->addFileToArchive($archive, $entryPoint, 'public_html/index.php');
+
+        $installationGuide = $sourceRoot.DIRECTORY_SEPARATOR.'docs'.DIRECTORY_SEPARATOR.'deployment'.DIRECTORY_SEPARATOR.'cpanel-file-manager.md';
+
+        if (is_file($installationGuide)) {
+            $this->addFileToArchive($archive, $installationGuide, 'INSTALLATION.md');
+        }
+    }
+
+    /** @param list<string> $excludedNames */
+    private function addDirectoryContentsToArchive(ZipArchive $archive, string $directory, string $archivePrefix, array $excludedNames = []): void
+    {
+        if (! is_dir($directory) || is_link($directory)) {
+            return;
+        }
+
+        $realDirectory = realpath($directory);
+
+        if ($realDirectory === false) {
+            throw new RuntimeException('A deployment directory could not be verified.');
+        }
+
+        $directoryIterator = new RecursiveDirectoryIterator($realDirectory, RecursiveDirectoryIterator::SKIP_DOTS);
+        $filteredIterator = new RecursiveCallbackFilterIterator(
+            $directoryIterator,
+            function (\SplFileInfo $entry) use ($realDirectory, $excludedNames): bool {
+                $relativePath = substr($entry->getPathname(), strlen($realDirectory) + 1);
+                $topLevelEntry = explode(DIRECTORY_SEPARATOR, $relativePath)[0];
+
+                return ! in_array($entry->getFilename(), $excludedNames, true)
+                    && ! in_array($topLevelEntry, $excludedNames, true);
+            },
+        );
+        $iterator = new RecursiveIteratorIterator(
+            $filteredIterator,
+            RecursiveIteratorIterator::LEAVES_ONLY,
+        );
+
+        foreach ($iterator as $entry) {
+            if ($entry->isLink() || ! $entry->isFile() || in_array($entry->getFilename(), $excludedNames, true)) {
+                continue;
+            }
+
+            $realFile = realpath($entry->getPathname());
+
+            if ($realFile === false || ! str_starts_with($realFile, $realDirectory.DIRECTORY_SEPARATOR)) {
+                continue;
+            }
+
+            $relativePath = str_replace(DIRECTORY_SEPARATOR, '/', substr($realFile, strlen($realDirectory) + 1));
+            $this->addFileToArchive($archive, $realFile, trim($archivePrefix, '/').'/'.$relativePath);
+        }
+    }
+
+    private function addFileToArchive(ZipArchive $archive, string $path, string $archivePath): void
+    {
+        if (! is_file($path) || is_link($path) || ! $archive->addFile($path, $archivePath)) {
+            throw new RuntimeException('A deployment file could not be added to the cPanel application package.');
+        }
+
+        if (in_array(strtolower(pathinfo($archivePath, PATHINFO_EXTENSION)), self::COMPRESSED_FILE_EXTENSIONS, true)
+            && ! $archive->setCompressionName($archivePath, ZipArchive::CM_STORE)) {
+            throw new RuntimeException('A deployment file could not be optimized in the cPanel application package.');
+        }
+    }
+
+    private function addEmptyFileToArchive(ZipArchive $archive, string $archivePath): void
+    {
+        if (! $archive->addFromString($archivePath, '')) {
+            throw new RuntimeException('A deployment directory marker could not be added to the cPanel application package.');
         }
     }
 
@@ -360,10 +580,28 @@ class DatabaseBackupService
         }
     }
 
+    private function addStoredFileToArchive(ZipArchive $archive, string $path, string $archivePath): bool
+    {
+        return $archive->addFile($path, $archivePath)
+            && $archive->setCompressionName($archivePath, ZipArchive::CM_STORE);
+    }
+
+    private function extendCpanelExecutionTime(): void
+    {
+        if (PHP_SAPI === 'cli') {
+            return;
+        }
+
+        $seconds = config('system_health.cpanel_execution_seconds', 900);
+
+        if (is_int($seconds) && $seconds >= 30 && $seconds <= 3600) {
+            @set_time_limit($seconds);
+        }
+    }
+
     private function backupRoot(bool $create = true): ?string
     {
-        $storageRoot = Storage::disk('local')->path('');
-        $backupRoot = rtrim($storageRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'system-backups';
+        $backupRoot = $this->configuredBackupPath();
 
         if ($create && ! is_dir($backupRoot) && ! mkdir($backupRoot, 0700, true) && ! is_dir($backupRoot)) {
             throw new RuntimeException('Private backup storage is unavailable.');
@@ -387,6 +625,30 @@ class DatabaseBackupService
         }
 
         return $realBackupRoot;
+    }
+
+    private function configuredBackupPath(): string
+    {
+        $configuredPath = config('system_health.backup_path');
+
+        if (is_string($configuredPath) && trim($configuredPath) !== '') {
+            $backupPath = trim($configuredPath);
+
+            if (! $this->isAbsolutePath($backupPath)) {
+                throw new RuntimeException('The configured backup path must be absolute.');
+            }
+
+            return rtrim($backupPath, '/\\');
+        }
+
+        $storageRoot = Storage::disk('local')->path('');
+
+        return rtrim($storageRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'system-backups';
+    }
+
+    private function isAbsolutePath(string $path): bool
+    {
+        return str_starts_with($path, '/') || preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1;
     }
 
     private function restrictFilePermissions(string $path): void

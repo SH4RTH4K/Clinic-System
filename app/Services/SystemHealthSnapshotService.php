@@ -9,7 +9,10 @@ use Throwable;
 
 class SystemHealthSnapshotService
 {
-    public function __construct(private SystemHealthBackupScheduleService $backupScheduleService) {}
+    public function __construct(
+        private SystemHealthBackupScheduleService $backupScheduleService,
+        private DatabaseBackupService $backupService,
+    ) {}
 
     /** @return array<string, mixed> */
     public function snapshot(): array
@@ -17,7 +20,6 @@ class SystemHealthSnapshotService
         $database = $this->databaseStatus();
         $backupSchedule = $this->backupScheduleService->settings();
         $privateRoot = Storage::disk('local')->path('');
-        $privateBackupPath = rtrim($privateRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'system-backups';
         $uploadRoot = Storage::disk('public')->path('');
         $storageRoot = storage_path();
 
@@ -29,14 +31,12 @@ class SystemHealthSnapshotService
             'laravel_version' => app()->version(),
             'database' => $database,
             'private_storage' => is_dir($privateRoot) && is_writable($privateRoot) ? 'Writable' : 'Check permissions',
-            'backup_storage' => is_dir($privateBackupPath) && is_writable($privateBackupPath)
-                ? 'Writable'
-                : (is_writable(dirname($privateBackupPath)) ? 'Ready to create' : 'Check permissions'),
+            'backup_storage' => $this->backupService->backupStorageStatus(),
             'migrations' => $database['status'] === 'Connected'
                 ? $this->migrationStatus()
                 : ['applied' => null, 'total' => $this->migrationFileCount(), 'pending' => null, 'status' => 'Unavailable'],
             'storage' => [
-                'uploads' => $this->directorySummary($uploadRoot),
+                'uploads' => $this->directorySummary($uploadRoot, ['.htaccess', '.keep']),
                 'private' => $this->directorySummary($privateRoot),
                 'logs' => $this->directorySummary(storage_path('logs')),
                 'framework_cache' => $this->directorySummary(storage_path('framework/cache')),
@@ -55,7 +55,7 @@ class SystemHealthSnapshotService
                         : 'Automatic full backups are disabled. Manual backups remain available.'),
                 'backup_type' => 'full',
             ],
-            'backup_retention' => 'Retention: 14 days. Generated backup archives older than 14 days are removed after a successful backup run.',
+            'backup_retention' => "Retention: {$this->backupService->retentionDays()} days. Generated backup archives older than this are removed after a successful backup run.",
         ];
     }
 
@@ -136,8 +136,11 @@ class SystemHealthSnapshotService
         return count(glob(database_path('migrations/*.php')) ?: []);
     }
 
-    /** @return array{files: int, bytes: int} */
-    private function directorySummary(string $path): array
+    /**
+     * @param  list<string>  $ignoredFiles
+     * @return array{files: int, bytes: int}
+     */
+    private function directorySummary(string $path, array $ignoredFiles = []): array
     {
         if (! is_dir($path) || is_link($path)) {
             return ['files' => 0, 'bytes' => 0];
@@ -147,13 +150,22 @@ class SystemHealthSnapshotService
         $bytes = 0;
 
         try {
+            $realPath = realpath($path);
+
+            if ($realPath === false) {
+                return ['files' => 0, 'bytes' => 0];
+            }
+
             $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+                new \RecursiveDirectoryIterator($realPath, \FilesystemIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::SELF_FIRST,
             );
 
             foreach ($iterator as $entry) {
-                if ($entry->isLink() || ! $entry->isFile()) {
+                $relativePath = substr($entry->getPathname(), strlen($realPath) + 1);
+                $isRootFile = ! str_contains($relativePath, DIRECTORY_SEPARATOR);
+
+                if ($entry->isLink() || ! $entry->isFile() || ($isRootFile && in_array($entry->getFilename(), $ignoredFiles, true))) {
                     continue;
                 }
 
