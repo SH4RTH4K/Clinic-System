@@ -169,6 +169,14 @@ class GitRepositoryService
     {
         $this->assertOperationsAllowed();
 
+        if ($this->managedSourceCheckoutMatchesSettings()) {
+            $this->writeSourceRegistration((string) realpath($this->managedRepositoryPath()));
+            $this->assertRepositoryReady();
+            $this->assertConfiguredRemote();
+
+            return;
+        }
+
         if (! $this->isSplitDeployment() && ! $this->managedRepositoryExists() && $this->isCpanelSplitDeployment()) {
             $this->initializeManagedCheckout($this->settings());
             $this->assertRepositoryReady();
@@ -555,12 +563,14 @@ class GitRepositoryService
             $repositoryRoot = realpath($registeredPath);
             $accountRoot = realpath(dirname(base_path()));
             $applicationRoot = realpath(base_path());
+            $managedRepository = realpath($this->managedRepositoryPath());
+            $isManagedRepository = $managedRepository !== false && $repositoryRoot === $managedRepository;
 
             if ($repositoryRoot === false || $accountRoot === false || $applicationRoot === false
                 || is_link($registeredPath)
                 || ! str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR)
-                || $repositoryRoot === $applicationRoot
-                || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)
+                || (! $isManagedRepository && ($repositoryRoot === $applicationRoot
+                    || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)))
                 || str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR.'public_html'.DIRECTORY_SEPARATOR)) {
                 throw new RuntimeException('The registered source checkout is outside the private account area.');
             }
@@ -593,6 +603,10 @@ class GitRepositoryService
         if (! $settings['valid'] || ! $settings['enabled'] || ! $this->supportsGitActions()
             || ! function_exists('proc_open') || ! $this->gitAvailable() || ! $this->isCpanelSplitDeployment()) {
             return false;
+        }
+
+        if ($this->managedSourceCheckoutMatchesSettings()) {
+            return true;
         }
 
         if (! $this->isSplitDeployment() && ! $this->managedRepositoryExists()) {
@@ -695,12 +709,14 @@ class GitRepositoryService
         $applicationRoot = realpath(base_path());
         $accountRoot = realpath(dirname(base_path()));
         $markerPath = base_path(self::SOURCE_MARKER);
+        $managedRepository = realpath($this->managedRepositoryPath());
+        $isManagedRepository = $managedRepository !== false && $repositoryRoot === $managedRepository;
 
         if ($applicationRoot === false || $accountRoot === false || is_link(base_path()) || is_link($markerPath)
             || (file_exists($markerPath) && ! is_file($markerPath))
             || ! str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR)
-            || $repositoryRoot === $applicationRoot
-            || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)
+            || (! $isManagedRepository && ($repositoryRoot === $applicationRoot
+                || str_starts_with($repositoryRoot, $applicationRoot.DIRECTORY_SEPARATOR)))
             || str_starts_with($repositoryRoot, $accountRoot.DIRECTORY_SEPARATOR.'public_html'.DIRECTORY_SEPARATOR)) {
             throw new RuntimeException('The matching source checkout is not in an approved private cPanel location.');
         }
@@ -741,6 +757,22 @@ class GitRepositoryService
                 unlink($temporaryPath);
             }
         }
+    }
+
+    private function managedSourceCheckoutMatchesSettings(): bool
+    {
+        if (! $this->managedRepositoryExists()) {
+            return false;
+        }
+
+        $repositoryRoot = realpath($this->managedRepositoryPath());
+        $storageRoot = $repositoryRoot === false ? false : realpath(dirname($repositoryRoot));
+
+        if ($repositoryRoot === false || $storageRoot === false) {
+            return false;
+        }
+
+        return $this->isMatchingSourceCheckout($repositoryRoot, $storageRoot);
     }
 
     private function deployedCommit(): ?string

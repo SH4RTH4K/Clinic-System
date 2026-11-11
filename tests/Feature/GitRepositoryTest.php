@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\GitRepositoryService;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -284,6 +285,64 @@ class GitRepositoryTest extends TestCase
         }
     }
 
+    public function test_super_admin_can_reconnect_a_stale_registration_to_the_existing_managed_checkout(): void
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+
+        $originalBasePath = base_path();
+        $accountRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-git-managed-reconnect-'.bin2hex(random_bytes(8));
+        $privatePath = $accountRoot.DIRECTORY_SEPARATOR.'private';
+        $storageRoot = $privatePath.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'private';
+        $originalStorageRoot = (string) config('filesystems.disks.local.root');
+
+        Config::set('filesystems.disks.local.root', $storageRoot);
+        Storage::forgetDisk('local');
+        $managedPath = Storage::disk('local')->path('git-repository/source');
+        $registrationPath = $privatePath.DIRECTORY_SEPARATOR.'DEPLOYED_GIT_REPOSITORY';
+
+        File::ensureDirectoryExists($privatePath);
+        File::ensureDirectoryExists($managedPath);
+
+        try {
+            $this->fixtureGit($managedPath, ['init', '--quiet', '--initial-branch=hardening']);
+            file_put_contents($managedPath.DIRECTORY_SEPARATOR.'README.md', 'managed source checkout');
+            $this->fixtureGit($managedPath, ['add', 'README.md']);
+            $this->fixtureGit($managedPath, ['-c', 'user.name=Clinic Test', '-c', 'user.email=test@local.invalid', 'commit', '--quiet', '-m', 'initial']);
+            $this->fixtureGit($managedPath, ['remote', 'add', 'origin', 'https://github.com/SH4RTH4K/Clinic-System.git']);
+            file_put_contents($registrationPath, $accountRoot.DIRECTORY_SEPARATOR.'repositories'.DIRECTORY_SEPARATOR.'deleted-checkout'.PHP_EOL);
+            $this->app->setBasePath($privatePath);
+            Storage::disk('local')->put('system/git-repository/settings.json', json_encode([
+                'enabled' => true,
+                'branch' => 'hardening',
+                'remote' => 'origin',
+                'repository_type' => 'public',
+                'repository_url' => 'https://github.com/SH4RTH4K/Clinic-System.git',
+                'authentication' => 'none',
+                'credential' => null,
+                'run_migrations' => false,
+                'clear_cache' => true,
+                'health_check' => true,
+            ], JSON_THROW_ON_ERROR));
+
+            $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+            $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+            $this->withoutMiddleware(PreventRequestForgery::class)
+                ->actingAs($user)
+                ->from(route('admin.git_repository.index'))
+                ->post(route('admin.git_repository.reconnect_source'))
+                ->assertRedirect(route('admin.git_repository.index'))
+                ->assertSessionHas('success', 'The private application-managed Git checkout is ready. Check GitHub to verify the repository status.');
+
+            $this->assertSame(realpath($managedPath), trim((string) file_get_contents($registrationPath)));
+        } finally {
+            Config::set('filesystems.disks.local.root', $originalStorageRoot);
+            Storage::forgetDisk('local');
+            $this->app->setBasePath($originalBasePath);
+            File::deleteDirectory($accountRoot);
+        }
+    }
+
     public function test_source_reconnection_does_not_change_registration_when_no_matching_checkout_exists(): void
     {
         $this->app->detectEnvironment(static fn (): string => 'local');
@@ -390,7 +449,6 @@ class GitRepositoryTest extends TestCase
     public function test_enabling_a_zip_installation_does_not_initialize_git_inside_live_files(): void
     {
         $this->app->detectEnvironment(static fn (): string => 'local');
-        Storage::fake('local');
 
         $originalBasePath = base_path();
         $applicationPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-zip-'.bin2hex(random_bytes(8));
@@ -398,6 +456,7 @@ class GitRepositoryTest extends TestCase
 
         try {
             $this->app->setBasePath($applicationPath);
+            Storage::fake('local');
 
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('The live application has no registered source checkout.');
@@ -405,6 +464,7 @@ class GitRepositoryTest extends TestCase
             app(GitRepositoryService::class)->saveSettings($this->settingsPayload(['enabled' => true]));
         } finally {
             $this->assertFalse(file_exists($applicationPath.DIRECTORY_SEPARATOR.'.git'));
+            Storage::forgetDisk('local');
             $this->app->setBasePath($originalBasePath);
             File::deleteDirectory($applicationPath);
         }
@@ -413,7 +473,6 @@ class GitRepositoryTest extends TestCase
     public function test_managed_checkout_is_initialized_in_private_storage_without_modifying_live_files(): void
     {
         $this->app->detectEnvironment(static fn (): string => 'local');
-        Storage::fake('local');
 
         $originalBasePath = base_path();
         $accountRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'clinic-managed-git-'.bin2hex(random_bytes(8));
@@ -426,12 +485,13 @@ class GitRepositoryTest extends TestCase
         File::ensureDirectoryExists($sourcePath);
 
         try {
+            $this->app->setBasePath($privatePath);
+            Storage::fake('local');
             $this->fixtureGit($sourcePath, ['init', '--quiet', '--initial-branch=hardening']);
             file_put_contents($sourcePath.DIRECTORY_SEPARATOR.'README.md', 'managed checkout fixture');
             $this->fixtureGit($sourcePath, ['add', 'README.md']);
             $this->fixtureGit($sourcePath, ['-c', 'user.name=Clinic Test', '-c', 'user.email=test@local.invalid', 'commit', '--quiet', '-m', 'initial']);
 
-            $this->app->setBasePath($privatePath);
             $service = app(GitRepositoryService::class);
             $method = new \ReflectionMethod($service, 'initializeManagedCheckout');
             $method->invoke($service, [
@@ -446,6 +506,7 @@ class GitRepositoryTest extends TestCase
             $this->assertFalse(file_exists($privatePath.DIRECTORY_SEPARATOR.'.git'));
             $this->assertTrue(is_dir(Storage::disk('local')->path('git-repository/source/.git')));
         } finally {
+            Storage::forgetDisk('local');
             $this->app->setBasePath($originalBasePath);
             File::deleteDirectory($accountRoot);
         }
