@@ -667,6 +667,49 @@ class SystemHealthTest extends TestCase
         $this->assertDatabaseHas('migrations', ['migration' => '2026_11_05_204744_add_system_health_manage_permission']);
     }
 
+    public function test_restore_reports_when_the_target_database_is_not_empty(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+        $restoreService = \Mockery::mock(SystemBackupRestoreService::class);
+        $restoreService->shouldReceive('restore')
+            ->once()
+            ->andThrow(new RuntimeException('Database restore is allowed only when the selected database has no tables or views.'));
+        $this->app->instance(SystemBackupRestoreService::class, $restoreService);
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.restore'), [
+                'restore_type' => 'database',
+                'backup_filename' => 'database-20261106-120000-0123456789abcdef.sql.gz',
+                'target_database' => 'clinic_restore_empty',
+                'confirmation_phrase' => 'RESTORE EMPTY TARGET',
+            ])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('error', 'Restore stopped. Database restore is allowed only when the selected database has no tables or views.');
+    }
+
+    public function test_restore_reports_when_private_backup_storage_is_unavailable(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+        $restoreService = \Mockery::mock(SystemBackupRestoreService::class);
+        $restoreService->shouldReceive('restore')
+            ->once()
+            ->andThrow(new RuntimeException('Private backup storage is unavailable.'));
+        $this->app->instance(SystemBackupRestoreService::class, $restoreService);
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.restore'), [
+                'restore_type' => 'media',
+                'backup_filename' => 'media-20261106-120000-0123456789abcdef.zip',
+                'confirmation_phrase' => 'RESTORE EMPTY TARGET',
+            ])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('error', 'Restore stopped. Private backup storage is unavailable.');
+    }
+
     public function test_uploaded_database_restore_cleans_up_temporary_file_when_mysql_is_required(): void
     {
         $uploadedBackup = UploadedFile::fake()->createWithContent(

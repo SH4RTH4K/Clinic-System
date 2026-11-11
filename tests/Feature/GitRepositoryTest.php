@@ -335,6 +335,11 @@ class GitRepositoryTest extends TestCase
                 ->assertSessionHas('success', 'The private application-managed Git checkout is ready. Check GitHub to verify the repository status.');
 
             $this->assertSame(realpath($managedPath), trim((string) file_get_contents($registrationPath)));
+
+            file_put_contents($registrationPath, $accountRoot.DIRECTORY_SEPARATOR.'repositories'.DIRECTORY_SEPARATOR.'deleted-checkout'.PHP_EOL);
+            app(GitRepositoryService::class)->saveSettings($this->settingsPayload(['enabled' => true]));
+
+            $this->assertSame(realpath($managedPath), trim((string) file_get_contents($registrationPath)));
         } finally {
             Config::set('filesystems.disks.local.root', $originalStorageRoot);
             Storage::forgetDisk('local');

@@ -308,18 +308,42 @@ class GitRepositoryService
         }
 
         if ($settings['enabled']) {
-            if (! $this->repositoryExists()) {
-                if (! $this->isCpanelSplitDeployment() || $this->isSplitDeployment()) {
+            $repositoryExists = false;
+
+            try {
+                $repositoryExists = $this->repositoryExists();
+            } catch (RuntimeException) {
+                $repositoryExists = false;
+            }
+
+            if (! $repositoryExists) {
+                if (! $this->isCpanelSplitDeployment()) {
                     throw new RuntimeException('The live application has no registered source checkout. Enable this from a split deployment so the application can create its private managed checkout.');
                 }
 
-                $this->initializeManagedCheckout([
-                    'branch' => $settings['branch'],
-                    'remote' => $settings['remote'],
-                    'repository_url' => $settings['repository_url'],
-                    'authentication' => $settings['authentication'],
-                    'credential' => $credential,
-                ]);
+                if ($this->managedSourceCheckoutMatchesSettings($settings)) {
+                    $this->writeSourceRegistration((string) realpath($this->managedRepositoryPath()));
+                } elseif (! $this->isSplitDeployment() && ! $this->managedRepositoryExists()) {
+                    $this->initializeManagedCheckout([
+                        'branch' => $settings['branch'],
+                        'remote' => $settings['remote'],
+                        'repository_url' => $settings['repository_url'],
+                        'authentication' => $settings['authentication'],
+                        'credential' => $credential,
+                    ]);
+                } else {
+                    $matchingCheckouts = $this->matchingSourceCheckouts($settings);
+
+                    if ($matchingCheckouts === []) {
+                        throw new RuntimeException('No readable cPanel Git checkout matched the saved repository and branch. Restore the source checkout under the account repositories directory, then reconnect.');
+                    }
+
+                    if (count($matchingCheckouts) > 1) {
+                        throw new RuntimeException('More than one cPanel Git checkout matched the saved repository and branch. Keep one authoritative checkout or ask the hosting administrator to resolve the duplicate.');
+                    }
+
+                    $this->writeSourceRegistration($matchingCheckouts[0]);
+                }
             }
 
             $this->assertRepositoryReady();
@@ -624,7 +648,8 @@ class GitRepositoryService
     }
 
     /** @return list<string> */
-    private function matchingSourceCheckouts(): array
+    /** @param array{branch: string, remote: string, repository_url: string}|null $settings */
+    private function matchingSourceCheckouts(?array $settings = null): array
     {
         $accountRoot = realpath(dirname(base_path()));
         $repositoriesEntry = $accountRoot === false ? false : $accountRoot.DIRECTORY_SEPARATOR.'repositories';
@@ -659,7 +684,7 @@ class GitRepositoryService
                 $gitDirectory = $candidate.DIRECTORY_SEPARATOR.'.git';
 
                 if (! is_link($gitDirectory) && is_dir($gitDirectory)) {
-                    if ($this->isMatchingSourceCheckout($candidate, $repositoriesPath)) {
+                    if ($this->isMatchingSourceCheckout($candidate, $repositoriesPath, $settings)) {
                         $matchingCheckouts[] = realpath($candidate);
                     }
 
@@ -680,7 +705,8 @@ class GitRepositoryService
         return array_values(array_unique(array_filter($matchingCheckouts, 'is_string')));
     }
 
-    private function isMatchingSourceCheckout(string $candidate, string $repositoriesPath): bool
+    /** @param array{branch: string, remote: string, repository_url: string}|null $settings */
+    private function isMatchingSourceCheckout(string $candidate, string $repositoriesPath, ?array $settings = null): bool
     {
         $candidateRoot = realpath($candidate);
 
@@ -693,15 +719,18 @@ class GitRepositoryService
             return false;
         }
 
+        $branchName = $settings['branch'] ?? $this->branch();
+        $remoteName = $settings['remote'] ?? $this->remote();
+        $repositoryUrl = $settings['repository_url'] ?? $this->repositoryUrl();
         $branch = $this->executeGitInDirectory($candidateRoot, ['branch', '--show-current']);
-        if ($branch['code'] !== 0 || trim($branch['output']) !== $this->branch()) {
+        if ($branch['code'] !== 0 || trim($branch['output']) !== $branchName) {
             return false;
         }
 
-        $remoteUrl = $this->executeGitInDirectory($candidateRoot, ['remote', 'get-url', $this->remote()]);
+        $remoteUrl = $this->executeGitInDirectory($candidateRoot, ['remote', 'get-url', $remoteName]);
 
         return $remoteUrl['code'] === 0
-            && $this->normalizeRepositoryUrl(trim($remoteUrl['output'])) === $this->normalizeRepositoryUrl($this->repositoryUrl());
+            && $this->normalizeRepositoryUrl(trim($remoteUrl['output'])) === $this->normalizeRepositoryUrl($repositoryUrl);
     }
 
     private function writeSourceRegistration(string $repositoryRoot): void
@@ -759,7 +788,8 @@ class GitRepositoryService
         }
     }
 
-    private function managedSourceCheckoutMatchesSettings(): bool
+    /** @param array{branch: string, remote: string, repository_url: string}|null $settings */
+    private function managedSourceCheckoutMatchesSettings(?array $settings = null): bool
     {
         if (! $this->managedRepositoryExists()) {
             return false;
@@ -772,7 +802,7 @@ class GitRepositoryService
             return false;
         }
 
-        return $this->isMatchingSourceCheckout($repositoryRoot, $storageRoot);
+        return $this->isMatchingSourceCheckout($repositoryRoot, $storageRoot, $settings);
     }
 
     private function deployedCommit(): ?string

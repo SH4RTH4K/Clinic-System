@@ -213,9 +213,17 @@ class SystemHealthController extends Controller
                 );
             }
         } catch (Throwable $exception) {
-            Log::error('System backup restore failed.', ['exception_class' => $exception::class]);
+            $failureReason = $this->safeRestoreFailureReason($exception);
+            Log::error('System backup restore failed.', [
+                'exception_class' => $exception::class,
+                'safe_reason' => $failureReason,
+                'database_sql_state' => $exception instanceof QueryException ? ($exception->errorInfo[0] ?? null) : null,
+                'database_error_code' => $exception instanceof QueryException
+                    ? $this->databaseErrorCode($exception)
+                    : null,
+            ]);
 
-            return back()->with('error', 'Restore stopped. The target must already exist, be empty, and use the configured database server. Existing data was not replaced.');
+            return back()->with('error', "Restore stopped. {$failureReason}");
         }
 
         try {
@@ -320,6 +328,78 @@ class SystemHealthController extends Controller
 
         return in_array($message, $safeMessages, true)
             ? $message
+            : 'A database or private-storage operation failed. Detailed exception data was redacted.';
+    }
+
+    private function safeRestoreFailureReason(Throwable $exception): string
+    {
+        if ($exception instanceof QueryException) {
+            return match ($this->databaseErrorCode($exception)) {
+                1044, 1045, 1142, 1143, 1227 => 'MySQL denied access to the restore target. Verify the target database and account privileges.',
+                1049, 1146 => 'The restore target database does not exist on the configured MySQL server. Create the empty target first.',
+                1054, 1109 => 'The restore target schema is incompatible with this operation. Verify the target before retrying.',
+                1205, 1213 => 'MySQL could not lock the restore target safely. Retry when no other database operation is running.',
+                2002, 2003, 2006, 2013, 2055 => 'The MySQL connection was interrupted while restoring. Verify server availability before retrying.',
+                default => sprintf(
+                    'A MySQL restore check failed (error code %d). SQL and data values were redacted; review the server logs before retrying.',
+                    $this->databaseErrorCode($exception),
+                ),
+            };
+        }
+
+        if (! $exception instanceof \RuntimeException) {
+            return 'A database or private-storage operation failed. Detailed exception data was redacted.';
+        }
+
+        $safeMessages = [
+            'The selected backup is not available for restoration.',
+            'The selected backup type is not supported.',
+            'The uploaded backup file is empty or exceeds the 2 GB upload limit.',
+            'The uploaded backup file extension does not match the selected backup type.',
+            'The uploaded backup could not be protected in private storage.',
+            'The uploaded backup is not a readable ZIP archive.',
+            'The uploaded full backup has an unexpected archive structure.',
+            'The uploaded backup was not created by this application.',
+            'The database backup contains a statement that is not allowed for restore.',
+            'The database backup does not contain a restorable schema.',
+            'The database backup is not a readable compressed SQL file.',
+            'The compressed database backup is incomplete or damaged.',
+            'The database backup was not created by this application.',
+            'Database restore is supported only for MySQL connections.',
+            'The database backup expands beyond the 8 GB safety limit.',
+            'The restore target must be an existing database on the configured MySQL server.',
+            'The configured MySQL connection could not be used for the restore target.',
+            'The configured MySQL connection did not select the requested restore target.',
+            'Database restore is allowed only when the selected database has no tables or views.',
+            'The PHP Zip extension is required to restore media backups.',
+            'Media restore is allowed only when upload storage contains no files.',
+            'Media restore stopped because upload storage is a symbolic link.',
+            'The full backup archive could not be opened.',
+            'The full backup archive has an unexpected structure.',
+            'The media backup archive could not be opened.',
+            'The media archive contains an unexpected path.',
+            'The media archive contains an unsafe path.',
+            'The media archive contains a symbolic link.',
+            'The media archive exceeds the restore size limit.',
+            'Private restore staging storage is unavailable.',
+            'A media file could not be staged privately.',
+            'A media archive entry failed its size check.',
+            'A full backup component could not be staged.',
+            'The staged media contains a symbolic link.',
+            'The upload storage directory could not be created.',
+            'The media restore paths could not be verified.',
+            'A media directory could not be restored.',
+            'Media restore stopped because a target file already exists.',
+            'A media file could not be restored.',
+            'Database restore stopped. The empty target may now contain a partial schema.',
+            'Private backup storage is unavailable.',
+            'Could not verify the private backup location.',
+            'The configured backup path is publicly accessible.',
+            'The configured backup path must be absolute.',
+        ];
+
+        return in_array($exception->getMessage(), $safeMessages, true)
+            ? $exception->getMessage()
             : 'A database or private-storage operation failed. Detailed exception data was redacted.';
     }
 
