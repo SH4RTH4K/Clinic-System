@@ -366,6 +366,11 @@ export default function GitRepository({ repository, settings, history = [] }) {
                             <h3 className="mt-3 text-sm font-semibold text-slate-900">Review server state</h3>
                             <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">{repository.working_tree_changes > 0 ? `${repository.working_tree_changes} tracked source change(s) block an update.` : 'Only a clean, non-diverged source checkout can be updated.'}</p>
                             <StatusPill status={repository.status} />
+                            {repository.message && repository.status === 'Update available' && !repository.pull_available && (
+                                <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900" role="status">
+                                    {repository.message}
+                                </p>
+                            )}
                             {repository.source_reconnect_available && ['Unavailable', 'Not connected'].includes(repository.status) && (
                                 <div className="mt-3">
                                     <p className="mb-2 text-xs leading-5 text-slate-600">Initialize or reconnect the private application-managed checkout. Existing live application files are not replaced by this action.</p>
