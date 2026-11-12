@@ -389,8 +389,14 @@ class SystemBackupRestoreService
 
     private function createRecoveryBackup(string $type, Connection $connection): void
     {
+        $backupService = app(DatabaseBackupService::class);
+
+        if (! in_array($backupService->backupStorageStatus(), ['Writable', 'Ready to create'], true)) {
+            throw new RuntimeException('Recovery backup storage is unavailable. The overwrite did not start.');
+        }
+
         try {
-            app(DatabaseBackupService::class)->create($type, $connection);
+            $backupService->create($type, $connection);
         } catch (Throwable $exception) {
             throw new RuntimeException('A recovery backup could not be created. The overwrite did not start.', previous: $exception);
         }

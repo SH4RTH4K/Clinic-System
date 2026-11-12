@@ -912,6 +912,29 @@ class SystemHealthTest extends TestCase
         ]);
     }
 
+    public function test_overwrite_restore_requires_writable_recovery_backup_storage(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+        $backupService = \Mockery::mock(DatabaseBackupService::class);
+        $backupService->shouldReceive('backupStorageStatus')->once()->andReturn('Check permissions');
+        $this->app->instance(DatabaseBackupService::class, $backupService);
+        $restoreService = \Mockery::mock(SystemBackupRestoreService::class);
+        $restoreService->shouldNotReceive('restore');
+        $this->app->instance(SystemBackupRestoreService::class, $restoreService);
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.restore'), [
+                'restore_type' => 'media',
+                'restore_mode' => 'overwrite',
+                'backup_filename' => 'media-20261106-120000-0123456789abcdef.zip',
+                'confirmation_phrase' => 'OVERWRITE EXISTING TARGET',
+            ])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('error', 'Overwrite restore requires writable private backup storage for the recovery backup. Set a writable SYSTEM_HEALTH_BACKUP_PATH outside public_html, then clear the configuration cache and retry.');
+    }
+
     public function test_overwrite_restore_requires_its_own_confirmation_phrase(): void
     {
         $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);

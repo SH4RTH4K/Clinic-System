@@ -93,7 +93,7 @@ function BackupButton({ type, label, description, available, csrfToken }) {
     );
 }
 
-function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, uploadsEmpty, csrfToken, errors = {} }) {
+function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, uploadsEmpty, backupStorageWritable, csrfToken, errors = {} }) {
     const [type, setType] = useState('database');
     const [restoreMode, setRestoreMode] = useState('empty');
     const [backupFilename, setBackupFilename] = useState('');
@@ -113,7 +113,7 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
     const canRestore = available[type] === true
         && hasOneBackupSource
         && (!includesDatabase || validTargetName)
-        && (overwriting || (!activeTargetIsPopulated && (!includesUploads || uploadsEmpty)));
+        && ((overwriting && backupStorageWritable) || (!overwriting && !activeTargetIsPopulated && (!includesUploads || uploadsEmpty)));
     const blockers = [];
 
     if (available[type] !== true) {
@@ -135,6 +135,9 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
     if (!overwriting && includesUploads && !uploadsEmpty) {
         blockers.push('Upload storage contains files. Media restore is available only when the upload target is empty.');
     }
+    if (overwriting && !backupStorageWritable) {
+        blockers.push('Overwrite is unavailable because private backup storage is not writable. Fix its cPanel permissions before retrying.');
+    }
     return (
         <form method="post" encType="multipart/form-data" action={route('admin.system_health.restore')} className="mt-4 space-y-4 border-t border-amber-200 pt-4">
             <input type="hidden" name="_token" value={csrfToken} />
@@ -146,8 +149,8 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
                         <span><span className="block font-semibold">Restore to empty target</span>Keep the existing safeguard; no files or tables are replaced.</span>
                     </label>
                     <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-900">
-                        <input type="radio" name="restore_mode" value="overwrite" checked={overwriting} onChange={() => setRestoreMode('overwrite')} className="mt-0.5 border-rose-400 text-rose-700 focus:ring-rose-600" />
-                        <span><span className="block font-semibold">Overwrite existing target</span>Create a recovery backup first, then permanently replace existing tables and uploads.</span>
+                        <input type="radio" name="restore_mode" value="overwrite" checked={overwriting} disabled={!backupStorageWritable} onChange={() => setRestoreMode('overwrite')} className="mt-0.5 border-rose-400 text-rose-700 focus:ring-rose-600 disabled:cursor-not-allowed" />
+                        <span><span className="block font-semibold">Overwrite existing target</span>{backupStorageWritable ? 'Create a recovery backup first, then permanently replace existing tables and uploads.' : 'Unavailable until private backup storage is writable.'}</span>
                     </label>
                 </div>
             </fieldset>
@@ -434,6 +437,7 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                         activeDatabase={restoreTarget}
                                         databaseEmpty={health.database?.table_count === 0 && health.database?.view_count === 0}
                                         uploadsEmpty={(health.storage?.uploads?.files ?? 0) === 0}
+                                        backupStorageWritable={['Writable', 'Ready to create'].includes(health.backup_storage)}
                                         csrfToken={csrfToken}
                                         errors={errors}
                                     />

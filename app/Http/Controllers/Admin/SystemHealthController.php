@@ -197,9 +197,14 @@ class SystemHealthController extends Controller
     public function restore(
         RestoreSystemBackupRequest $request,
         SystemBackupRestoreService $restoreService,
+        DatabaseBackupService $backupService,
     ): RedirectResponse {
         $type = $request->validated('restore_type');
         $mode = $request->restoreMode();
+
+        if ($mode === 'overwrite' && ! in_array($backupService->backupStorageStatus(), ['Writable', 'Ready to create'], true)) {
+            return back()->with('error', 'Overwrite restore requires writable private backup storage for the recovery backup. Set a writable SYSTEM_HEALTH_BACKUP_PATH outside public_html, then clear the configuration cache and retry.');
+        }
 
         try {
             if ($request->hasFile('backup_file')) {
@@ -434,6 +439,7 @@ class SystemHealthController extends Controller
             'The configured backup path is publicly accessible.',
             'The configured backup path must be absolute.',
             'The selected restore mode is not supported.',
+            'Recovery backup storage is unavailable. The overwrite did not start.',
             'A recovery backup could not be created. The overwrite did not start.',
             'The selected database could not be cleared. The recovery backup is available for rollback.',
             'The upload storage could not be cleared. The recovery backup is available for rollback.',
