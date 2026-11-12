@@ -17,11 +17,17 @@ class RestoreSystemBackupRequest extends FormRequest
     {
         return [
             'restore_type' => ['required', 'string', 'in:database,media,full'],
+            'restore_mode' => ['nullable', 'string', 'in:empty,overwrite'],
             'backup_filename' => ['nullable', 'required_without:backup_file', 'string', 'regex:/^(database|media|full)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/'],
             'backup_file' => ['nullable', 'required_without:backup_filename', 'file', 'max:2097152'],
             'target_database' => ['required_if:restore_type,database,full', 'nullable', 'string', 'max:64', 'regex:/^(?:[A-Za-z0-9_]{1,64}|:memory:)$/D'],
-            'confirmation_phrase' => ['required', 'in:RESTORE EMPTY TARGET'],
+            'confirmation_phrase' => ['required', 'string', 'in:RESTORE EMPTY TARGET,OVERWRITE EXISTING TARGET'],
         ];
+    }
+
+    public function restoreMode(): string
+    {
+        return $this->input('restore_mode') === 'overwrite' ? 'overwrite' : 'empty';
     }
 
     public function withValidator(Validator $validator): void
@@ -40,6 +46,14 @@ class RestoreSystemBackupRequest extends FormRequest
                 $validator->errors()->add('backup_filename', 'Choose a saved backup matching the selected type.');
             }
 
+            $expectedConfirmation = $this->restoreMode() === 'overwrite'
+                ? 'OVERWRITE EXISTING TARGET'
+                : 'RESTORE EMPTY TARGET';
+
+            if ($this->input('confirmation_phrase') !== $expectedConfirmation) {
+                $validator->errors()->add('confirmation_phrase', "Type {$expectedConfirmation} to confirm this restore mode.");
+            }
+
             if (! $uploadedFile instanceof UploadedFile || ! is_string($type)) {
                 return;
             }
@@ -54,6 +68,7 @@ class RestoreSystemBackupRequest extends FormRequest
                 || preg_match($expectedFilenamePattern, basename($uploadedFile->getClientOriginalName())) !== 1) {
                 $validator->errors()->add('backup_file', 'Choose a backup file with the correct extension for the selected type. The archive contents will be verified before restore.');
             }
+
         });
     }
 }

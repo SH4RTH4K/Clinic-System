@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Patient;
 use App\Models\User;
 use App\Services\DatabaseBackupService;
 use App\Services\SystemBackupRestoreService;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -478,6 +480,22 @@ class SystemHealthTest extends TestCase
         $this->assertEmpty(app(DatabaseBackupService::class)->history());
     }
 
+    public function test_backup_rate_limit_redirects_with_a_retry_message_instead_of_rendering_a_429_page(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+        $key = 'system-health:backup:'.$user->getAuthIdentifier().'|127.0.0.1';
+        RateLimiter::hit($key, 60);
+        RateLimiter::hit($key, 60);
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.backup'), ['backup_type' => 'media'])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('error', 'Backup creation is limited to two requests per minute. Try again in 60 seconds.');
+
+        RateLimiter::clear($key);
+    }
+
     public function test_database_backup_refuses_sqlite_without_creating_a_backup(): void
     {
         Schema::create('backup_probe', function ($table): void {
@@ -586,6 +604,54 @@ class SystemHealthTest extends TestCase
         $this->expectExceptionMessage('Database backups are supported only for MySQL connections.');
 
         app(DatabaseBackupService::class)->create('full');
+    }
+
+    public function test_super_admin_can_reset_application_data_and_uploads_as_new(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+        $patient = Patient::factory()->create();
+        Storage::disk('public')->put('patients/temporary-attachment.txt', 'temporary attachment');
+        Storage::disk('public')->put('.keep', '');
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.reset_as_new'), ['confirmation_phrase' => 'RESET AS NEW'])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('success', 'Application data and uploads were permanently reset. Administrator access, clinic configuration, and saved backups were kept.');
+
+        $this->assertDatabaseMissing('patients', ['id' => $patient->id]);
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+        $this->assertDatabaseHas('model_has_roles', ['model_id' => $user->id]);
+        $this->assertDatabaseHas('activity_log', ['event' => 'application.reset_as_new']);
+        Storage::disk('public')->assertMissing('patients/temporary-attachment.txt');
+        Storage::disk('public')->assertExists('.keep');
+    }
+
+    public function test_reset_as_new_requires_the_exact_confirmation_phrase(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+        $patient = Patient::factory()->create();
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.reset_as_new'), ['confirmation_phrase' => 'reset as new'])
+            ->assertSessionHasErrors(['confirmation_phrase' => 'The selected confirmation phrase is invalid.']);
+
+        $this->assertDatabaseHas('patients', ['id' => $patient->id]);
+    }
+
+    public function test_system_health_manager_cannot_reset_application_data_as_new(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+        $patient = Patient::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('admin.system_health.reset_as_new'), ['confirmation_phrase' => 'RESET AS NEW'])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('patients', ['id' => $patient->id]);
     }
 
     public function test_user_without_manage_permission_cannot_clear_compiled_caches(): void
@@ -792,6 +858,75 @@ class SystemHealthTest extends TestCase
                 unlink($backupPath);
             }
         }
+    }
+
+    public function test_super_admin_can_overwrite_existing_media_after_a_recovery_backup_is_created(): void
+    {
+        Storage::disk('public')->put('replacement-media.txt', 'replacement media');
+        $archivePath = app(DatabaseBackupService::class)->create('media');
+        Storage::disk('public')->put('existing-media.txt', 'existing media');
+
+        try {
+            app(SystemBackupRestoreService::class)->restore(basename($archivePath), 'media', null, 'overwrite');
+
+            $this->assertSame('replacement media', Storage::disk('public')->get('replacement-media.txt'));
+            $this->assertFalse(Storage::disk('public')->exists('existing-media.txt'));
+            $this->assertCount(2, array_filter(
+                app(DatabaseBackupService::class)->history(),
+                static fn (array $backup): bool => $backup['type'] === 'media',
+            ));
+        } finally {
+            foreach (app(DatabaseBackupService::class)->history() as $backup) {
+                $backupPath = app(DatabaseBackupService::class)->pathForDownload($backup['filename']);
+
+                if ($backupPath !== null) {
+                    @unlink($backupPath);
+                }
+            }
+        }
+    }
+
+    public function test_super_admin_can_request_an_overwrite_restore(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+        $restoreService = \Mockery::mock(SystemBackupRestoreService::class);
+        $restoreService->shouldReceive('restore')
+            ->once()
+            ->with('media-20261106-120000-0123456789abcdef.zip', 'media', null, 'overwrite');
+        $this->app->instance(SystemBackupRestoreService::class, $restoreService);
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.restore'), [
+                'restore_type' => 'media',
+                'restore_mode' => 'overwrite',
+                'backup_filename' => 'media-20261106-120000-0123456789abcdef.zip',
+                'confirmation_phrase' => 'OVERWRITE EXISTING TARGET',
+            ])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('success', 'The backup replaced the selected target. A recovery backup was created first.');
+
+        $this->assertDatabaseHas('activity_log', [
+            'event' => 'backup.restored',
+        ]);
+    }
+
+    public function test_overwrite_restore_requires_its_own_confirmation_phrase(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.restore'), [
+                'restore_type' => 'media',
+                'restore_mode' => 'overwrite',
+                'backup_filename' => 'media-20261106-120000-0123456789abcdef.zip',
+                'confirmation_phrase' => 'RESTORE EMPTY TARGET',
+            ])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHasErrors(['confirmation_phrase']);
     }
 
     public function test_uploaded_database_backup_does_not_change_sqlite_test_schema(): void

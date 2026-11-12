@@ -21,7 +21,7 @@ class SystemBackupRestoreService
 
     public function __construct(private DatabaseBackupSchemaInspector $schemaInspector) {}
 
-    public function restore(string $filename, string $type, ?string $targetDatabase = null): void
+    public function restore(string $filename, string $type, ?string $targetDatabase = null, string $mode = 'empty'): void
     {
         $backupService = app(DatabaseBackupService::class);
         $backupPath = $backupService->pathForDownload($filename);
@@ -31,10 +31,10 @@ class SystemBackupRestoreService
             throw new RuntimeException('The selected backup is not available for restoration.');
         }
 
-        $this->restoreFromPath($backupPath, $type, $targetDatabase);
+        $this->restoreFromPath($backupPath, $type, $targetDatabase, $mode);
     }
 
-    public function restoreUploaded(UploadedFile $uploadedFile, string $type, ?string $targetDatabase = null): void
+    public function restoreUploaded(UploadedFile $uploadedFile, string $type, ?string $targetDatabase = null, string $mode = 'empty'): void
     {
         if (! in_array($type, ['database', 'media', 'full'], true)) {
             throw new RuntimeException('The selected backup type is not supported.');
@@ -70,7 +70,7 @@ class SystemBackupRestoreService
             }
 
             $this->assertUploadedArchiveIsReadable($temporaryPath, $type);
-            $this->restoreFromPath($temporaryPath, $type, $targetDatabase);
+            $this->restoreFromPath($temporaryPath, $type, $targetDatabase, $mode);
         } finally {
             if (is_file($temporaryPath)) {
                 @unlink($temporaryPath);
@@ -78,8 +78,12 @@ class SystemBackupRestoreService
         }
     }
 
-    private function restoreFromPath(string $backupPath, string $type, ?string $targetDatabase): void
+    private function restoreFromPath(string $backupPath, string $type, ?string $targetDatabase, string $mode): void
     {
+        if (! in_array($mode, ['empty', 'overwrite'], true)) {
+            throw new RuntimeException('The selected restore mode is not supported.');
+        }
+
         if ($type !== 'database' && ! class_exists(ZipArchive::class)) {
             throw new RuntimeException('The PHP Zip extension is required to restore media backups.');
         }
@@ -96,21 +100,32 @@ class SystemBackupRestoreService
         $databaseDump = null;
 
         try {
-            $this->assertEmptyDatabase($connection, $type);
             $uploadRoot = Storage::disk('public')->path('');
 
             if ($type === 'media') {
-                $this->assertEmptyUploadStorage();
                 $stagedMedia = $this->stageMediaArchive($backupPath);
             } elseif ($type === 'database') {
                 $databaseDump = $backupPath;
             } else {
-                $this->assertEmptyUploadStorage();
                 [$databaseDump, $stagedMedia] = $this->stageFullArchive($backupPath);
             }
 
             if ($databaseDump !== null) {
                 $this->assertDatabaseDumpIsReadable($databaseDump);
+            }
+
+            if ($mode === 'empty') {
+                $this->assertEmptyDatabase($connection, $type);
+
+                if (in_array($type, ['media', 'full'], true)) {
+                    $this->assertEmptyUploadStorage();
+                }
+            } else {
+                $this->createRecoveryBackup($type, $connection);
+                $this->clearRestoreTargets($connection, $type);
+            }
+
+            if ($databaseDump !== null) {
                 $this->restoreDatabaseDump($databaseDump, $connection);
             }
 
@@ -369,6 +384,75 @@ class SystemBackupRestoreService
 
         if ($entries !== []) {
             throw new RuntimeException('Media restore is allowed only when upload storage contains no files.');
+        }
+    }
+
+    private function createRecoveryBackup(string $type, Connection $connection): void
+    {
+        try {
+            app(DatabaseBackupService::class)->create($type, $connection);
+        } catch (Throwable $exception) {
+            throw new RuntimeException('A recovery backup could not be created. The overwrite did not start.', previous: $exception);
+        }
+    }
+
+    private function clearRestoreTargets(Connection $connection, string $type): void
+    {
+        if (in_array($type, ['database', 'full'], true)) {
+            try {
+                $schema = $connection->getSchemaBuilder();
+                $schema->dropAllViews();
+                $schema->dropAllTables();
+            } catch (Throwable $exception) {
+                throw new RuntimeException('The selected database could not be cleared. The recovery backup is available for rollback.', previous: $exception);
+            }
+        }
+
+        if (in_array($type, ['media', 'full'], true)) {
+            $this->clearUploadStorage();
+        }
+    }
+
+    private function clearUploadStorage(): void
+    {
+        $uploadRoot = Storage::disk('public')->path('');
+
+        if (is_link($uploadRoot)) {
+            throw new RuntimeException('Media restore stopped because upload storage is a symbolic link.');
+        }
+
+        if (! is_dir($uploadRoot)) {
+            return;
+        }
+
+        $scan = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($uploadRoot, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST,
+        );
+
+        foreach ($scan as $entry) {
+            if ($entry->isLink()) {
+                throw new RuntimeException('Media restore stopped because upload storage contains a symbolic link.');
+            }
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($uploadRoot, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+
+        foreach ($iterator as $entry) {
+            $relativePath = substr($entry->getPathname(), strlen($uploadRoot) + 1);
+
+            if (in_array($relativePath, ['.htaccess', '.keep'], true)) {
+                continue;
+            }
+
+            $removed = $entry->isDir() ? @rmdir($entry->getPathname()) : @unlink($entry->getPathname());
+
+            if (! $removed) {
+                throw new RuntimeException('The upload storage could not be cleared. The recovery backup is available for rollback.');
+            }
         }
     }
 

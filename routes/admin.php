@@ -222,7 +222,7 @@ Route::middleware(['auth', 'permission:activity_logs.view', 'role:Super Admin'])
 Route::middleware(['auth', 'role_or_permission:Super Admin|system_health.manage'])->group(function () {
     Route::get('/system-health', [SystemHealthController::class, 'index'])->name('system_health.index');
     Route::post('/system-health/backups', [SystemHealthController::class, 'backup'])
-        ->middleware('throttle:2,1')
+        ->middleware('system_health_backup_rate_limit')
         ->name('system_health.backup');
     Route::post('/system-health/backup-schedule', [SystemHealthController::class, 'updateBackupSchedule'])
         ->middleware('throttle:6,1')
@@ -237,6 +237,9 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|system_health.manage'
     Route::post('/system-health/restores', [SystemHealthController::class, 'restore'])
         ->middleware(['role:Super Admin', 'throttle:2,1'])
         ->name('system_health.restore');
+    Route::post('/system-health/reset-as-new', [SystemHealthController::class, 'resetAsNew'])
+        ->middleware(['role:Super Admin', 'throttle:1,10'])
+        ->name('system_health.reset_as_new');
     Route::post('/system-health/maintenance/clear-caches', [SystemHealthController::class, 'clearCaches'])
         ->middleware('throttle:2,1')
         ->name('system_health.clear_caches');

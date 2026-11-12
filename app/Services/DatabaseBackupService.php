@@ -27,7 +27,7 @@ class DatabaseBackupService
 
     public function __construct(private DatabaseBackupSchemaInspector $schemaInspector) {}
 
-    public function create(string $type = 'database'): string
+    public function create(string $type = 'database', ?Connection $databaseConnection = null): string
     {
         if (! in_array($type, self::BACKUP_TYPES, true)) {
             throw new RuntimeException('The requested backup type is not supported.');
@@ -47,11 +47,11 @@ class DatabaseBackupService
         $path = $root.DIRECTORY_SEPARATOR.$filename;
 
         if ($type === 'database') {
-            $this->writeDatabaseDump($path);
+            $this->writeDatabaseDump($path, $databaseConnection ?? DB::connection());
         } elseif ($type === 'media') {
             $this->writeMediaArchive($path);
         } elseif ($type === 'full') {
-            $this->writeFullArchive($path, $root);
+            $this->writeFullArchive($path, $root, $databaseConnection ?? DB::connection());
         } else {
             $this->writeCpanelArchive($path);
         }
@@ -233,10 +233,8 @@ class DatabaseBackupService
         return $matches[1];
     }
 
-    private function writeDatabaseDump(string $path): void
+    private function writeDatabaseDump(string $path, Connection $connection): void
     {
-        $connection = DB::connection();
-
         if ($connection->getDriverName() !== 'mysql') {
             throw new RuntimeException('Database backups are supported only for MySQL connections.');
         }
@@ -319,7 +317,7 @@ class DatabaseBackupService
         }
     }
 
-    private function writeFullArchive(string $path, string $root): void
+    private function writeFullArchive(string $path, string $root, Connection $connection): void
     {
         $databasePath = $root.DIRECTORY_SEPARATOR.'.'.bin2hex(random_bytes(16)).'.sql.gz';
         $mediaPath = $root.DIRECTORY_SEPARATOR.'.'.bin2hex(random_bytes(16)).'.zip';
@@ -330,7 +328,7 @@ class DatabaseBackupService
         $fullArchiveCreated = false;
 
         try {
-            $this->writeDatabaseDump($databasePath);
+            $this->writeDatabaseDump($databasePath, $connection);
             $databaseCreated = true;
             $this->writeMediaArchive($mediaPath);
             $mediaCreated = true;

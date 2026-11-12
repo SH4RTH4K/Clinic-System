@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ClearSystemHealthCachesRequest;
 use App\Http\Requests\Admin\CreateSystemBackupRequest;
 use App\Http\Requests\Admin\DeleteSystemBackupRequest;
+use App\Http\Requests\Admin\ResetSystemDataRequest;
 use App\Http\Requests\Admin\RestoreSystemBackupRequest;
 use App\Http\Requests\Admin\UpdateSystemHealthBackupScheduleRequest;
 use App\Services\DatabaseBackupService;
 use App\Services\SystemBackupRestoreService;
+use App\Services\SystemDataResetService;
 use App\Services\SystemHealthBackupScheduleService;
 use App\Services\SystemHealthSnapshotService;
 use Illuminate\Database\QueryException;
@@ -197,6 +199,7 @@ class SystemHealthController extends Controller
         SystemBackupRestoreService $restoreService,
     ): RedirectResponse {
         $type = $request->validated('restore_type');
+        $mode = $request->restoreMode();
 
         try {
             if ($request->hasFile('backup_file')) {
@@ -204,12 +207,14 @@ class SystemHealthController extends Controller
                     $request->file('backup_file'),
                     $type,
                     $request->validated('target_database'),
+                    $mode,
                 );
             } else {
                 $restoreService->restore(
                     $request->validated('backup_filename'),
                     $type,
                     $request->validated('target_database'),
+                    $mode,
                 );
             }
         } catch (Throwable $exception) {
@@ -232,14 +237,19 @@ class SystemHealthController extends Controller
                 ->event('backup.restored')
                 ->withProperties([
                     'type' => $type,
+                    'mode' => $mode,
                     'source' => $request->hasFile('backup_file') ? 'upload' : 'saved',
                 ])
-                ->log('Restored a system backup to an empty target');
+                ->log($mode === 'overwrite'
+                    ? 'Restored a system backup by overwriting an existing target'
+                    : 'Restored a system backup to an empty target');
         } catch (Throwable $exception) {
             report($exception);
         }
 
-        return back()->with('success', 'The backup was restored to the empty target.');
+        return back()->with('success', $mode === 'overwrite'
+            ? 'The backup replaced the selected target. A recovery backup was created first.'
+            : 'The backup was restored to the empty target.');
     }
 
     public function clearCaches(ClearSystemHealthCachesRequest $request): RedirectResponse
@@ -266,6 +276,32 @@ class SystemHealthController extends Controller
         }
 
         return back()->with('success', 'Compiled application caches were cleared.');
+    }
+
+    public function resetAsNew(
+        ResetSystemDataRequest $request,
+        SystemDataResetService $resetService,
+    ): RedirectResponse {
+        try {
+            $resetService->reset();
+        } catch (Throwable $exception) {
+            Log::error('Application data reset failed.', [
+                'exception_class' => $exception::class,
+            ]);
+
+            return back()->with('error', 'Reset stopped. Some data or uploads may already have been permanently removed; review the application logs before retrying.');
+        }
+
+        try {
+            activity('system_health')
+                ->causedBy($request->user())
+                ->event('application.reset_as_new')
+                ->log('Reset application data and uploads as new');
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        return back()->with('success', 'Application data and uploads were permanently reset. Administrator access, clinic configuration, and saved backups were kept.');
     }
 
     private function safeBackupFailureReason(Throwable $exception): string
@@ -374,6 +410,7 @@ class SystemHealthController extends Controller
             'The PHP Zip extension is required to restore media backups.',
             'Media restore is allowed only when upload storage contains no files.',
             'Media restore stopped because upload storage is a symbolic link.',
+            'Media restore stopped because upload storage contains a symbolic link.',
             'The full backup archive could not be opened.',
             'The full backup archive has an unexpected structure.',
             'The media backup archive could not be opened.',
@@ -396,6 +433,10 @@ class SystemHealthController extends Controller
             'Could not verify the private backup location.',
             'The configured backup path is publicly accessible.',
             'The configured backup path must be absolute.',
+            'The selected restore mode is not supported.',
+            'A recovery backup could not be created. The overwrite did not start.',
+            'The selected database could not be cleared. The recovery backup is available for rollback.',
+            'The upload storage could not be cleared. The recovery backup is available for rollback.',
         ];
 
         return in_array($exception->getMessage(), $safeMessages, true)

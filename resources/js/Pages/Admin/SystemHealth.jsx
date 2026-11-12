@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
@@ -47,8 +47,25 @@ function StorageLine({ label, summary }) {
 }
 
 function BackupButton({ type, label, description, available, csrfToken }) {
+    const [creating, setCreating] = useState(false);
+
+    function submit(event) {
+        const downloadAfterCreate = event.currentTarget.elements.download_after_create.checked;
+
+        if (downloadAfterCreate) {
+            return;
+        }
+
+        event.preventDefault();
+        router.post(route('admin.system_health.backup'), { backup_type: type }, {
+            preserveScroll: true,
+            onStart: () => setCreating(true),
+            onFinish: () => setCreating(false),
+        });
+    }
+
     return (
-        <form method="post" action={route('admin.system_health.backup')} className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center">
+        <form method="post" action={route('admin.system_health.backup')} onSubmit={submit} className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center">
             <input type="hidden" name="_token" value={csrfToken} />
             <input type="hidden" name="backup_type" value={type} />
             <div>
@@ -58,7 +75,7 @@ function BackupButton({ type, label, description, available, csrfToken }) {
                     <input
                         id={`download-backup-${type}`}
                         type="checkbox"
-                        name="download_after_create"
+                    name="download_after_create"
                         value="1"
                         className="rounded border-slate-300 text-cyan-700 focus:ring-cyan-600"
                     />
@@ -67,10 +84,10 @@ function BackupButton({ type, label, description, available, csrfToken }) {
             </div>
             <button
                 type="submit"
-                disabled={!available}
+                disabled={!available || creating}
                 className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-                Create
+                {creating ? 'Creating…' : 'Create'}
             </button>
         </form>
     );
@@ -78,6 +95,7 @@ function BackupButton({ type, label, description, available, csrfToken }) {
 
 function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, uploadsEmpty, csrfToken, errors = {} }) {
     const [type, setType] = useState('database');
+    const [restoreMode, setRestoreMode] = useState('empty');
     const [backupFilename, setBackupFilename] = useState('');
     const [uploadedFilename, setUploadedFilename] = useState('');
     const [targetDatabase, setTargetDatabase] = useState('');
@@ -85,6 +103,8 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
     const matchingBackups = backups.filter((backup) => backup.type === type);
     const includesDatabase = type === 'database' || type === 'full';
     const includesUploads = type === 'media' || type === 'full';
+    const overwriting = restoreMode === 'overwrite';
+    const confirmationPhrase = overwriting ? 'OVERWRITE EXISTING TARGET' : 'RESTORE EMPTY TARGET';
     const validTargetName = /^(?:[A-Za-z0-9_]{1,64}|:memory:)$/.test(targetDatabase);
     const activeTargetIsPopulated = includesDatabase && targetDatabase === activeDatabase && !databaseEmpty;
     const hasSavedBackup = Boolean(backupFilename);
@@ -93,8 +113,7 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
     const canRestore = available[type] === true
         && hasOneBackupSource
         && (!includesDatabase || validTargetName)
-        && !activeTargetIsPopulated
-        && (!includesUploads || uploadsEmpty);
+        && (overwriting || (!activeTargetIsPopulated && (!includesUploads || uploadsEmpty)));
     const blockers = [];
 
     if (available[type] !== true) {
@@ -108,17 +127,30 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
         blockers.push('Choose either a saved backup or an uploaded backup file, not both.');
     }
     if (includesDatabase && !validTargetName) {
-        blockers.push('Enter an existing target database name using letters, numbers, or underscores. The server will verify it is empty before restoring.');
+        blockers.push(`Enter an existing target database name using letters, numbers, or underscores. The server will verify it is ${overwriting ? 'available before replacing it' : 'empty before restoring'}.`);
     }
-    if (activeTargetIsPopulated) {
+    if (!overwriting && activeTargetIsPopulated) {
         blockers.push(`The selected target (${targetDatabase}) is the populated application database. Choose a separate empty database; existing records will not be replaced.`);
     }
-    if (includesUploads && !uploadsEmpty) {
+    if (!overwriting && includesUploads && !uploadsEmpty) {
         blockers.push('Upload storage contains files. Media restore is available only when the upload target is empty.');
     }
     return (
         <form method="post" encType="multipart/form-data" action={route('admin.system_health.restore')} className="mt-4 space-y-4 border-t border-amber-200 pt-4">
             <input type="hidden" name="_token" value={csrfToken} />
+            <fieldset>
+                <legend className="block text-sm font-medium text-slate-700">Restore mode</legend>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                        <input type="radio" name="restore_mode" value="empty" checked={!overwriting} onChange={() => setRestoreMode('empty')} className="mt-0.5 border-emerald-400 text-emerald-700 focus:ring-emerald-600" />
+                        <span><span className="block font-semibold">Restore to empty target</span>Keep the existing safeguard; no files or tables are replaced.</span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-900">
+                        <input type="radio" name="restore_mode" value="overwrite" checked={overwriting} onChange={() => setRestoreMode('overwrite')} className="mt-0.5 border-rose-400 text-rose-700 focus:ring-rose-600" />
+                        <span><span className="block font-semibold">Overwrite existing target</span>Create a recovery backup first, then permanently replace existing tables and uploads.</span>
+                    </label>
+                </div>
+            </fieldset>
             <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                     <label htmlFor="restore-type" className="block text-sm font-medium text-slate-700">Backup type</label>
@@ -195,7 +227,7 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
             {includesDatabase && (
                 <div>
                     <label htmlFor="restore-target-database" className="block text-xs font-medium text-slate-700">
-                        Target database name (must already exist and be empty)
+                        Target database name (must already exist{overwriting ? '' : ' and be empty'})
                     </label>
                     <input
                         id="restore-target-database"
@@ -210,14 +242,14 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
                         aria-describedby={errors.target_database ? 'restore-target-error' : 'restore-target-help'}
                         className="mt-1 min-h-10 w-full rounded-lg border-slate-300 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 sm:max-w-md"
                     />
-                    <p id="restore-target-help" className="mt-1 text-xs text-slate-500">The server verifies this target is empty before restoring. No database is created by this page.</p>
+                    <p id="restore-target-help" className="mt-1 text-xs text-slate-500">{overwriting ? 'The server creates a recovery backup, then clears this database before restoring. No database is created by this page.' : 'The server verifies this target is empty before restoring. No database is created by this page.'}</p>
                     {errors.target_database && <p id="restore-target-error" className="mt-1 text-xs text-rose-700">{errors.target_database}</p>}
                 </div>
             )}
 
             <div>
                 <label htmlFor="restore-confirmation-phrase" className="block text-xs text-slate-700">
-                    Type <span className="font-semibold">RESTORE EMPTY TARGET</span> to confirm.
+                    Type <span className="font-semibold">{confirmationPhrase}</span> to confirm.
                 </label>
                 <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end">
                     <input
@@ -226,20 +258,74 @@ function RestoreForm({ backups, available = {}, activeDatabase, databaseEmpty, u
                         type="text"
                         required
                         disabled={!canRestore}
-                        pattern="RESTORE EMPTY TARGET"
+                        pattern={confirmationPhrase}
                         aria-invalid={Boolean(errors.confirmation_phrase)}
                         aria-describedby={errors.confirmation_phrase ? 'restore-confirmation-error' : undefined}
                         className="min-h-10 w-full rounded-lg border-slate-300 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 sm:max-w-md"
                     />
-                    <button type="submit" disabled={!canRestore} className="min-h-10 rounded-lg bg-amber-600 px-5 text-sm font-semibold text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                        Restore selected backup
+                    <button type="submit" disabled={!canRestore} className={`min-h-10 rounded-lg px-5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${overwriting ? 'bg-rose-700 hover:bg-rose-800 focus:ring-rose-700' : 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-600'}`}>
+                        {overwriting ? 'Overwrite selected target' : 'Restore selected backup'}
                     </button>
                 </div>
                 {errors.confirmation_phrase && <p id="restore-confirmation-error" className="mt-1 text-xs text-rose-700">{errors.confirmation_phrase}</p>}
             </div>
 
-            <div role={canRestore ? 'status' : 'note'} className={`rounded-lg px-3 py-2 text-xs ${canRestore ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
-                {canRestore ? `Ready to restore into the empty ${type === 'media' ? 'upload storage' : `database${type === 'full' ? ' and upload storage' : ''}`}.` : blockers.map((blocker) => <p key={blocker}>{blocker}</p>)}
+            <div role={canRestore ? 'status' : 'note'} className={`rounded-lg px-3 py-2 text-xs ${canRestore ? (overwriting ? 'bg-rose-50 text-rose-900' : 'bg-emerald-50 text-emerald-800') : 'bg-amber-100 text-amber-900'}`}>
+                {canRestore ? (overwriting
+                    ? `Ready to create a recovery backup and overwrite the selected ${type === 'media' ? 'upload storage' : `database${type === 'full' ? ' and upload storage' : ''}`}.`
+                    : `Ready to restore into the empty ${type === 'media' ? 'upload storage' : `database${type === 'full' ? ' and upload storage' : ''}`}.`)
+                    : blockers.map((blocker) => <p key={blocker}>{blocker}</p>)}
+            </div>
+        </form>
+    );
+}
+
+function ResetAsNewForm({ csrfToken, errors = {} }) {
+    const [confirmationPhrase, setConfirmationPhrase] = useState('');
+    const [resetting, setResetting] = useState(false);
+    const confirmed = confirmationPhrase === 'RESET AS NEW';
+
+    function submit(event) {
+        event.preventDefault();
+
+        if (!confirmed || !window.confirm('Permanently delete all clinical and operational data, uploaded media, and attachments? This cannot be undone.')) {
+            return;
+        }
+
+        router.post(route('admin.system_health.reset_as_new'), { confirmation_phrase: confirmationPhrase }, {
+            preserveScroll: true,
+            onStart: () => setResetting(true),
+            onFinish: () => setResetting(false),
+        });
+    }
+
+    return (
+        <form method="post" action={route('admin.system_health.reset_as_new')} onSubmit={submit} className="mt-4 space-y-3 border-t border-rose-200 pt-4">
+            <input type="hidden" name="_token" value={csrfToken} />
+            <p className="text-xs leading-5 text-rose-900">
+                This permanently deletes clinical and operational records, media, and attachments without making a recovery backup. Administrator accounts, roles, clinic configuration, migration history, sessions, and saved backups are kept.
+            </p>
+            <div>
+                <label htmlFor="reset-as-new-confirmation" className="block text-xs font-medium text-rose-900">
+                    Type <span className="font-semibold">RESET AS NEW</span> to confirm.
+                </label>
+                <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <input
+                        id="reset-as-new-confirmation"
+                        name="confirmation_phrase"
+                        type="text"
+                        required
+                        value={confirmationPhrase}
+                        onChange={(event) => setConfirmationPhrase(event.target.value)}
+                        aria-invalid={Boolean(errors.confirmation_phrase)}
+                        aria-describedby={errors.confirmation_phrase ? 'reset-as-new-confirmation-error' : undefined}
+                        className="min-h-10 w-full rounded-lg border-rose-300 text-sm focus:border-rose-700 focus:ring-rose-700 sm:max-w-md"
+                    />
+                    <button type="submit" disabled={!confirmed || resetting} className="min-h-10 rounded-lg bg-rose-700 px-5 text-sm font-semibold text-white hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        {resetting ? 'Resetting…' : 'Reset as new'}
+                    </button>
+                </div>
+                {errors.confirmation_phrase && <p id="reset-as-new-confirmation-error" className="mt-1 text-xs text-rose-700">{errors.confirmation_phrase}</p>}
             </div>
         </form>
     );
@@ -468,6 +554,13 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                 </form>
                                 <p className="mt-2 text-xs text-slate-500">The server scheduler/Task Scheduler trigger has not been checked here.</p>
                             </div>
+                            {isSuperAdmin && (
+                                <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 p-4">
+                                    <h3 className="text-sm font-semibold text-rose-950">Reset as new</h3>
+                                    <p className="mt-1 text-xs leading-5 text-rose-800">Permanently clear the application database data, uploaded media, and attachments to start with a clean workspace and reclaim storage.</p>
+                                    <ResetAsNewForm csrfToken={csrfToken} errors={errors} />
+                                </div>
+                            )}
                         </section>
                     </div>
                 )}

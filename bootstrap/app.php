@@ -5,6 +5,7 @@ use App\Http\Middleware\ForcePasswordChange;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireClinicalRecordAccess;
 use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\SystemHealthBackupRateLimit;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'clinical_record_access' => RequireClinicalRecordAccess::class,
+            'system_health_backup_rate_limit' => SystemHealthBackupRateLimit::class,
         ]);
 
         $middleware->appendToGroup('web', [
