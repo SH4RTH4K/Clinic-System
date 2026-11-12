@@ -245,7 +245,9 @@ class GitRepositoryTest extends TestCase
             $this->fixtureGit($sourcePath, ['add', 'README.md']);
             $this->fixtureGit($sourcePath, ['-c', 'user.name=Clinic Test', '-c', 'user.email=test@local.invalid', 'commit', '--quiet', '-m', 'initial']);
             $this->fixtureGit($sourcePath, ['remote', 'add', 'origin', 'https://github.com/SH4RTH4K/Clinic-System.git']);
-            file_put_contents($registrationPath, $accountRoot.DIRECTORY_SEPARATOR.'repositories'.DIRECTORY_SEPARATOR.'deleted-checkout'.PHP_EOL);
+            $staleSourcePath = $accountRoot.DIRECTORY_SEPARATOR.'repositories'.DIRECTORY_SEPARATOR.'stale-checkout';
+            File::ensureDirectoryExists($staleSourcePath.DIRECTORY_SEPARATOR.'.git');
+            file_put_contents($registrationPath, $staleSourcePath.PHP_EOL);
             $this->app->setBasePath($privatePath);
             Storage::disk('local')->put('system/git-repository/settings.json', json_encode([
                 'enabled' => true,

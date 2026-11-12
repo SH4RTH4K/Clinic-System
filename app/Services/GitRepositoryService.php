@@ -308,13 +308,7 @@ class GitRepositoryService
         }
 
         if ($settings['enabled']) {
-            $repositoryExists = false;
-
-            try {
-                $repositoryExists = $this->repositoryExists();
-            } catch (RuntimeException) {
-                $repositoryExists = false;
-            }
+            $repositoryExists = $this->readableRepositoryExists();
 
             if (! $repositoryExists) {
                 if (! $this->isCpanelSplitDeployment()) {
@@ -497,6 +491,21 @@ class GitRepositoryService
     private function repositoryExists(): bool
     {
         return file_exists($this->repositoryRoot().DIRECTORY_SEPARATOR.'.git');
+    }
+
+    private function readableRepositoryExists(): bool
+    {
+        try {
+            if (! $this->repositoryExists()) {
+                return false;
+            }
+
+            $this->assertRepositoryReady();
+
+            return true;
+        } catch (RuntimeException) {
+            return false;
+        }
     }
 
     private function managedRepositoryPath(): string
