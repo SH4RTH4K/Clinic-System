@@ -105,6 +105,7 @@ export default function Show({ patient, relationshipOptions = [] }) {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
                         <div className="space-y-2">
                             <div><span className="text-gray-400 font-medium">Full Name:</span> <strong className="text-gray-900 block text-sm">{patient.name}</strong></div>
+                            <div><span className="text-gray-400 font-medium">Reference Number:</span> <span className="text-gray-800 block">{patient.reference_number || '—'}</span></div>
                             <div><span className="text-gray-400 font-medium">{getGuardianRelationshipLabel(patient.guardian_relationship, patient.guardian_relationship_custom, relationshipOptions) || 'Guardian / Spouse'} Name:</span> <span className="text-gray-800 block">{patient.guardian_name || '—'}</span></div>
                             <div><span className="text-gray-400 font-medium">Gender:</span> <span className="text-gray-800 capitalize block">{patient.gender}</span></div>
                         </div>

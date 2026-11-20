@@ -38,6 +38,7 @@ abstract class PatientDataRequest extends FormRequest
             'dob' => ['date'],
             'phone' => ['string', 'regex:/^(\+?8801|01)[3-9]\d{8}$/'],
             'referred_by' => ['string', 'max:255'],
+            'reference_number' => ['string', 'max:'.$config['reference_number']['max_length']],
             'address' => ['string', 'max:500'],
             'blood_group' => ['string', 'max:10'],
             'known_allergies' => ['string', 'max:1000'],

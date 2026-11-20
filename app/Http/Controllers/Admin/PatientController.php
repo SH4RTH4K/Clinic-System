@@ -36,7 +36,7 @@ class PatientController extends Controller
             'patients' => $query
                 ->select([
                     'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
-                    'name', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
+                    'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
                     'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone',
                 ])
                 ->latest()
@@ -226,6 +226,7 @@ class PatientController extends Controller
             'patient_series',
             'patient_code',
             'name',
+            'reference_number',
             'guardian_relationship',
             'guardian_relationship_custom',
             'guardian_name',
@@ -292,9 +293,9 @@ class PatientController extends Controller
         $canViewClinicalRecords = $request->user()?->can('clinical_records.view') === true;
         $patientDetails = $patient->only([
             'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
-            'name', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
+            'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
             'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'address',
-            'referred_by',
+            'referred_by', 'created_at',
         ]);
 
         if ($canViewClinicalRecords) {

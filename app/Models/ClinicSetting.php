@@ -25,14 +25,14 @@ class ClinicSetting extends Model
     }
 
     /**
-     * @return array<string, array{label: string, visible: bool, required: bool, order: int}>
+     * @return array<string, array{label: string, visible: bool, required: bool, order: int, max_length?: int}>
      */
     public static function defaultPatientFormConfig(): array
     {
         return [
             'name' => ['label' => 'Patient Full Name', 'visible' => true, 'required' => true, 'order' => 1],
             'guardian_relationship' => ['label' => 'Relationship to Patient', 'visible' => true, 'required' => false, 'order' => 2],
-            'guardian_name' => ['label' => 'Contact Name', 'visible' => true, 'required' => false, 'order' => 3],
+            'guardian_name' => ['label' => 'Guardian / Primary Contact Name', 'visible' => true, 'required' => false, 'order' => 3],
             'gender' => ['label' => 'Gender', 'visible' => true, 'required' => true, 'order' => 4],
             'age_years' => ['label' => 'Years', 'visible' => true, 'required' => false, 'order' => 5],
             'age_months' => ['label' => 'Months', 'visible' => true, 'required' => false, 'order' => 5],
@@ -43,6 +43,7 @@ class ClinicSetting extends Model
             'address' => ['label' => 'Residential Address / Village & Area', 'visible' => true, 'required' => false, 'order' => 9],
             'blood_group' => ['label' => 'Blood Group', 'visible' => true, 'required' => false, 'order' => 10],
             'known_allergies' => ['label' => 'Known Allergies / Sensitivities', 'visible' => true, 'required' => false, 'order' => 11],
+            'reference_number' => ['label' => 'Reference Number', 'visible' => true, 'required' => false, 'order' => 12, 'max_length' => 100],
         ];
     }
 
@@ -88,6 +89,7 @@ class ClinicSetting extends Model
     {
         return [
             'name' => ['name'],
+            'reference_number' => ['reference_number'],
             'guardian_relationship' => ['guardian_relationship'],
             'guardian_name' => ['guardian_name'],
             'gender' => ['gender'],
@@ -102,7 +104,7 @@ class ClinicSetting extends Model
     }
 
     /**
-     * @return array<string, array{label: string, visible: bool, required: bool, order: int}>
+     * @return array<string, array{label: string, visible: bool, required: bool, order: int, max_length?: int}>
      */
     public static function currentPatientFormConfig(): array
     {
@@ -110,7 +112,7 @@ class ClinicSetting extends Model
     }
 
     /**
-     * @return array<string, array{label: string, visible: bool, required: bool, order: int}>
+     * @return array<string, array{label: string, visible: bool, required: bool, order: int, max_length?: int}>
      */
     public function getPatientFormConfig(): array
     {
@@ -129,6 +131,14 @@ class ClinicSetting extends Model
                 'required' => in_array($key, ['name', 'gender'], true) ? true : (bool) ($saved['required'] ?? $default['required']),
                 'order' => max(1, (int) ($saved['order'] ?? $default['order'])),
             ];
+
+            if ($key === 'reference_number') {
+                $config[$key]['max_length'] = min(255, max(1, (int) ($saved['max_length'] ?? $default['max_length'])));
+            }
+
+            if ($key === 'guardian_name' && $config[$key]['label'] === 'Contact Name') {
+                $config[$key]['label'] = $default['label'];
+            }
         }
 
         return $config;

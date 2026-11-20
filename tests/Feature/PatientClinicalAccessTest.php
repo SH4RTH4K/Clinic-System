@@ -160,6 +160,7 @@ class PatientClinicalAccessTest extends TestCase
             ->get(route('admin.patients.edit', $patient))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
+                ->has('patient.created_at')
                 ->missing('patient.known_allergies')
                 ->missing('patient.blood_group')
                 ->where('fieldConfig.known_allergies.visible', false));

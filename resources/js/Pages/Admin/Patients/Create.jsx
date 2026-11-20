@@ -3,13 +3,13 @@ import PageHeader from '@/Components/PageHeader';
 import FormField from '@/Components/FormField';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { calculateAgeFromDob, calculateDobFromAge } from './ageHelpers';
-import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
 export default function Create({ defaults = {}, appointmentRequestId = null, fieldConfig = {}, relationshipOptions = [], numberingProfiles = [] }) {
     const { data, setData, post, errors, processing } = useForm({
         patient_numbering_profile_id: String(numberingProfiles.find((profile) => profile.is_default)?.id || numberingProfiles[0]?.id || ''),
         appointment_request_id: appointmentRequestId || '',
         name: defaults?.name || '',
+        reference_number: '',
         guardian_name: '',
         guardian_relationship: '',
         gender: '',
@@ -24,10 +24,6 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
         referred_by: '',
     });
     const field = (key) => fieldConfig[key] || { label: key, visible: true, required: false };
-    const relationshipLabel = getGuardianRelationshipLabel(data.guardian_relationship, '', relationshipOptions);
-    const contactNameLabel = field('guardian_name').label === 'Contact Name' && relationshipLabel
-        ? `${relationshipLabel} Name`
-        : field('guardian_name').label;
 
     const handleAgePartChange = (field, val) => {
         setData((prev) => {
@@ -133,7 +129,7 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                         </section>
 
                         {/* Basic Identity Information */}
-                        {(field('name').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
+                        {(field('name').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Identity &amp; Demographics
                             </h3>
@@ -152,9 +148,24 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                                     </FormField>
                                 </div>}
 
+                                {field('reference_number').visible && <div className="md:col-span-2" style={{ order: field('reference_number').order }}>
+                                    <FormField label={field('reference_number').label} id="reference_number" required={field('reference_number').required} error={errors.reference_number}>
+                                        <input
+                                            id="reference_number"
+                                            type="text"
+                                            value={data.reference_number}
+                                            onChange={(e) => setData('reference_number', e.target.value)}
+                                            maxLength={field('reference_number').max_length}
+                                            className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                            placeholder="Enter reference number"
+                                            required={field('reference_number').required}
+                                        />
+                                    </FormField>
+                                </div>}
+
                                 {field('guardian_relationship').visible && <div className="md:col-span-2" style={{ order: field('guardian_relationship').order }}>
                                     <FormField
-                                        label={`${field('guardian_relationship').label}${field('guardian_relationship').required ? '' : ' (Optional)'}`}
+                                        label={field('guardian_relationship').label}
                                         id="guardian_relationship"
                                         required={field('guardian_relationship').required}
                                         error={errors.guardian_relationship}
@@ -178,7 +189,7 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
 
                                 {field('guardian_name').visible && <div className="md:col-span-2" style={{ order: field('guardian_name').order }}>
                                     <FormField
-                                        label={contactNameLabel}
+                                        label={field('guardian_name').label}
                                         id="guardian_name"
                                         required={field('guardian_name').required}
                                         error={errors.guardian_name}

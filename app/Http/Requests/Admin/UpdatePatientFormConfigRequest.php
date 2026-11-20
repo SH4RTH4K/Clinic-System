@@ -33,11 +33,18 @@ class UpdatePatientFormConfigRequest extends FormRequest
         ];
 
         foreach ($fieldKeys as $fieldKey) {
-            $rules["fields.{$fieldKey}"] = ['required', 'array:label,visible,required,order'];
+            $allowedKeys = $fieldKey === 'reference_number'
+                ? 'label,visible,required,order,max_length'
+                : 'label,visible,required,order';
+            $rules["fields.{$fieldKey}"] = ['required', 'array:'.$allowedKeys];
             $rules["fields.{$fieldKey}.label"] = ['required', 'string', 'max:80'];
             $rules["fields.{$fieldKey}.visible"] = ['required', 'boolean'];
             $rules["fields.{$fieldKey}.required"] = ['required', 'boolean'];
             $rules["fields.{$fieldKey}.order"] = ['required', 'integer', 'min:1', 'max:100'];
+
+            if ($fieldKey === 'reference_number') {
+                $rules["fields.{$fieldKey}.max_length"] = ['required', 'integer', 'min:1', 'max:255'];
+            }
         }
 
         return $rules;

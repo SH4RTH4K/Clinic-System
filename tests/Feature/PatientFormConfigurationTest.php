@@ -26,6 +26,8 @@ class PatientFormConfigurationTest extends TestCase
         $fields['phone']['order'] = 9;
         $fields['referred_by']['order'] = 8;
         $fields['address']['order'] = 7;
+        $fields['reference_number']['max_length'] = 24;
+        $fields['reference_number']['required'] = true;
         $fields['name']['label'] = 'Patient name';
         $fields['name']['visible'] = false;
         $fields['name']['required'] = false;
@@ -38,6 +40,8 @@ class PatientFormConfigurationTest extends TestCase
                 ->component('Admin/PatientConfig/Edit')
                 ->has('fields.phone')
                 ->where('fields.phone.label', 'Mobile Phone Number')
+                ->where('fields.guardian_name.label', 'Guardian / Primary Contact Name')
+                ->where('fields.reference_number.max_length', 100)
                 ->where('relationships.0.label', 'Father'));
 
         $this->actingAs($user)->put(route('admin.patient_config.update'), [
@@ -53,6 +57,8 @@ class PatientFormConfigurationTest extends TestCase
         $this->assertSame(9, $savedFields['fields']['phone']['order']);
         $this->assertSame(8, $savedFields['fields']['referred_by']['order']);
         $this->assertSame(7, $savedFields['fields']['address']['order']);
+        $this->assertSame(24, $savedFields['fields']['reference_number']['max_length']);
+        $this->assertTrue($savedFields['fields']['reference_number']['required']);
         $this->assertTrue($savedFields['fields']['name']['visible']);
         $this->assertTrue($savedFields['fields']['name']['required']);
         $this->assertSame('Step-parent', $savedFields['relationships'][18]['label']);
@@ -203,6 +209,47 @@ class PatientFormConfigurationTest extends TestCase
         $this->assertDatabaseHas('patients', [
             'name' => 'Example Patient',
             'phone' => null,
+        ]);
+    }
+
+    public function test_reference_number_uses_its_configured_required_and_length_rules(): void
+    {
+        $user = $this->userWithRole('Doctor', ['patients.update']);
+        $settings = $this->createClinicSetting();
+        $fields = ClinicSetting::defaultPatientFormConfig();
+        $fields['reference_number']['required'] = true;
+        $fields['reference_number']['max_length'] = 4;
+        $settings->update(['patient_form_config' => $fields]);
+        $patient = Patient::factory()->create(['gender' => 'female']);
+
+        $this->actingAs($user)
+            ->from(route('admin.patients.edit', $patient))
+            ->put(route('admin.patients.update', $patient), [
+                'name' => $patient->name,
+                'gender' => $patient->gender,
+            ])
+            ->assertSessionHasErrors('reference_number');
+
+        $this->actingAs($user)
+            ->from(route('admin.patients.edit', $patient))
+            ->put(route('admin.patients.update', $patient), [
+                'name' => $patient->name,
+                'gender' => $patient->gender,
+                'reference_number' => 'ABCDE',
+            ])
+            ->assertSessionHasErrors('reference_number');
+
+        $this->actingAs($user)
+            ->put(route('admin.patients.update', $patient), [
+                'name' => $patient->name,
+                'gender' => $patient->gender,
+                'reference_number' => 'AB12',
+            ])
+            ->assertRedirect(route('admin.patients.index'));
+
+        $this->assertDatabaseHas('patients', [
+            'id' => $patient->id,
+            'reference_number' => 'AB12',
         ]);
     }
 

@@ -8,6 +8,10 @@ import { getGuardianRelationshipLabel } from './relationshipHelpers';
 export default function Edit({ patient, fieldConfig = {}, relationshipOptions = [] }) {
     const rawDob = patient.dob ? patient.dob.split('T')[0] : '';
     const dobAge = rawDob ? calculateAgeFromDob(rawDob) : null;
+    const createdAt = patient.created_at ? new Date(patient.created_at) : null;
+    const createdDate = createdAt && !Number.isNaN(createdAt.getTime())
+        ? createdAt.toLocaleDateString()
+        : 'Not recorded';
 
     const initialYears = dobAge ? dobAge.years : (patient.age_years !== null && patient.age_years !== undefined ? String(patient.age_years) : '');
     const initialMonths = dobAge ? dobAge.months : (patient.age_months !== null && patient.age_months !== undefined ? String(patient.age_months) : '');
@@ -16,6 +20,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
 
     const { data, setData, put, errors, processing } = useForm({
         name: patient.name || '',
+        reference_number: patient.reference_number || '',
         guardian_name: patient.guardian_name || '',
         guardian_relationship: patient.guardian_relationship || '',
         gender: patient.gender || '',
@@ -31,9 +36,6 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
     });
     const field = (key) => fieldConfig[key] || { label: key, visible: true, required: false };
     const relationshipLabel = getGuardianRelationshipLabel(data.guardian_relationship, patient.guardian_relationship_custom || '', relationshipOptions);
-    const contactNameLabel = field('guardian_name').label === 'Contact Name' && relationshipLabel
-        ? `${relationshipLabel} Name`
-        : field('guardian_name').label;
     const availableRelationshipOptions = [...relationshipOptions];
     if (data.guardian_relationship && !availableRelationshipOptions.some((option) => option.value === data.guardian_relationship)) {
         availableRelationshipOptions.push({
@@ -93,7 +95,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
             <div className="py-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 <PageHeader
                     title={`Edit Patient: ${patient.name}`}
-                    subtitle={`Patient ID: ${patient.patient_identifier || `${patient.patient_no}${patient.patient_series || ''}`} • Created: ${new Date(patient.created_at).toLocaleDateString()}`}
+                    subtitle={`Patient ID: ${patient.patient_identifier || `${patient.patient_no}${patient.patient_series || ''}`} • Created: ${createdDate}`}
                     actions={
                         <div className="flex gap-2">
                             <Link
@@ -115,7 +117,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                 <div className="bg-white p-6 shadow-xs border border-gray-200 rounded-lg">
                     <form onSubmit={submit} className="space-y-6">
                         {/* Basic Identity Information */}
-                        {(field('name').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
+                        {(field('name').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Identity &amp; Demographics
                             </h3>
@@ -134,9 +136,24 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                                     </FormField>
                                 </div>}
 
+                                {field('reference_number').visible && <div className="md:col-span-2" style={{ order: field('reference_number').order }}>
+                                    <FormField label={field('reference_number').label} id="reference_number" required={field('reference_number').required} error={errors.reference_number}>
+                                        <input
+                                            id="reference_number"
+                                            type="text"
+                                            value={data.reference_number}
+                                            onChange={(e) => setData('reference_number', e.target.value)}
+                                            maxLength={field('reference_number').max_length}
+                                            className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                            placeholder="Enter reference number"
+                                            required={field('reference_number').required}
+                                        />
+                                    </FormField>
+                                </div>}
+
                                 {field('guardian_relationship').visible && <div className="md:col-span-2" style={{ order: field('guardian_relationship').order }}>
                                     <FormField
-                                        label={`${field('guardian_relationship').label}${field('guardian_relationship').required ? '' : ' (Optional)'}`}
+                                        label={field('guardian_relationship').label}
                                         id="guardian_relationship"
                                         required={field('guardian_relationship').required}
                                         error={errors.guardian_relationship}
@@ -160,7 +177,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
 
                                 {field('guardian_name').visible && <div className="md:col-span-2" style={{ order: field('guardian_name').order }}>
                                     <FormField
-                                        label={contactNameLabel}
+                                        label={field('guardian_name').label}
                                         id="guardian_name"
                                         required={field('guardian_name').required}
                                         error={errors.guardian_name}
