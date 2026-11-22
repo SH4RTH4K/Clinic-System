@@ -158,6 +158,8 @@ Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.updat
 // General settings
 Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.view'])
     ->get('general-settings', [ClinicSettingController::class, 'editGeneral'])->name('general_settings.edit');
+Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.update'])
+    ->put('general-settings/old-id-config', [ClinicSettingController::class, 'updateOldOrOtherIdConfig'])->name('general_settings.old_id_config.update');
 Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.create'])
     ->post('general-settings/numbering-profiles', [PatientNumberingProfileController::class, 'store'])->name('general_settings.profiles.store');
 Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.update'])
@@ -251,7 +253,15 @@ Route::middleware(['auth', 'role:Super Admin'])->prefix('system/git-repository')
     Route::post('/settings', [GitRepositoryController::class, 'updateSettings'])->middleware('throttle:6,1')->name('settings');
     Route::post('/check', [GitRepositoryController::class, 'check'])->middleware('throttle:6,1')->name('check');
     Route::post('/reconnect-source', [GitRepositoryController::class, 'reconnectSourceCheckout'])->middleware('throttle:3,1')->name('reconnect_source');
+    Route::post('/initialize', [GitRepositoryController::class, 'initializeCheckout'])->middleware('throttle:3,1')->name('initialize');
     Route::post('/pull', [GitRepositoryController::class, 'pull'])->middleware('throttle:2,1')->name('pull');
+
+    // Database & Migrations Management
+    Route::post('/database/migrate', [GitRepositoryController::class, 'runMigrations'])->middleware('throttle:3,1')->name('database.migrate');
+    Route::post('/database/rollback', [GitRepositoryController::class, 'rollbackMigrations'])->middleware('throttle:3,1')->name('database.rollback');
+    Route::post('/database/remigrate', [GitRepositoryController::class, 'remigrateMigrations'])->middleware('throttle:3,1')->name('database.remigrate');
+    Route::post('/database/clear-caches', [GitRepositoryController::class, 'clearCaches'])->middleware('throttle:6,1')->name('database.clear_caches');
+    Route::post('/database/rebuild-caches', [GitRepositoryController::class, 'rebuildCaches'])->middleware('throttle:6,1')->name('database.rebuild_caches');
 });
 
 // Appointments

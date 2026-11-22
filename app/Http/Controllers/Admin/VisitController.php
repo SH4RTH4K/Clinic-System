@@ -509,6 +509,7 @@ class VisitController extends Controller
         return [
             'patient_id' => $patient->id,
             'patient_identifier' => $patient->patient_identifier,
+            'old_or_other_id' => $patient->old_or_other_id,
             'name' => $patient->name,
             'gender' => $patient->gender,
             'phone' => $patient->phone,

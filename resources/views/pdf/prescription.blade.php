@@ -175,7 +175,11 @@
     <table class="patient-table">
         <tr>
             <td style="width: 50%;">
-                <strong>Patient No:</strong> {{ $patientSnapshot['patient_identifier'] ?? $visit->patient->patient_identifier }} &nbsp;|&nbsp;
+                <strong>Patient No:</strong> {{ $patientSnapshot['patient_identifier'] ?? $visit->patient->patient_identifier }}
+                @if(!empty($patientSnapshot['old_or_other_id'] ?? $visit->patient->old_or_other_id))
+                    <span style="color: #555;">(Old ID: {{ $patientSnapshot['old_or_other_id'] ?? $visit->patient->old_or_other_id }})</span>
+                @endif
+                &nbsp;|&nbsp;
                 <strong>Name:</strong> {{ $patientSnapshot['name'] ?? $visit->patient->name }} <br>
                 <strong>Age:</strong> {{ $visit->age_summary ?? ($visit->age_at_visit ? $visit->age_at_visit . ' Y' : 'N/A') }} &nbsp;|&nbsp;
                 <strong>Gender:</strong> {{ ucfirst($patientSnapshot['gender'] ?? $visit->patient->gender ?? 'N/A') }}

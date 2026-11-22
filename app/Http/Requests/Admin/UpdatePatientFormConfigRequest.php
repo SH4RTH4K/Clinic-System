@@ -33,7 +33,7 @@ class UpdatePatientFormConfigRequest extends FormRequest
         ];
 
         foreach ($fieldKeys as $fieldKey) {
-            $allowedKeys = $fieldKey === 'reference_number'
+            $allowedKeys = in_array($fieldKey, ['reference_number', 'old_or_other_id'], true)
                 ? 'label,visible,required,order,max_length'
                 : 'label,visible,required,order';
             $rules["fields.{$fieldKey}"] = ['required', 'array:'.$allowedKeys];
@@ -42,7 +42,7 @@ class UpdatePatientFormConfigRequest extends FormRequest
             $rules["fields.{$fieldKey}.required"] = ['required', 'boolean'];
             $rules["fields.{$fieldKey}.order"] = ['required', 'integer', 'min:1', 'max:100'];
 
-            if ($fieldKey === 'reference_number') {
+            if (in_array($fieldKey, ['reference_number', 'old_or_other_id'], true)) {
                 $rules["fields.{$fieldKey}.max_length"] = ['required', 'integer', 'min:1', 'max:255'];
             }
         }

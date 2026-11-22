@@ -5,7 +5,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { calculateAgeFromDob, calculateDobFromAge } from './ageHelpers';
 import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
-export default function Edit({ patient, fieldConfig = {}, relationshipOptions = [] }) {
+export default function Edit({ patient, fieldConfig = {}, relationshipOptions = [], nextOldOrOtherIdPreview = '', oldOrOtherIdConfig = {} }) {
     const rawDob = patient.dob ? patient.dob.split('T')[0] : '';
     const dobAge = rawDob ? calculateAgeFromDob(rawDob) : null;
     const createdAt = patient.created_at ? new Date(patient.created_at) : null;
@@ -20,6 +20,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
 
     const { data, setData, put, errors, processing } = useForm({
         name: patient.name || '',
+        old_or_other_id: patient.old_or_other_id || '',
         reference_number: patient.reference_number || '',
         guardian_name: patient.guardian_name || '',
         guardian_relationship: patient.guardian_relationship || '',
@@ -117,7 +118,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                 <div className="bg-white p-6 shadow-xs border border-gray-200 rounded-lg">
                     <form onSubmit={submit} className="space-y-6">
                         {/* Basic Identity Information */}
-                        {(field('name').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
+                        {(field('name').visible || field('old_or_other_id').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Identity &amp; Demographics
                             </h3>
@@ -133,6 +134,38 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                                             placeholder="Full name of patient"
                                             required={field('name').required}
                                         />
+                                    </FormField>
+                                </div>}
+
+                                {field('old_or_other_id').visible && <div className="md:col-span-2" style={{ order: field('old_or_other_id').order }}>
+                                    <FormField label={field('old_or_other_id').label} id="old_or_other_id" required={field('old_or_other_id').required} error={errors.old_or_other_id}>
+                                        <div className="space-y-1">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    id="old_or_other_id"
+                                                    type="text"
+                                                    value={data.old_or_other_id}
+                                                    onChange={(e) => setData('old_or_other_id', e.target.value)}
+                                                    maxLength={oldOrOtherIdConfig?.max_length || field('old_or_other_id').max_length || 50}
+                                                    className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 font-mono"
+                                                    placeholder="Enter Old/Other ID"
+                                                    required={field('old_or_other_id').required}
+                                                />
+                                                {!data.old_or_other_id && nextOldOrOtherIdPreview && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setData('old_or_other_id', nextOldOrOtherIdPreview)}
+                                                        className="whitespace-nowrap px-2.5 py-1 text-xs font-medium border border-primary-300 bg-primary-50 text-primary-700 rounded-md hover:bg-primary-100"
+                                                    >
+                                                        Auto ID
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="flex justify-between text-xs text-gray-500">
+                                                <span>Manageable length (max {oldOrOtherIdConfig?.max_length || field('old_or_other_id').max_length || 50} chars)</span>
+                                                <span>{(data.old_or_other_id || '').length} / {oldOrOtherIdConfig?.max_length || field('old_or_other_id').max_length || 50}</span>
+                                            </div>
+                                        </div>
                                     </FormField>
                                 </div>}
 

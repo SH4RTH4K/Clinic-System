@@ -177,29 +177,92 @@ class GitRepositoryService
             return;
         }
 
-        if (! $this->isSplitDeployment() && ! $this->managedRepositoryExists() && $this->isCpanelSplitDeployment()) {
-            $this->initializeManagedCheckout($this->settings());
-            $this->assertRepositoryReady();
-            $this->assertConfiguredRemote();
-
-            return;
-        }
-
         if (! $this->isCpanelSplitDeployment()) {
             throw new RuntimeException('A private application-managed checkout can only be initialized from an enabled split deployment.');
         }
 
-        $matchingCheckouts = $this->matchingSourceCheckouts();
+        $accountRoot = realpath(dirname(base_path()));
+        $repositoriesPath = $accountRoot === false ? false : $accountRoot.DIRECTORY_SEPARATOR.'repositories';
+        $hasCpanelRepositories = $repositoriesPath !== false && ! is_link($repositoriesPath) && is_dir($repositoriesPath) && is_readable($repositoriesPath);
 
-        if ($matchingCheckouts === []) {
+        if ($hasCpanelRepositories) {
+            $matchingCheckouts = $this->matchingSourceCheckouts();
+
+            if (count($matchingCheckouts) > 1) {
+                throw new RuntimeException('More than one cPanel Git checkout matched the saved repository and branch. Keep one authoritative checkout or ask the hosting administrator to resolve the duplicate.');
+            }
+
+            if (count($matchingCheckouts) === 1) {
+                $this->writeSourceRegistration($matchingCheckouts[0]);
+                $this->assertRepositoryReady();
+                $this->assertConfiguredRemote();
+
+                return;
+            }
+
             throw new RuntimeException('No readable cPanel Git checkout matched the saved repository and branch. Restore the source checkout under the account repositories directory, then reconnect.');
         }
 
-        if (count($matchingCheckouts) > 1) {
-            throw new RuntimeException('More than one cPanel Git checkout matched the saved repository and branch. Keep one authoritative checkout or ask the hosting administrator to resolve the duplicate.');
+        $this->initializeManagedCheckout($this->settings());
+        $this->writeSourceRegistration((string) realpath($this->managedRepositoryPath()));
+        $this->assertRepositoryReady();
+        $this->assertConfiguredRemote();
+    }
+
+    /**
+     * One-click action to initialize or repair the private application-managed checkout.
+     *
+     * @param  array{branch?: string, remote?: string, repository_url?: string, authentication?: string, credential?: ?string}|null  $overrideSettings
+     */
+    public function initializeOrRepairManagedCheckout(?array $overrideSettings = null): void
+    {
+        if (! $this->supportsGitActions()) {
+            throw new RuntimeException('Git settings and actions are disabled in the automated testing environment.');
         }
 
-        $this->writeSourceRegistration($matchingCheckouts[0]);
+        if (! function_exists('proc_open')) {
+            throw new RuntimeException('The PHP runtime does not allow launching Git processes.');
+        }
+
+        $currentSettings = $this->settings();
+        $settings = $overrideSettings !== null ? array_merge($currentSettings, $overrideSettings) : $currentSettings;
+
+        if (! $settings['valid']) {
+            throw new RuntimeException('Repository settings are unreadable. Save the repository configuration first.');
+        }
+
+        $targetPath = $this->managedRepositoryPath();
+        if (file_exists($targetPath) && ! $this->managedSourceCheckoutMatchesSettings($settings)) {
+            File::deleteDirectory($targetPath);
+        }
+
+        $this->initializeManagedCheckout([
+            'branch' => $settings['branch'],
+            'remote' => $settings['remote'],
+            'repository_url' => $settings['repository_url'],
+            'authentication' => $settings['authentication'],
+            'credential' => $settings['credential'] ?? null,
+        ]);
+
+        if (realpath($targetPath) !== false) {
+            $this->writeSourceRegistration((string) realpath($targetPath));
+
+            $marker = base_path(self::DEPLOYED_COMMIT_MARKER);
+            if (! file_exists($marker)) {
+                $headResult = $this->executeGitInDirectory((string) realpath($targetPath), ['rev-parse', 'HEAD']);
+                $headCommit = trim($headResult['output'] ?? '');
+                if (preg_match('/\A[a-f0-9]{40}\z/', $headCommit) === 1) {
+                    file_put_contents($marker, $headCommit.PHP_EOL);
+                }
+            }
+        }
+
+        $this->writeSettings([
+            ...$settings,
+            'enabled' => true,
+        ]);
+        $this->storedSettings = null;
+
         $this->assertRepositoryReady();
         $this->assertConfiguredRemote();
     }
@@ -325,18 +388,35 @@ class GitRepositoryService
                         'authentication' => $settings['authentication'],
                         'credential' => $credential,
                     ]);
+                    $this->writeSourceRegistration((string) realpath($this->managedRepositoryPath()));
                 } else {
-                    $matchingCheckouts = $this->matchingSourceCheckouts($settings);
+                    $matchingCheckouts = [];
+                    $accountRoot = realpath(dirname(base_path()));
+                    $repositoriesPath = $accountRoot === false ? false : $accountRoot.DIRECTORY_SEPARATOR.'repositories';
+                    $hasCpanelRepositories = $repositoriesPath !== false && ! is_link($repositoriesPath) && is_dir($repositoriesPath) && is_readable($repositoriesPath);
 
-                    if ($matchingCheckouts === []) {
-                        throw new RuntimeException('No readable cPanel Git checkout matched the saved repository and branch. Restore the source checkout under the account repositories directory, then reconnect.');
+                    if ($hasCpanelRepositories) {
+                        try {
+                            $matchingCheckouts = $this->matchingSourceCheckouts($settings);
+                        } catch (\Throwable) {
+                            $matchingCheckouts = [];
+                        }
                     }
 
-                    if (count($matchingCheckouts) > 1) {
+                    if (count($matchingCheckouts) === 1) {
+                        $this->writeSourceRegistration($matchingCheckouts[0]);
+                    } elseif (count($matchingCheckouts) > 1) {
                         throw new RuntimeException('More than one cPanel Git checkout matched the saved repository and branch. Keep one authoritative checkout or ask the hosting administrator to resolve the duplicate.');
+                    } else {
+                        $this->initializeManagedCheckout([
+                            'branch' => $settings['branch'],
+                            'remote' => $settings['remote'],
+                            'repository_url' => $settings['repository_url'],
+                            'authentication' => $settings['authentication'],
+                            'credential' => $credential,
+                        ]);
+                        $this->writeSourceRegistration((string) realpath($this->managedRepositoryPath()));
                     }
-
-                    $this->writeSourceRegistration($matchingCheckouts[0]);
                 }
             }
 
@@ -534,7 +614,11 @@ class GitRepositoryService
         }
 
         if (file_exists($targetPath)) {
-            throw new RuntimeException('A private Git checkout already exists but is not readable. Review it before retrying.');
+            if ($this->managedSourceCheckoutMatchesSettings($settings)) {
+                return;
+            }
+
+            File::deleteDirectory($targetPath);
         }
 
         File::ensureDirectoryExists($parentPath, 0700);
@@ -633,8 +717,8 @@ class GitRepositoryService
     /** @param array{valid: bool, enabled: bool} $settings */
     private function sourceReconnectAvailable(array $settings): bool
     {
-        if (! $settings['valid'] || ! $settings['enabled'] || ! $this->supportsGitActions()
-            || ! function_exists('proc_open') || ! $this->gitAvailable() || ! $this->isCpanelSplitDeployment()) {
+        if (! $settings['valid'] || ! $this->supportsGitActions()
+            || ! function_exists('proc_open') || ! $this->gitAvailable()) {
             return false;
         }
 
@@ -642,7 +726,7 @@ class GitRepositoryService
             return true;
         }
 
-        if (! $this->isSplitDeployment() && ! $this->managedRepositoryExists()) {
+        if ($this->isCpanelSplitDeployment()) {
             return true;
         }
 
@@ -821,8 +905,12 @@ class GitRepositoryService
         }
 
         $marker = base_path(self::DEPLOYED_COMMIT_MARKER);
+        if (! file_exists($marker)) {
+            return null;
+        }
+
         if (is_link($marker) || ! is_file($marker) || filesize($marker) > 80) {
-            throw new RuntimeException('The deployed commit marker is missing or invalid.');
+            throw new RuntimeException('The deployed commit marker is invalid.');
         }
 
         $commit = trim((string) file_get_contents($marker));
@@ -1163,6 +1251,7 @@ class GitRepositoryService
         try {
             $process = new Process(array_merge([
                 $binary,
+                '-c', 'safe.directory=*',
                 '-c', 'core.hooksPath='.(DIRECTORY_SEPARATOR === '\\' ? 'NUL' : '/dev/null'),
                 '-c', 'credential.helper=',
             ], $arguments), $workingDirectory, array_merge([

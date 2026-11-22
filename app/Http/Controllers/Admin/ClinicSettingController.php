@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateClinicSettingsRequest;
+use App\Http\Requests\Admin\UpdateOldOrOtherIdConfigRequest;
 use App\Models\ClinicSetting;
+use App\Models\Patient;
 use App\Models\PatientNumberingProfile;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
 class ClinicSettingController extends Controller
@@ -49,9 +52,48 @@ class ClinicSettingController extends Controller
                 ];
             });
 
+        $oldOrOtherIdConfig = ClinicSetting::currentOldOrOtherIdConfig();
+        $oldOrOtherIdPreview = Patient::generateNextOldOrOtherId(
+            $oldOrOtherIdConfig['prefix'],
+            $oldOrOtherIdConfig['number_padding']
+        );
+
         return Inertia::render('Admin/Settings/General', [
             'profiles' => $profiles,
+            'oldOrOtherIdConfig' => array_merge($oldOrOtherIdConfig, [
+                'preview' => $oldOrOtherIdPreview,
+            ]),
         ]);
+    }
+
+    public function updateOldOrOtherIdConfig(UpdateOldOrOtherIdConfigRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $settings = ClinicSetting::query()->firstOrCreate([], [
+            'clinic_name_en' => 'Clinic',
+        ]);
+
+        $stored = $settings->patient_form_config ?? [];
+        $stored['old_or_other_id_numbering'] = [
+            'mode' => $validated['mode'],
+            'prefix' => $validated['prefix'] ?? 'OLD-',
+            'number_padding' => (int) $validated['number_padding'],
+            'allow_staff_override' => (bool) $validated['allow_staff_override'],
+            'max_length' => (int) $validated['max_length'],
+        ];
+
+        if (isset($stored['fields']['old_or_other_id'])) {
+            $stored['fields']['old_or_other_id']['max_length'] = (int) $validated['max_length'];
+            $stored['fields']['old_or_other_id']['mode'] = $validated['mode'];
+            $stored['fields']['old_or_other_id']['prefix'] = $validated['prefix'] ?? 'OLD-';
+            $stored['fields']['old_or_other_id']['number_padding'] = (int) $validated['number_padding'];
+            $stored['fields']['old_or_other_id']['allow_staff_override'] = (bool) $validated['allow_staff_override'];
+        }
+
+        $settings->update(['patient_form_config' => $stored]);
+
+        return redirect()->route('admin.general_settings.edit')->with('success', 'Old/Other ID numbering configuration updated successfully.');
     }
 
     public function update(UpdateClinicSettingsRequest $request)

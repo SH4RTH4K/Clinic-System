@@ -51,6 +51,15 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
             ),
         },
         {
+            key: 'old_or_other_id',
+            label: 'Old/Other ID',
+            render: (p) => (
+                <span className="font-mono text-xs text-gray-700">
+                    {p.old_or_other_id || '—'}
+                </span>
+            ),
+        },
+        {
             key: 'name',
             label: 'Name',
             render: (p) => (

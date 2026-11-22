@@ -31,19 +31,20 @@ class ClinicSetting extends Model
     {
         return [
             'name' => ['label' => 'Patient Full Name', 'visible' => true, 'required' => true, 'order' => 1],
-            'guardian_relationship' => ['label' => 'Relationship to Patient', 'visible' => true, 'required' => false, 'order' => 2],
-            'guardian_name' => ['label' => 'Guardian / Primary Contact Name', 'visible' => true, 'required' => false, 'order' => 3],
-            'gender' => ['label' => 'Gender', 'visible' => true, 'required' => true, 'order' => 4],
-            'age_years' => ['label' => 'Years', 'visible' => true, 'required' => false, 'order' => 5],
-            'age_months' => ['label' => 'Months', 'visible' => true, 'required' => false, 'order' => 5],
-            'age_days' => ['label' => 'Days', 'visible' => true, 'required' => false, 'order' => 5],
-            'dob' => ['label' => 'Date of Birth', 'visible' => true, 'required' => false, 'order' => 6],
-            'phone' => ['label' => 'Mobile Phone Number', 'visible' => true, 'required' => false, 'order' => 7],
-            'referred_by' => ['label' => 'Referred By', 'visible' => true, 'required' => false, 'order' => 8],
-            'address' => ['label' => 'Residential Address / Village & Area', 'visible' => true, 'required' => false, 'order' => 9],
-            'blood_group' => ['label' => 'Blood Group', 'visible' => true, 'required' => false, 'order' => 10],
-            'known_allergies' => ['label' => 'Known Allergies / Sensitivities', 'visible' => true, 'required' => false, 'order' => 11],
-            'reference_number' => ['label' => 'Reference Number', 'visible' => true, 'required' => false, 'order' => 12, 'max_length' => 100],
+            'old_or_other_id' => ['label' => 'Old/Other ID', 'visible' => true, 'required' => false, 'order' => 2, 'max_length' => 50],
+            'guardian_relationship' => ['label' => 'Relationship to Patient', 'visible' => true, 'required' => false, 'order' => 3],
+            'guardian_name' => ['label' => 'Guardian / Primary Contact Name', 'visible' => true, 'required' => false, 'order' => 4],
+            'gender' => ['label' => 'Gender', 'visible' => true, 'required' => true, 'order' => 5],
+            'age_years' => ['label' => 'Years', 'visible' => true, 'required' => false, 'order' => 6],
+            'age_months' => ['label' => 'Months', 'visible' => true, 'required' => false, 'order' => 6],
+            'age_days' => ['label' => 'Days', 'visible' => true, 'required' => false, 'order' => 6],
+            'dob' => ['label' => 'Date of Birth', 'visible' => true, 'required' => false, 'order' => 7],
+            'phone' => ['label' => 'Mobile Phone Number', 'visible' => true, 'required' => false, 'order' => 8],
+            'referred_by' => ['label' => 'Referred By', 'visible' => true, 'required' => false, 'order' => 9],
+            'address' => ['label' => 'Residential Address / Village & Area', 'visible' => true, 'required' => false, 'order' => 10],
+            'blood_group' => ['label' => 'Blood Group', 'visible' => true, 'required' => false, 'order' => 11],
+            'known_allergies' => ['label' => 'Known Allergies / Sensitivities', 'visible' => true, 'required' => false, 'order' => 12],
+            'reference_number' => ['label' => 'Reference Number', 'visible' => true, 'required' => false, 'order' => 13, 'max_length' => 100],
         ];
     }
 
@@ -89,6 +90,7 @@ class ClinicSetting extends Model
     {
         return [
             'name' => ['name'],
+            'old_or_other_id' => ['old_or_other_id'],
             'reference_number' => ['reference_number'],
             'guardian_relationship' => ['guardian_relationship'],
             'guardian_name' => ['guardian_name'],
@@ -100,6 +102,45 @@ class ClinicSetting extends Model
             'address' => ['address'],
             'blood_group' => ['blood_group'],
             'known_allergies' => ['known_allergies'],
+        ];
+    }
+
+    /**
+     * @return array{mode: string, prefix: string, number_padding: int, allow_staff_override: bool, max_length: int}
+     */
+    public static function defaultOldOrOtherIdConfig(): array
+    {
+        return [
+            'mode' => 'auto',
+            'prefix' => 'OLD-',
+            'number_padding' => 4,
+            'allow_staff_override' => true,
+            'max_length' => 50,
+        ];
+    }
+
+    /**
+     * @return array{mode: string, prefix: string, number_padding: int, allow_staff_override: bool, max_length: int}
+     */
+    public static function currentOldOrOtherIdConfig(): array
+    {
+        $settings = static::query()->first();
+        $defaults = self::defaultOldOrOtherIdConfig();
+
+        if (! $settings) {
+            return $defaults;
+        }
+
+        $stored = $settings->patient_form_config['old_or_other_id_numbering']
+            ?? $settings->patient_form_config['fields']['old_or_other_id']
+            ?? [];
+
+        return [
+            'mode' => in_array($stored['mode'] ?? '', ['auto', 'manual'], true) ? $stored['mode'] : $defaults['mode'],
+            'prefix' => array_key_exists('prefix', $stored) ? (string) $stored['prefix'] : $defaults['prefix'],
+            'number_padding' => max(0, min(10, (int) ($stored['number_padding'] ?? $defaults['number_padding']))),
+            'allow_staff_override' => (bool) ($stored['allow_staff_override'] ?? $defaults['allow_staff_override']),
+            'max_length' => min(255, max(1, (int) ($stored['max_length'] ?? $defaults['max_length']))),
         ];
     }
 
@@ -132,8 +173,9 @@ class ClinicSetting extends Model
                 'order' => max(1, (int) ($saved['order'] ?? $default['order'])),
             ];
 
-            if ($key === 'reference_number') {
-                $config[$key]['max_length'] = min(255, max(1, (int) ($saved['max_length'] ?? $default['max_length'])));
+            if ($key === 'reference_number' || $key === 'old_or_other_id') {
+                $maxLen = $saved['max_length'] ?? ($storedConfig['old_or_other_id_numbering']['max_length'] ?? $default['max_length']);
+                $config[$key]['max_length'] = min(255, max(1, (int) $maxLen));
             }
 
             if ($key === 'guardian_name' && $config[$key]['label'] === 'Contact Name') {

@@ -123,6 +123,92 @@ class PatientNumberingWorkflowTest extends TestCase
         $this->assertSoftDeleted('patient_numbering_profiles', ['id' => $profile->id]);
     }
 
+    public function test_super_admin_can_view_and_update_old_or_other_id_configuration_from_general_settings(): void
+    {
+        $this->withoutVite();
+        $this->createClinicSetting();
+        $user = $this->userWithPermissions(['general_settings.view', 'general_settings.update']);
+
+        $this->actingAs($user)
+            ->get(route('admin.general_settings.edit'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Settings/General')
+                ->has('oldOrOtherIdConfig')
+                ->where('oldOrOtherIdConfig.mode', 'auto')
+                ->where('oldOrOtherIdConfig.prefix', 'OLD-')
+                ->where('oldOrOtherIdConfig.number_padding', 4)
+                ->where('oldOrOtherIdConfig.allow_staff_override', true)
+                ->where('oldOrOtherIdConfig.max_length', 50));
+
+        $this->actingAs($user)
+            ->put(route('admin.general_settings.old_id_config.update'), [
+                'mode' => 'manual',
+                'prefix' => 'LEGACY-',
+                'number_padding' => 5,
+                'allow_staff_override' => false,
+                'max_length' => 40,
+            ])
+            ->assertRedirect(route('admin.general_settings.edit'))
+            ->assertSessionHas('success', 'Old/Other ID numbering configuration updated successfully.');
+
+        $config = ClinicSetting::currentOldOrOtherIdConfig();
+        $this->assertSame('manual', $config['mode']);
+        $this->assertSame('LEGACY-', $config['prefix']);
+        $this->assertSame(5, $config['number_padding']);
+        $this->assertFalse($config['allow_staff_override']);
+        $this->assertSame(40, $config['max_length']);
+    }
+
+    public function test_updating_old_or_other_id_numbering_to_custom_prefix_and_padding_generates_matching_sequence(): void
+    {
+        $this->createClinicSetting();
+        $user = $this->userWithPermissions(['patients.create', 'general_settings.update']);
+        $profile = PatientNumberingProfile::factory()->create([
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('admin.general_settings.old_id_config.update'), [
+                'mode' => 'auto',
+                'prefix' => 'CARD-',
+                'number_padding' => 5,
+                'allow_staff_override' => true,
+                'max_length' => 60,
+            ])
+            ->assertRedirect(route('admin.general_settings.edit'));
+
+        $this->actingAs($user)
+            ->post(route('admin.patients.store'), [
+                'name' => 'Custom Prefix Patient',
+                'gender' => 'male',
+                'patient_numbering_profile_id' => $profile->id,
+            ])
+            ->assertRedirect(route('admin.patients.index'));
+
+        $this->assertDatabaseHas('patients', [
+            'name' => 'Custom Prefix Patient',
+            'old_or_other_id' => 'CARD-00001',
+        ]);
+    }
+
+    public function test_unauthorized_user_cannot_update_old_or_other_id_configuration(): void
+    {
+        $this->createClinicSetting();
+        $user = $this->userWithPermissions(['general_settings.view']);
+
+        $this->actingAs($user)
+            ->put(route('admin.general_settings.old_id_config.update'), [
+                'mode' => 'manual',
+                'prefix' => 'OLD-',
+                'number_padding' => 4,
+                'allow_staff_override' => true,
+                'max_length' => 50,
+            ])
+            ->assertForbidden();
+    }
+
     /** @param array<string, mixed> $overrides */
     private function profileData(array $overrides = []): array
     {

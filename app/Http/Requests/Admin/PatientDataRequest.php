@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\ClinicSetting;
+use App\Models\Patient;
 use App\Models\PatientNumberingProfile;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -29,6 +30,7 @@ abstract class PatientDataRequest extends FormRequest
         $config = ClinicSetting::currentPatientFormConfig();
         $fieldRules = [
             'name' => ['string', 'max:255'],
+            'old_or_other_id' => ['string', 'max:'.($config['old_or_other_id']['max_length'] ?? 50)],
             'guardian_relationship' => [Rule::in($this->allowedRelationshipValues())],
             'guardian_name' => ['string', 'max:255'],
             'gender' => [Rule::in(['male', 'female', 'other'])],
@@ -43,7 +45,9 @@ abstract class PatientDataRequest extends FormRequest
             'blood_group' => ['string', 'max:10'],
             'known_allergies' => ['string', 'max:1000'],
         ];
-        $rules = [];
+        $rules = [
+            'old_or_other_id_mode' => ['sometimes', 'nullable', 'string', Rule::in(['auto', 'manual', 'none'])],
+        ];
         $canViewClinicalRecords = $this->user()?->can('clinical_records.view') === true;
 
         if ($this->isMethod('post')) {
@@ -97,5 +101,20 @@ abstract class PatientDataRequest extends FormRequest
             fn (array $field): string => $field['label'],
             ClinicSetting::currentPatientFormConfig(),
         );
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $oldOrOtherIdConfig = ClinicSetting::currentOldOrOtherIdConfig();
+        $mode = $this->input('old_or_other_id_mode') ?? $oldOrOtherIdConfig['mode'];
+
+        if ($mode === 'auto' && $this->isMethod('post') && ! $this->filled('old_or_other_id')) {
+            $this->merge([
+                'old_or_other_id' => Patient::generateNextOldOrOtherId(
+                    $oldOrOtherIdConfig['prefix'],
+                    $oldOrOtherIdConfig['number_padding']
+                ),
+            ]);
+        }
     }
 }

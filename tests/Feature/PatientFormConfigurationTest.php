@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ClinicSetting;
 use App\Models\Patient;
+use App\Models\PatientNumberingProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -23,9 +24,10 @@ class PatientFormConfigurationTest extends TestCase
         $fields['phone']['label'] = 'Primary phone';
         $fields['phone']['visible'] = false;
         $fields['phone']['required'] = true;
-        $fields['phone']['order'] = 9;
-        $fields['referred_by']['order'] = 8;
-        $fields['address']['order'] = 7;
+        $fields['phone']['order'] = 10;
+        $fields['referred_by']['order'] = 9;
+        $fields['address']['order'] = 8;
+        $fields['old_or_other_id']['max_length'] = 45;
         $fields['reference_number']['max_length'] = 24;
         $fields['reference_number']['required'] = true;
         $fields['name']['label'] = 'Patient name';
@@ -41,6 +43,7 @@ class PatientFormConfigurationTest extends TestCase
                 ->has('fields.phone')
                 ->where('fields.phone.label', 'Mobile Phone Number')
                 ->where('fields.guardian_name.label', 'Guardian / Primary Contact Name')
+                ->where('fields.old_or_other_id.max_length', 50)
                 ->where('fields.reference_number.max_length', 100)
                 ->where('relationships.0.label', 'Father'));
 
@@ -54,9 +57,10 @@ class PatientFormConfigurationTest extends TestCase
         $this->assertSame('Primary phone', $savedFields['fields']['phone']['label']);
         $this->assertFalse($savedFields['fields']['phone']['visible']);
         $this->assertTrue($savedFields['fields']['phone']['required']);
-        $this->assertSame(9, $savedFields['fields']['phone']['order']);
-        $this->assertSame(8, $savedFields['fields']['referred_by']['order']);
-        $this->assertSame(7, $savedFields['fields']['address']['order']);
+        $this->assertSame(10, $savedFields['fields']['phone']['order']);
+        $this->assertSame(9, $savedFields['fields']['referred_by']['order']);
+        $this->assertSame(8, $savedFields['fields']['address']['order']);
+        $this->assertSame(45, $savedFields['fields']['old_or_other_id']['max_length']);
         $this->assertSame(24, $savedFields['fields']['reference_number']['max_length']);
         $this->assertTrue($savedFields['fields']['reference_number']['required']);
         $this->assertTrue($savedFields['fields']['name']['visible']);
@@ -251,6 +255,145 @@ class PatientFormConfigurationTest extends TestCase
             'id' => $patient->id,
             'reference_number' => 'AB12',
         ]);
+    }
+
+    public function test_old_or_other_id_uses_its_configured_required_and_length_rules(): void
+    {
+        $user = $this->userWithRole('Doctor', ['patients.update']);
+        $settings = $this->createClinicSetting();
+        $fields = ClinicSetting::defaultPatientFormConfig();
+        $fields['old_or_other_id']['required'] = true;
+        $fields['old_or_other_id']['max_length'] = 6;
+        $settings->update(['patient_form_config' => $fields]);
+        $patient = Patient::factory()->create(['gender' => 'female']);
+
+        $this->actingAs($user)
+            ->from(route('admin.patients.edit', $patient))
+            ->put(route('admin.patients.update', $patient), [
+                'name' => $patient->name,
+                'gender' => $patient->gender,
+            ])
+            ->assertSessionHasErrors('old_or_other_id');
+
+        $this->actingAs($user)
+            ->from(route('admin.patients.edit', $patient))
+            ->put(route('admin.patients.update', $patient), [
+                'name' => $patient->name,
+                'gender' => $patient->gender,
+                'old_or_other_id' => 'TOOLONG1',
+            ])
+            ->assertSessionHasErrors('old_or_other_id');
+
+        $this->actingAs($user)
+            ->put(route('admin.patients.update', $patient), [
+                'name' => $patient->name,
+                'gender' => $patient->gender,
+                'old_or_other_id' => 'OLD-99',
+            ])
+            ->assertRedirect(route('admin.patients.index'));
+
+        $this->assertDatabaseHas('patients', [
+            'id' => $patient->id,
+            'old_or_other_id' => 'OLD-99',
+        ]);
+    }
+
+    public function test_patient_create_auto_generates_old_or_other_id_sequentially(): void
+    {
+        $user = $this->userWithRole('Receptionist', ['patients.create']);
+        $this->createClinicSetting();
+        $profile = PatientNumberingProfile::factory()->create([
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        // First patient auto generates OLD-0001
+        $this->actingAs($user)->post(route('admin.patients.store'), [
+            'name' => 'Auto Patient One',
+            'gender' => 'male',
+            'patient_numbering_profile_id' => $profile->id,
+            'old_or_other_id_mode' => 'auto',
+        ])->assertRedirect(route('admin.patients.index'));
+
+        $this->assertDatabaseHas('patients', [
+            'name' => 'Auto Patient One',
+            'old_or_other_id' => 'OLD-0001',
+        ]);
+
+        // Second patient auto generates OLD-0002
+        $this->actingAs($user)->post(route('admin.patients.store'), [
+            'name' => 'Auto Patient Two',
+            'gender' => 'female',
+            'patient_numbering_profile_id' => $profile->id,
+            'old_or_other_id_mode' => 'auto',
+        ])->assertRedirect(route('admin.patients.index'));
+
+        $this->assertDatabaseHas('patients', [
+            'name' => 'Auto Patient Two',
+            'old_or_other_id' => 'OLD-0002',
+        ]);
+    }
+
+    public function test_patient_create_accepts_manual_old_or_other_id_with_length_validation(): void
+    {
+        $user = $this->userWithRole('Receptionist', ['patients.create']);
+        $settings = $this->createClinicSetting();
+        $fields = ClinicSetting::defaultPatientFormConfig();
+        $fields['old_or_other_id']['max_length'] = 8;
+        $settings->update(['patient_form_config' => $fields]);
+
+        $profile = PatientNumberingProfile::factory()->create([
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        // Exceeds 8 chars length validation
+        $this->actingAs($user)->post(route('admin.patients.store'), [
+            'name' => 'Manual Patient',
+            'gender' => 'male',
+            'patient_numbering_profile_id' => $profile->id,
+            'old_or_other_id_mode' => 'manual',
+            'old_or_other_id' => 'MORETHAN8CH',
+        ])->assertSessionHasErrors('old_or_other_id');
+
+        // Within 8 chars passes
+        $this->actingAs($user)->post(route('admin.patients.store'), [
+            'name' => 'Manual Patient',
+            'gender' => 'male',
+            'patient_numbering_profile_id' => $profile->id,
+            'old_or_other_id_mode' => 'manual',
+            'old_or_other_id' => 'CARD-123',
+        ])->assertRedirect(route('admin.patients.index'));
+
+        $this->assertDatabaseHas('patients', [
+            'name' => 'Manual Patient',
+            'old_or_other_id' => 'CARD-123',
+        ]);
+    }
+
+    public function test_patient_search_and_index_includes_old_or_other_id(): void
+    {
+        $user = $this->userWithRole('Doctor', ['patients.view', 'clinical_records.view']);
+        $this->createClinicSetting();
+        $patient = Patient::factory()->create([
+            'name' => 'Unique Searchable Name',
+            'old_or_other_id' => 'OLD-SPECIAL-99',
+            'gender' => 'male',
+        ]);
+
+        // Patient index displays old_or_other_id
+        $this->actingAs($user)->get(route('admin.patients.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Patients/Index')
+                ->has('patients.data', fn (Assert $data) => $data
+                    ->where('0.old_or_other_id', 'OLD-SPECIAL-99')
+                    ->etc()));
+
+        // Async search endpoint finds patient by old_or_other_id
+        $response = $this->actingAs($user)->getJson(route('admin.patients.search', ['q' => 'SPECIAL']));
+        $response->assertOk()
+            ->assertJsonFragment(['old_or_other_id' => 'OLD-SPECIAL-99']);
     }
 
     public function test_super_admin_can_delete_a_relationship_without_patient_dependencies(): void

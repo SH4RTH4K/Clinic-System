@@ -28,6 +28,37 @@ class Patient extends Model
         return $this->hasMany(Visit::class);
     }
 
+    /**
+     * Generate the next sequential Old/Other ID using the configured or default prefix and padding.
+     */
+    public static function generateNextOldOrOtherId(?string $prefix = null, ?int $padding = null): string
+    {
+        $config = ClinicSetting::currentOldOrOtherIdConfig();
+        $prefix = $prefix ?? $config['prefix'];
+        $padding = $padding ?? $config['number_padding'];
+
+        $existing = static::withTrashed()
+            ->whereNotNull('old_or_other_id')
+            ->where('old_or_other_id', 'like', $prefix.'%')
+            ->pluck('old_or_other_id');
+
+        $max = 0;
+        foreach ($existing as $val) {
+            $suffix = substr((string) $val, strlen($prefix));
+            if (is_numeric($suffix)) {
+                $num = (int) $suffix;
+                if ($num > $max) {
+                    $max = $num;
+                }
+            }
+        }
+
+        $next = $max + 1;
+        $numberPart = $padding > 0 ? str_pad((string) $next, $padding, '0', STR_PAD_LEFT) : (string) $next;
+
+        return $prefix.$numberPart;
+    }
+
     public function getPatientIdentifierAttribute(): string
     {
         if ($this->patient_code) {

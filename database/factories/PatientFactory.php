@@ -23,6 +23,7 @@ class PatientFactory extends Factory
             'patient_no' => $counter++,
             'patient_series' => 'T',
             'name' => fake()->name(),
+            'old_or_other_id' => null,
             'reference_number' => null,
             'guardian_name' => null,
             'gender' => fake()->randomElement(['male', 'female']),

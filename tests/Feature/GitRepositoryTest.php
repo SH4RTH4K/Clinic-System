@@ -41,6 +41,10 @@ class GitRepositoryTest extends TestCase
         $this->actingAs($user)
             ->post(route('admin.git_repository.reconnect_source'))
             ->assertForbidden();
+
+        $this->actingAs($user)
+            ->post(route('admin.git_repository.initialize'))
+            ->assertForbidden();
     }
 
     public function test_super_admin_can_view_repository_status_but_git_actions_are_disabled_in_testing(): void
@@ -76,6 +80,18 @@ class GitRepositoryTest extends TestCase
         $this->actingAs($user)
             ->from(route('admin.git_repository.index'))
             ->post(route('admin.git_repository.check'))
+            ->assertRedirect(route('admin.git_repository.index'))
+            ->assertSessionHas('error', 'Git settings and actions are disabled in the automated testing environment.');
+    }
+
+    public function test_initialize_checkout_is_rejected_in_automated_tests(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+        $this->actingAs($user)
+            ->from(route('admin.git_repository.index'))
+            ->post(route('admin.git_repository.initialize'))
             ->assertRedirect(route('admin.git_repository.index'))
             ->assertSessionHas('error', 'Git settings and actions are disabled in the automated testing environment.');
     }

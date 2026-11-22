@@ -4,11 +4,16 @@ import FormField from '@/Components/FormField';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { calculateAgeFromDob, calculateDobFromAge } from './ageHelpers';
 
-export default function Create({ defaults = {}, appointmentRequestId = null, fieldConfig = {}, relationshipOptions = [], numberingProfiles = [] }) {
+export default function Create({ defaults = {}, appointmentRequestId = null, fieldConfig = {}, relationshipOptions = [], numberingProfiles = [], nextOldOrOtherIdPreview = '', oldOrOtherIdConfig = {} }) {
+    const defaultOldIdMode = oldOrOtherIdConfig?.mode || fieldConfig?.old_or_other_id?.mode || 'auto';
+    const allowStaffOldIdOverride = oldOrOtherIdConfig?.allow_staff_override ?? fieldConfig?.old_or_other_id?.allow_staff_override ?? true;
+
     const { data, setData, post, errors, processing } = useForm({
         patient_numbering_profile_id: String(numberingProfiles.find((profile) => profile.is_default)?.id || numberingProfiles[0]?.id || ''),
         appointment_request_id: appointmentRequestId || '',
         name: defaults?.name || '',
+        old_or_other_id_mode: defaultOldIdMode,
+        old_or_other_id: defaultOldIdMode === 'auto' ? (nextOldOrOtherIdPreview || '') : '',
         reference_number: '',
         guardian_name: '',
         guardian_relationship: '',
@@ -129,7 +134,7 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                         </section>
 
                         {/* Basic Identity Information */}
-                        {(field('name').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
+                        {(field('name').visible || field('old_or_other_id').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Identity &amp; Demographics
                             </h3>
@@ -145,6 +150,79 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                                             placeholder="Full name of patient"
                                             required={field('name').required}
                                         />
+                                    </FormField>
+                                </div>}
+
+                                {field('old_or_other_id').visible && <div className="md:col-span-2" style={{ order: field('old_or_other_id').order }}>
+                                    <FormField label={field('old_or_other_id').label} id="old_or_other_id" required={field('old_or_other_id').required} error={errors.old_or_other_id}>
+                                        <div className="space-y-2">
+                                            {allowStaffOldIdOverride && (
+                                                <div className="flex items-center gap-4 text-xs font-medium text-gray-700">
+                                                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="old_or_other_id_mode"
+                                                            value="auto"
+                                                            checked={data.old_or_other_id_mode === 'auto'}
+                                                            onChange={() => {
+                                                                setData((prev) => ({
+                                                                    ...prev,
+                                                                    old_or_other_id_mode: 'auto',
+                                                                    old_or_other_id: nextOldOrOtherIdPreview || prev.old_or_other_id,
+                                                                }));
+                                                            }}
+                                                            className="text-primary-600 focus:ring-primary-500"
+                                                        />
+                                                        <span>Auto ID Generator</span>
+                                                    </label>
+                                                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="old_or_other_id_mode"
+                                                            value="manual"
+                                                            checked={data.old_or_other_id_mode === 'manual'}
+                                                            onChange={() => {
+                                                                setData((prev) => ({
+                                                                    ...prev,
+                                                                    old_or_other_id_mode: 'manual',
+                                                                    old_or_other_id: '',
+                                                                }));
+                                                            }}
+                                                            className="text-primary-600 focus:ring-primary-500"
+                                                        />
+                                                        <span>Manual Entry</span>
+                                                    </label>
+                                                </div>
+                                            )}
+
+                                            {data.old_or_other_id_mode === 'auto' ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm font-semibold text-gray-800">
+                                                        {data.old_or_other_id || nextOldOrOtherIdPreview || 'Auto-generated on save'}
+                                                    </div>
+                                                    <span className="rounded bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 border border-primary-200">
+                                                        {allowStaffOldIdOverride ? 'Auto' : 'Auto (Managed by Admin)'}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <input
+                                                        id="old_or_other_id"
+                                                        type="text"
+                                                        value={data.old_or_other_id}
+                                                        onChange={(e) => setData('old_or_other_id', e.target.value)}
+                                                        maxLength={oldOrOtherIdConfig?.max_length || field('old_or_other_id').max_length || 50}
+                                                        className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 font-mono"
+                                                        placeholder="Enter manual varchar ID (e.g. legacy card number)"
+                                                        required={field('old_or_other_id').required}
+                                                    />
+                                                    <div className="mt-1 flex justify-between text-xs text-gray-500">
+                                                        <span>{allowStaffOldIdOverride ? 'Manual custom varchar identifier' : 'Manual Entry (Managed by Admin)'}</span>
+                                                        <span>{(data.old_or_other_id || '').length} / {oldOrOtherIdConfig?.max_length || field('old_or_other_id').max_length || 50} chars</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </FormField>
                                 </div>}
 

@@ -29,13 +29,15 @@ class PatientController extends Controller
             $query->where(fn ($q) => $q->where('name', 'like', '%'.$request->search.'%')
                 ->orWhere('phone', 'like', '%'.$request->search.'%')
                 ->orWhere('patient_no', 'like', '%'.$request->search.'%')
-                ->orWhere('patient_code', 'like', '%'.$request->search.'%'));
+                ->orWhere('patient_code', 'like', '%'.$request->search.'%')
+                ->orWhere('old_or_other_id', 'like', '%'.$request->search.'%'));
         }
 
         return Inertia::render('Admin/Patients/Index', [
             'patients' => $query
                 ->select([
                     'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
+                    'old_or_other_id',
                     'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
                     'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone',
                 ])
@@ -59,12 +61,13 @@ class PatientController extends Controller
 
         $term = $request->q;
 
-        $patients = Patient::select('id', 'patient_no', 'patient_series', 'patient_code', 'patient_category', 'name', 'age_years', 'age_months', 'age_days', 'gender')
+        $patients = Patient::select('id', 'patient_no', 'patient_series', 'patient_code', 'patient_category', 'old_or_other_id', 'name', 'age_years', 'age_months', 'age_days', 'gender')
             ->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')
                 ->orWhere('phone', 'like', '%'.$term.'%')
                 ->orWhere('patient_no', 'like', '%'.$term.'%')
                 ->orWhere('patient_series', 'like', '%'.$term.'%')
-                ->orWhere('patient_code', 'like', '%'.$term.'%'))
+                ->orWhere('patient_code', 'like', '%'.$term.'%')
+                ->orWhere('old_or_other_id', 'like', '%'.$term.'%'))
             ->orderBy('name')
             ->limit(10)
             ->get();
@@ -98,6 +101,11 @@ class PatientController extends Controller
         }
 
         $canViewClinicalRecords = $request->user()?->can('clinical_records.view') === true;
+        $oldOrOtherIdConfig = ClinicSetting::currentOldOrOtherIdConfig();
+        $nextOldOrOtherIdPreview = Patient::generateNextOldOrOtherId(
+            $oldOrOtherIdConfig['prefix'],
+            $oldOrOtherIdConfig['number_padding']
+        );
         $numberingProfiles = PatientNumberingProfile::query()
             ->where('is_active', true)
             ->with('sequences')
@@ -123,6 +131,10 @@ class PatientController extends Controller
                 ? $request->only(['name', 'phone'])
                 : ['name' => $appointmentRequest->name, 'phone' => $appointmentRequest->phone],
             'appointmentRequestId' => $appointmentRequest?->id,
+            'nextOldOrOtherIdPreview' => $nextOldOrOtherIdPreview,
+            'oldOrOtherIdConfig' => array_merge($oldOrOtherIdConfig, [
+                'preview' => $nextOldOrOtherIdPreview,
+            ]),
             'fieldConfig' => $this->patientFormConfig($canViewClinicalRecords),
             'canViewClinicalRecords' => $canViewClinicalRecords,
             'relationshipOptions' => ClinicSetting::currentPatientRelationshipOptions(),
@@ -135,6 +147,17 @@ class PatientController extends Controller
         $validated = $request->validated();
         $appointmentRequestId = $validated['appointment_request_id'] ?? null;
         unset($validated['appointment_request_id']);
+
+        $oldOrOtherIdConfig = ClinicSetting::currentOldOrOtherIdConfig();
+        $oldOrOtherIdMode = $validated['old_or_other_id_mode'] ?? $oldOrOtherIdConfig['mode'];
+        unset($validated['old_or_other_id_mode']);
+
+        if ($oldOrOtherIdMode === 'auto' && empty($validated['old_or_other_id'])) {
+            $validated['old_or_other_id'] = Patient::generateNextOldOrOtherId(
+                $oldOrOtherIdConfig['prefix'],
+                $oldOrOtherIdConfig['number_padding']
+            );
+        }
 
         $patient = null;
         DB::transaction(function () use ($validated, $appointmentRequestId, $patientMatcher, &$patient): void {
@@ -225,6 +248,7 @@ class PatientController extends Controller
             'patient_no',
             'patient_series',
             'patient_code',
+            'old_or_other_id',
             'name',
             'reference_number',
             'guardian_relationship',
@@ -293,6 +317,7 @@ class PatientController extends Controller
         $canViewClinicalRecords = $request->user()?->can('clinical_records.view') === true;
         $patientDetails = $patient->only([
             'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
+            'old_or_other_id',
             'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
             'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'address',
             'referred_by', 'created_at',
@@ -305,8 +330,18 @@ class PatientController extends Controller
 
         $patientDetails['patient_identifier'] = $patient->patient_identifier;
 
+        $oldOrOtherIdConfig = ClinicSetting::currentOldOrOtherIdConfig();
+        $nextOldOrOtherIdPreview = Patient::generateNextOldOrOtherId(
+            $oldOrOtherIdConfig['prefix'],
+            $oldOrOtherIdConfig['number_padding']
+        );
+
         return Inertia::render('Admin/Patients/Edit', [
             'patient' => $patientDetails,
+            'nextOldOrOtherIdPreview' => $nextOldOrOtherIdPreview,
+            'oldOrOtherIdConfig' => array_merge($oldOrOtherIdConfig, [
+                'preview' => $nextOldOrOtherIdPreview,
+            ]),
             'fieldConfig' => $this->patientFormConfig($canViewClinicalRecords),
             'canViewClinicalRecords' => $canViewClinicalRecords,
             'relationshipOptions' => ClinicSetting::currentPatientRelationshipOptions(),

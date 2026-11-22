@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 const FIELD_DETAILS = [
     { key: 'name', name: 'Patient full name', section: 'Identity' },
+    { key: 'old_or_other_id', name: 'Old/Other ID', section: 'Identity' },
     { key: 'reference_number', name: 'Reference number', section: 'Identity' },
     { key: 'guardian_relationship', name: 'Relationship to patient', section: 'Identity' },
     { key: 'guardian_name', name: 'Relationship contact name', section: 'Identity' },
@@ -185,7 +186,7 @@ export default function Edit({ fields, relationships }) {
             <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
                 <PageHeader
                     title="Patient Configurable"
-                    subtitle="Set field labels, visibility, required status, and order within each section. Configure the maximum length for Reference Number. Age fields move together."
+                    subtitle="Set field labels, visibility, required status, and order within each section. Configure the maximum length for Old/Other ID and Reference Number. Age fields move together."
                     actions={canViewClinicSettings ? (
                         <Link href={route('admin.settings.edit')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                             Clinic Settings
@@ -321,7 +322,7 @@ export default function Edit({ fields, relationships }) {
                                         const orderIndex = movableFields.findIndex((item) => item.key === orderKey);
 
                                         return (
-                                            <div key={field.key} className={`grid grid-cols-1 items-center gap-3 rounded-md border border-gray-100 p-3 ${field.key === 'reference_number' ? 'sm:grid-cols-[minmax(0,1fr)_120px_120px_140px_120px]' : 'sm:grid-cols-[minmax(0,1fr)_120px_140px_120px]'}`}>
+                                            <div key={field.key} className={`grid grid-cols-1 items-center gap-3 rounded-md border border-gray-100 p-3 ${['reference_number', 'old_or_other_id'].includes(field.key) ? 'sm:grid-cols-[minmax(0,1fr)_120px_120px_140px_120px]' : 'sm:grid-cols-[minmax(0,1fr)_120px_140px_120px]'}`}>
                                                 <div>
                                                     <label htmlFor={`field-label-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">{field.name} label</label>
                                                     <input
@@ -334,15 +335,15 @@ export default function Edit({ fields, relationships }) {
                                                         className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                                     />
                                                 </div>
-                                                {field.key === 'reference_number' && (
+                                                {['reference_number', 'old_or_other_id'].includes(field.key) && (
                                                     <div>
-                                                        <label htmlFor="field-max-length-reference_number" className="mb-1 block text-xs font-medium text-gray-600">Maximum length</label>
+                                                        <label htmlFor={`field-max-length-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">Maximum length</label>
                                                         <input
-                                                            id="field-max-length-reference_number"
+                                                            id={`field-max-length-${field.key}`}
                                                             type="number"
                                                             min="1"
                                                             max="255"
-                                                            value={config.max_length}
+                                                            value={config.max_length ?? (field.key === 'old_or_other_id' ? 50 : 100)}
                                                             onChange={(event) => updateField(field.key, 'max_length', Number(event.target.value))}
                                                             disabled={!canUpdate}
                                                             className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
