@@ -252,16 +252,16 @@ Route::middleware(['auth', 'role:Super Admin'])->prefix('system/git-repository')
     Route::get('/', [GitRepositoryController::class, 'index'])->name('index');
     Route::post('/settings', [GitRepositoryController::class, 'updateSettings'])->middleware('throttle:6,1')->name('settings');
     Route::post('/check', [GitRepositoryController::class, 'check'])->middleware('throttle:6,1')->name('check');
-    Route::post('/reconnect-source', [GitRepositoryController::class, 'reconnectSourceCheckout'])->middleware('throttle:3,1')->name('reconnect_source');
-    Route::post('/initialize', [GitRepositoryController::class, 'initializeCheckout'])->middleware('throttle:3,1')->name('initialize');
-    Route::post('/pull', [GitRepositoryController::class, 'pull'])->middleware('throttle:2,1')->name('pull');
+    Route::post('/reconnect-source', [GitRepositoryController::class, 'reconnectSourceCheckout'])->middleware('throttle:6,1')->name('reconnect_source');
+    Route::post('/initialize', [GitRepositoryController::class, 'initializeCheckout'])->middleware('throttle:6,1')->name('initialize');
+    Route::post('/pull', [GitRepositoryController::class, 'pull'])->middleware('throttle:6,1')->name('pull');
 
     // Database & Migrations Management
-    Route::post('/database/migrate', [GitRepositoryController::class, 'runMigrations'])->middleware('throttle:3,1')->name('database.migrate');
-    Route::post('/database/rollback', [GitRepositoryController::class, 'rollbackMigrations'])->middleware('throttle:3,1')->name('database.rollback');
-    Route::post('/database/remigrate', [GitRepositoryController::class, 'remigrateMigrations'])->middleware('throttle:3,1')->name('database.remigrate');
-    Route::post('/database/clear-caches', [GitRepositoryController::class, 'clearCaches'])->middleware('throttle:6,1')->name('database.clear_caches');
-    Route::post('/database/rebuild-caches', [GitRepositoryController::class, 'rebuildCaches'])->middleware('throttle:6,1')->name('database.rebuild_caches');
+    Route::post('/database/migrate', [GitRepositoryController::class, 'runMigrations'])->middleware('throttle:10,1')->name('database.migrate');
+    Route::post('/database/rollback', [GitRepositoryController::class, 'rollbackMigrations'])->middleware('throttle:6,1')->name('database.rollback');
+    Route::post('/database/remigrate', [GitRepositoryController::class, 'remigrateMigrations'])->middleware('throttle:6,1')->name('database.remigrate');
+    Route::post('/database/clear-caches', [GitRepositoryController::class, 'clearCaches'])->middleware('throttle:10,1')->name('database.clear_caches');
+    Route::post('/database/rebuild-caches', [GitRepositoryController::class, 'rebuildCaches'])->middleware('throttle:10,1')->name('database.rebuild_caches');
 });
 
 // Appointments

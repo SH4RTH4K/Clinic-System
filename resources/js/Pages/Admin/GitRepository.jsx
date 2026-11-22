@@ -110,9 +110,13 @@ export default function GitRepository({ repository, settings, history = [], data
     ]);
 
     const run = (action, data = {}) => {
+        if (busy) {
+            return;
+        }
         setBusy(true);
         router.post(route(`admin.git_repository.${action}`), data, {
             preserveScroll: true,
+            onError: () => setBusy(false),
             onFinish: () => setBusy(false),
         });
     };
@@ -173,28 +177,43 @@ export default function GitRepository({ repository, settings, history = [], data
     };
 
     const handleRunMigrations = () => {
+        if (busy) {
+            return;
+        }
         if (window.confirm('Run all pending database migrations now? This will execute "php artisan migrate --force" on the production database.')) {
             run('database.migrate');
         }
     };
 
     const handleRollbackMigrations = () => {
+        if (busy) {
+            return;
+        }
         if (window.confirm('Are you sure you want to rollback the last migration batch? This will revert the most recent database schema changes.')) {
             run('database.rollback', { step: 1 });
         }
     };
 
     const handleRemigrate = () => {
+        if (busy) {
+            return;
+        }
         if (window.confirm('Re-migrate the latest batch? This will rollback the last migration batch and immediately re-run it.')) {
             run('database.remigrate', { step: 1 });
         }
     };
 
     const handleClearCaches = () => {
+        if (busy) {
+            return;
+        }
         run('database.clear_caches');
     };
 
     const handleRebuildCaches = () => {
+        if (busy) {
+            return;
+        }
         run('database.rebuild_caches');
     };
 

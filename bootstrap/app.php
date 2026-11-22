@@ -9,6 +9,7 @@ use App\Http\Middleware\SystemHealthBackupRateLimit;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -49,4 +50,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request) {
+            if ($request->header('X-Inertia')) {
+                $retryAfter = $exception->getHeaders()['Retry-After'] ?? 60;
+
+                return back()->with(
+                    'error',
+                    "Too many requests. Please wait {$retryAfter} second(s) before trying again."
+                );
+            }
+        });
     })->create();

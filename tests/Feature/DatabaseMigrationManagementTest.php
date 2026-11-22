@@ -151,4 +151,30 @@ class DatabaseMigrationManagementTest extends TestCase
             'event' => 'cache.rebuilt',
         ]);
     }
+
+    public function test_throttled_inertia_requests_redirect_with_friendly_error_flash(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+        $this->withoutMiddleware(PreventRequestForgery::class);
+
+        // Make requests up to the throttle limit (6 per minute for clear_caches or pull)
+        for ($i = 0; $i < 6; $i++) {
+            $this->actingAs($user)
+                ->from(route('admin.git_repository.index'))
+                ->withHeaders(['X-Inertia' => 'true'])
+                ->post(route('admin.git_repository.pull'));
+        }
+
+        // The 7th request should be throttled and gracefully redirect back with error flash
+        $response = $this->actingAs($user)
+            ->from(route('admin.git_repository.index'))
+            ->withHeaders(['X-Inertia' => 'true'])
+            ->post(route('admin.git_repository.pull'));
+
+        $response->assertRedirect(route('admin.git_repository.index'));
+        $response->assertSessionHas('error');
+        $this->assertStringContainsString('Too many requests', session('error'));
+    }
 }
