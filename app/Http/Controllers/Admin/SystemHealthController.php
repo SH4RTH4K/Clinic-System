@@ -104,7 +104,28 @@ class SystemHealthController extends Controller
                 report($exception);
             }
 
+            if ($request->header('X-Inertia')) {
+                return back()
+                    ->with('success', 'The backup was created in private storage. Your download will start shortly.')
+                    ->with('download_backup', basename($backupPath));
+            }
+
+            $extension = strtolower(pathinfo($backupPath, PATHINFO_EXTENSION));
+            $contentType = match ($extension) {
+                'zip' => 'application/zip',
+                'gz' => 'application/gzip',
+                'sql' => 'application/sql',
+                default => 'application/octet-stream',
+            };
+
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
             return response()->download($backupPath, basename($backupPath), [
+                'Content-Type' => $contentType,
+                'Content-Disposition' => 'attachment; filename="'.basename($backupPath).'"',
+                'Content-Length' => (string) filesize($backupPath),
                 'Cache-Control' => 'private, no-store, max-age=0',
                 'Pragma' => 'no-cache',
                 'X-Content-Type-Options' => 'nosniff',
@@ -163,7 +184,22 @@ class SystemHealthController extends Controller
             report($exception);
         }
 
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $contentType = match ($extension) {
+            'zip' => 'application/zip',
+            'gz' => 'application/gzip',
+            'sql' => 'application/sql',
+            default => 'application/octet-stream',
+        };
+
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
         return response()->download($path, $filename, [
+            'Content-Type' => $contentType,
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'Content-Length' => (string) filesize($path),
             'Cache-Control' => 'private, no-store, max-age=0',
             'Pragma' => 'no-cache',
             'X-Content-Type-Options' => 'nosniff',

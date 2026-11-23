@@ -293,6 +293,25 @@ class SystemHealthTest extends TestCase
         $this->assertDatabaseHas('activity_log', ['event' => 'backup.downloaded']);
     }
 
+    public function test_inertia_request_with_download_after_create_redirects_with_download_backup_flash(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Inertia' => 'true'])
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.backup'), [
+                'backup_type' => 'media',
+                'download_after_create' => '1',
+            ]);
+
+        $response->assertRedirect(route('admin.system_health.index'));
+        $response->assertSessionHas('success');
+        $response->assertSessionHas('download_backup');
+        $this->assertDatabaseHas('activity_log', ['event' => 'backup.created']);
+        $this->assertDatabaseHas('activity_log', ['event' => 'backup.downloaded']);
+    }
+
     public function test_system_health_manager_cannot_create_a_cpanel_deployment_backup(): void
     {
         $user = $this->userWithSystemHealthPermission();

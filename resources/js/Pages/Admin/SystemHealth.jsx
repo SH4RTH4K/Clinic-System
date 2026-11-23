@@ -48,35 +48,38 @@ function StorageLine({ label, summary }) {
 
 function BackupButton({ type, label, description, available, csrfToken }) {
     const [creating, setCreating] = useState(false);
+    const [downloadAfterCreate, setDownloadAfterCreate] = useState(false);
 
     function submit(event) {
-        const downloadAfterCreate = event.currentTarget.elements.download_after_create.checked;
-
-        if (downloadAfterCreate) {
-            return;
-        }
-
         event.preventDefault();
-        router.post(route('admin.system_health.backup'), { backup_type: type }, {
+        setCreating(true);
+
+        router.post(route('admin.system_health.backup'), {
+            backup_type: type,
+            download_after_create: downloadAfterCreate ? '1' : '0',
+        }, {
             preserveScroll: true,
-            onStart: () => setCreating(true),
+            onSuccess: (page) => {
+                const downloadFilename = page.props.flash?.download_backup;
+                if (downloadFilename) {
+                    window.location.assign(route('admin.system_health.backups.download', downloadFilename));
+                }
+            },
             onFinish: () => setCreating(false),
         });
     }
 
     return (
-        <form method="post" action={route('admin.system_health.backup')} onSubmit={submit} className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center">
-            <input type="hidden" name="_token" value={csrfToken} />
-            <input type="hidden" name="backup_type" value={type} />
+        <form onSubmit={submit} className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center">
             <div>
                 <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
                 <p className="mt-1 text-xs text-slate-500">{description}</p>
-                <label htmlFor={`download-backup-${type}`} className="mt-3 flex w-fit items-center gap-2 text-xs text-slate-600">
+                <label htmlFor={`download-backup-${type}`} className="mt-3 flex w-fit items-center gap-2 text-xs text-slate-600 cursor-pointer">
                     <input
                         id={`download-backup-${type}`}
                         type="checkbox"
-                    name="download_after_create"
-                        value="1"
+                        checked={downloadAfterCreate}
+                        onChange={(e) => setDownloadAfterCreate(e.target.checked)}
                         className="rounded border-slate-300 text-cyan-700 focus:ring-cyan-600"
                     />
                     Also download a copy to this device

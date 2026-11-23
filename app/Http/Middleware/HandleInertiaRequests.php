@@ -35,6 +35,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'importResults' => fn () => $request->session()->get('importResults'),
+                'download_backup' => fn () => $request->session()->get('download_backup'),
             ],
             'auth' => [
                 'user' => $request->user(),
