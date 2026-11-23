@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 function formatBytes(bytes) {
@@ -15,6 +15,20 @@ function formatBytes(bytes) {
     const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
 
     return `${(bytes / (1024 ** unitIndex)).toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function triggerFileDownload(filename) {
+    if (!filename) {
+        return;
+    }
+
+    const downloadUrl = route('admin.system_health.backups.download', filename);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 }
 
 function StatusCard({ label, value, detail, healthy = true }) {
@@ -46,12 +60,11 @@ function StorageLine({ label, summary }) {
     );
 }
 
-function BackupButton({ type, label, description, available, csrfToken }) {
+function BackupButton({ type, label, description, available }) {
     const [creating, setCreating] = useState(false);
     const [downloadAfterCreate, setDownloadAfterCreate] = useState(false);
 
-    function submit(event) {
-        event.preventDefault();
+    function submit() {
         setCreating(true);
 
         router.post(route('admin.system_health.backup'), {
@@ -62,7 +75,7 @@ function BackupButton({ type, label, description, available, csrfToken }) {
             onSuccess: (page) => {
                 const downloadFilename = page.props.flash?.download_backup;
                 if (downloadFilename) {
-                    window.location.assign(route('admin.system_health.backups.download', downloadFilename));
+                    triggerFileDownload(downloadFilename);
                 }
             },
             onFinish: () => setCreating(false),
@@ -70,7 +83,7 @@ function BackupButton({ type, label, description, available, csrfToken }) {
     }
 
     return (
-        <form onSubmit={submit} className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center">
             <div>
                 <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
                 <p className="mt-1 text-xs text-slate-500">{description}</p>
@@ -86,13 +99,14 @@ function BackupButton({ type, label, description, available, csrfToken }) {
                 </label>
             </div>
             <button
-                type="submit"
+                type="button"
+                onClick={submit}
                 disabled={!available || creating}
                 className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
                 {creating ? 'Creating…' : 'Create'}
             </button>
-        </form>
+        </div>
     );
 }
 
@@ -346,6 +360,12 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
     const databaseHealthy = health.database?.status === 'Connected';
     const migrationsHealthy = migrations.status === 'Up to date';
 
+    useEffect(() => {
+        if (flash?.download_backup) {
+            triggerFileDownload(flash.download_backup);
+        }
+    }, [flash?.download_backup]);
+
     return (
         <AuthenticatedLayout header={<h2 className="text-xl font-semibold leading-tight text-slate-800">System Health</h2>}>
             <Head title="System Health & Backups" />
@@ -361,8 +381,22 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                 </header>
 
                 {flash?.success && (
-                    <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                        {flash.success}
+                    <div role="status" className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p>{flash.success}</p>
+                            {flash?.download_backup && (
+                                <p className="mt-1 text-xs text-emerald-700">
+                                    Your download should begin automatically. If it did not start,{' '}
+                                    <a
+                                        href={route('admin.system_health.backups.download', flash.download_backup)}
+                                        download={flash.download_backup}
+                                        className="font-bold underline hover:text-emerald-950"
+                                    >
+                                        click here to download {flash.download_backup}
+                                    </a>.
+                                </p>
+                            )}
+                        </div>
                     </div>
                 )}
                 {flash?.error && (
@@ -422,11 +456,11 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                 <p className="mt-1 text-sm text-slate-600">Backups are stored in private application storage. Generated archives older than 14 days are removed after a successful backup run.</p>
                             </div>
                             <div className="mt-4 space-y-3">
-                                <BackupButton type="database" label="Database backup" description="Compressed logical export of the configured database." available={backupCapabilities.database} csrfToken={csrfToken} />
-                                <BackupButton type="media" label="Media backup" description="Archive files from the application's upload storage." available={backupCapabilities.media} csrfToken={csrfToken} />
-                                <BackupButton type="full" label="Full backup" description="Database export and media archive in one package." available={backupCapabilities.full} csrfToken={csrfToken} />
+                                <BackupButton type="database" label="Database backup" description="Compressed logical export of the configured database." available={backupCapabilities.database} />
+                                <BackupButton type="media" label="Media backup" description="Archive files from the application's upload storage." available={backupCapabilities.media} />
+                                <BackupButton type="full" label="Full backup" description="Database export and media archive in one package." available={backupCapabilities.full} />
                                 {isSuperAdmin && (
-                                    <BackupButton type="cpanel" label="cPanel application package" description="Copy-ready private application and public_html bundle with Composer dependencies. No database, uploads, or .env files are included." available={backupCapabilities.cpanel} csrfToken={csrfToken} />
+                                    <BackupButton type="cpanel" label="cPanel application package" description="Copy-ready private application and public_html bundle with Composer dependencies. No database, uploads, or .env files are included." available={backupCapabilities.cpanel} />
                                 )}
                             </div>
 
@@ -471,7 +505,7 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                                     <td className="px-3 py-3">{new Date(backup.created_at).toLocaleString()}</td>
                                                     <td className="px-3 py-3">
                                                         <div className="flex flex-wrap items-center gap-3">
-                                                            <a className="font-semibold text-cyan-800 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-cyan-600" href={route('admin.system_health.backups.download', backup.filename)}>Download</a>
+                                                            <a download={backup.filename} className="font-semibold text-cyan-800 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-cyan-600" href={route('admin.system_health.backups.download', backup.filename)}>Download</a>
                                                             {isSuperAdmin ? (
                                                                 <form
                                                                     method="post"
