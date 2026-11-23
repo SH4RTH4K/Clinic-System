@@ -25,12 +25,13 @@ class PatientController extends Controller
     public function index(Request $request)
     {
         $query = Patient::query();
-        if ($request->search) {
-            $query->where(fn ($q) => $q->where('name', 'like', '%'.$request->search.'%')
-                ->orWhere('phone', 'like', '%'.$request->search.'%')
-                ->orWhere('patient_no', 'like', '%'.$request->search.'%')
-                ->orWhere('patient_code', 'like', '%'.$request->search.'%')
-                ->orWhere('old_or_other_id', 'like', '%'.$request->search.'%'));
+
+        if ($request->filled('search')) {
+            $query->search($request->search);
+        }
+
+        if ($request->filled('guardian_name')) {
+            $query->where('guardian_name', 'like', '%'.trim($request->guardian_name).'%');
         }
 
         return Inertia::render('Admin/Patients/Index', [
@@ -44,7 +45,7 @@ class PatientController extends Controller
                 ->latest()
                 ->paginate(10)
                 ->withQueryString(),
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'guardian_name']),
             'relationshipOptions' => ClinicSetting::currentPatientRelationshipOptions(),
         ]);
     }
@@ -61,13 +62,12 @@ class PatientController extends Controller
 
         $term = $request->q;
 
-        $patients = Patient::select('id', 'patient_no', 'patient_series', 'patient_code', 'patient_category', 'old_or_other_id', 'name', 'age_years', 'age_months', 'age_days', 'gender')
-            ->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')
-                ->orWhere('phone', 'like', '%'.$term.'%')
-                ->orWhere('patient_no', 'like', '%'.$term.'%')
-                ->orWhere('patient_series', 'like', '%'.$term.'%')
-                ->orWhere('patient_code', 'like', '%'.$term.'%')
-                ->orWhere('old_or_other_id', 'like', '%'.$term.'%'))
+        $patients = Patient::select([
+            'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
+            'old_or_other_id', 'name', 'guardian_name', 'guardian_relationship',
+            'guardian_relationship_custom', 'age_years', 'age_months', 'age_days', 'gender',
+        ])
+            ->search($term)
             ->orderBy('name')
             ->limit(10)
             ->get();

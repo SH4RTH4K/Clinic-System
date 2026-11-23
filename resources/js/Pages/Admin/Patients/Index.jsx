@@ -18,8 +18,10 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
     const canDelete = can('patients.delete');
     const { data, setData, get, processing } = useForm({
         search: filters.search || '',
+        guardian_name: filters.guardian_name || '',
     });
 
+    const [showFilters, setShowFilters] = useState(Boolean(filters.guardian_name));
     const [deleteId, setDeleteId] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -27,6 +29,8 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
         e.preventDefault();
         get(route('admin.patients.index'), { preserveState: true });
     };
+
+    const hasActiveFilters = Boolean(data.search || data.guardian_name || filters.search || filters.guardian_name);
 
     const confirmDelete = () => {
         if (!canDelete || !deleteId) return;
@@ -157,17 +161,19 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
                         )}
                 />
 
-                {/* Search Bar */}
-                <div className="mb-4">
-                    <form onSubmit={onSearch} className="flex max-w-md gap-2">
-                        <TextInput
-                            type="text"
-                            aria-label="Search patients"
-                            value={data.search}
-                            onChange={(e) => setData('search', e.target.value)}
-                            placeholder="Search by name, phone or patient ID..."
-                            className="w-full text-sm"
-                        />
+                {/* Search & Filters */}
+                <div className="mb-4 space-y-3">
+                    <form onSubmit={onSearch} className="flex flex-wrap items-center gap-2">
+                        <div className="w-full sm:w-80 md:w-96">
+                            <TextInput
+                                type="text"
+                                aria-label="Search patients by name, guardian, phone, or patient ID"
+                                value={data.search}
+                                onChange={(e) => setData('search', e.target.value)}
+                                placeholder="Search by name, guardian, phone or ID..."
+                                className="w-full text-sm"
+                            />
+                        </div>
                         <button
                             type="submit"
                             disabled={processing}
@@ -175,7 +181,79 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
                         >
                             Search
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`rounded-lg border px-3 py-2 text-sm font-semibold transition flex items-center gap-1.5 ${
+                                showFilters || data.guardian_name
+                                    ? 'border-primary-300 bg-primary-50 text-primary-700'
+                                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                            aria-expanded={showFilters}
+                            title="Filter specifically by Guardian / Primary Contact Name"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            <span>Guardian Search</span>
+                            {data.guardian_name ? (
+                                <span className="h-2 w-2 rounded-full bg-primary-600" />
+                            ) : null}
+                        </button>
+                        {hasActiveFilters ? (
+                            <Link
+                                href={route('admin.patients.index')}
+                                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition"
+                            >
+                                Reset
+                            </Link>
+                        ) : null}
                     </form>
+
+                    {showFilters && (
+                        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50/80 p-3 max-w-xl">
+                            <div className="flex-1 min-w-[220px]">
+                                <label htmlFor="guardian-search-input" className="block text-xs font-semibold text-gray-700 mb-1">
+                                    Guardian / Primary Contact Name
+                                </label>
+                                <TextInput
+                                    id="guardian-search-input"
+                                    type="text"
+                                    value={data.guardian_name}
+                                    onChange={(e) => setData('guardian_name', e.target.value)}
+                                    placeholder="Filter by guardian or contact name..."
+                                    className="w-full text-sm"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            onSearch(e);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onSearch}
+                                disabled={processing}
+                                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                            >
+                                Apply
+                            </button>
+                            {data.guardian_name && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setData('guardian_name', '');
+                                        router.get(route('admin.patients.index'), {
+                                            search: data.search,
+                                        }, { preserveState: true });
+                                    }}
+                                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+                                >
+                                    Clear Guardian
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <DataTable

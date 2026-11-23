@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,28 @@ class Patient extends Model
     public function visits(): HasMany
     {
         return $this->hasMany(Visit::class);
+    }
+
+    /**
+     * Scope a query to search patients by name, guardian, phone, or identifiers.
+     */
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        $term = trim($term);
+
+        if ($term === '') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($term): void {
+            $q->where('name', 'like', '%'.$term.'%')
+                ->orWhere('guardian_name', 'like', '%'.$term.'%')
+                ->orWhere('phone', 'like', '%'.$term.'%')
+                ->orWhere('patient_no', 'like', '%'.$term.'%')
+                ->orWhere('patient_series', 'like', '%'.$term.'%')
+                ->orWhere('patient_code', 'like', '%'.$term.'%')
+                ->orWhere('old_or_other_id', 'like', '%'.$term.'%');
+        });
     }
 
     /**

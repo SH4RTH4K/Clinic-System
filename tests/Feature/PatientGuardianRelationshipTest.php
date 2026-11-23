@@ -6,6 +6,7 @@ use App\Models\ClinicSetting;
 use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -110,6 +111,79 @@ class PatientGuardianRelationshipTest extends TestCase
             ->assertSessionHasErrors('guardian_relationship');
 
         $this->assertDatabaseMissing('patients', ['name' => 'Test Patient']);
+    }
+
+    public function test_patient_index_searches_by_guardian_name_via_general_search_query(): void
+    {
+        $user = $this->userWithPermission('patients.view');
+        $this->createClinicSetting();
+
+        $matchingPatient = Patient::factory()->create([
+            'name' => 'Baby Rahim',
+            'guardian_name' => 'Abdur Razzak',
+            'phone' => '01711111111',
+        ]);
+        $otherPatient = Patient::factory()->create([
+            'name' => 'Kamal Hossain',
+            'guardian_name' => 'Fatema Begum',
+            'phone' => '01722222222',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.patients.index', ['search' => 'Razzak']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Patients/Index')
+                ->has('patients.data', 1)
+                ->where('patients.data.0.id', $matchingPatient->id)
+                ->where('patients.data.0.guardian_name', 'Abdur Razzak')
+                ->where('filters.search', 'Razzak'));
+    }
+
+    public function test_patient_index_filters_specifically_by_guardian_name_query(): void
+    {
+        $user = $this->userWithPermission('patients.view');
+        $this->createClinicSetting();
+
+        $matchingPatient = Patient::factory()->create([
+            'name' => 'Kamal Hossain',
+            'guardian_name' => 'Fatema Begum',
+        ]);
+        $otherPatient = Patient::factory()->create([
+            'name' => 'Baby Rahim',
+            'guardian_name' => 'Abdur Razzak',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.patients.index', ['guardian_name' => 'Fatema']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Patients/Index')
+                ->has('patients.data', 1)
+                ->where('patients.data.0.id', $matchingPatient->id)
+                ->where('patients.data.0.guardian_name', 'Fatema Begum')
+                ->where('filters.guardian_name', 'Fatema'));
+    }
+
+    public function test_patient_async_search_endpoint_searches_by_guardian_name(): void
+    {
+        $user = $this->userWithPermission('patients.view');
+        $this->createClinicSetting();
+
+        $matchingPatient = Patient::factory()->create([
+            'name' => 'Child Patient',
+            'guardian_name' => 'Primary Guardian Razzak',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->getJson(route('admin.patients.search', ['q' => 'Razzak']));
+
+        $response->assertOk()
+            ->assertJsonFragment([
+                'id' => $matchingPatient->id,
+                'name' => 'Child Patient',
+                'guardian_name' => 'Primary Guardian Razzak',
+            ]);
     }
 
     private function userWithPermission(string $permissionName): User

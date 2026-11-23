@@ -528,7 +528,7 @@ export default function Edit({
                                                     aria-haspopup="listbox"
                                                     inputMode="search"
                                                     className="w-full rounded-lg border-gray-300 shadow-xs text-sm pl-10 pr-4 py-2.5 focus:border-primary-500 focus:ring-primary-500"
-                                                    placeholder="Search patient by Name, Phone, or ID..."
+                                                    placeholder="Search patient by Name, Guardian, Phone, or ID..."
                                                     required
                                                 />
                                                 <div className="absolute left-3 top-3 text-gray-400 pointer-events-none">
@@ -549,12 +549,19 @@ export default function Edit({
                                                                 className="w-full min-h-11 px-4 py-3 cursor-pointer hover:bg-primary-50 focus:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 transition flex items-center justify-between text-left touch-manipulation"
                                                             >
                                                                 <div>
-                                                                    <span className="font-bold text-primary-900 text-sm">
-                                                                        {p.name}
-                                                                    </span>
-                                                                    <span className="text-gray-500 text-xs ml-2">
-                                                                        ({p.gender}, {p.age_years ?? '?'} yrs)
-                                                                    </span>
+                                                                    <div>
+                                                                        <span className="font-bold text-primary-900 text-sm">
+                                                                            {p.name}
+                                                                        </span>
+                                                                        <span className="text-gray-500 text-xs ml-2">
+                                                                            ({p.gender}, {p.age_years ?? '?'} yrs)
+                                                                        </span>
+                                                                    </div>
+                                                                    {p.guardian_name ? (
+                                                                        <div className="text-xs text-gray-500 mt-0.5">
+                                                                            C/O: {p.guardian_name}
+                                                                        </div>
+                                                                    ) : null}
                                                                 </div>
                                                                 <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
                                                                     {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
