@@ -56,11 +56,63 @@ class VisitController extends Controller
         $responsibleDoctor = $this->visitAuthorization->activeDoctor($user);
         $canViewPatients = $user->hasRole('Super Admin') || $user->can('patients.view');
         $patient = null;
+        $initialPastVisits = [];
+        $initialLastPrescription = null;
+
         if ($request->patient_id) {
             abort_unless($canViewPatients, 403);
 
-            $patient = Patient::select('id', 'patient_no', 'patient_series', 'patient_code', 'patient_category', 'name', 'age_years', 'age_months', 'age_days', 'dob', 'gender')
-                ->find($request->patient_id);
+            $selectColumns = [
+                'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
+                'old_or_other_id', 'name', 'age_years', 'age_months', 'age_days', 'dob',
+                'gender', 'phone', 'photo_path',
+            ];
+            $canViewClinicalRecords = $user->hasRole('Super Admin') || $user->can('clinical_records.view');
+            if ($canViewClinicalRecords) {
+                $selectColumns[] = 'blood_group';
+                $selectColumns[] = 'known_allergies';
+                $selectColumns[] = 'medical_history';
+            }
+
+            $patient = Patient::select($selectColumns)->find($request->patient_id);
+
+            if ($patient && $canViewClinicalRecords) {
+                $pastVisits = $patient->visits()
+                    ->with([
+                        'doctor:id,name',
+                        'prescriptionItems.medicine:id,name',
+                        'prescriptionItems.pharmaceutical:id,brand_name,generic_name,strength,dosage_form',
+                    ])
+                    ->latest('visit_date')
+                    ->limit(10)
+                    ->get();
+
+                $initialPastVisits = $pastVisits;
+                $latestVisitWithRx = $pastVisits->first(fn ($v) => $v->prescriptionItems->isNotEmpty());
+                if ($latestVisitWithRx) {
+                    $initialLastPrescription = [
+                        'visit_id' => $latestVisitWithRx->id,
+                        'visit_date' => $latestVisitWithRx->visit_date,
+                        'doctor_name' => $latestVisitWithRx->doctor?->name,
+                        'items' => $latestVisitWithRx->prescriptionItems->map(fn ($item) => [
+                            'item_type' => $item->item_type ?? ($item->pharmaceutical_id ? 'pharmaceutical' : 'remedy'),
+                            'medicine_id' => $item->medicine_id,
+                            'medicine_name' => $item->medicine?->name,
+                            'pharmaceutical_id' => $item->pharmaceutical_id,
+                            'brand_name' => $item->pharmaceutical?->brand_name,
+                            'generic_name' => $item->pharmaceutical?->generic_name,
+                            'strength' => $item->pharmaceutical?->strength,
+                            'dosage_form' => $item->pharmaceutical?->dosage_form,
+                            'timing' => $item->timing,
+                            'before_after' => $item->before_after,
+                            'dose_qty' => $item->dose_qty,
+                            'dose_unit' => $item->dose_unit,
+                            'dilution_note' => $item->dilution_note,
+                            'duration_days' => $item->duration_days,
+                        ])->values()->all(),
+                    ];
+                }
+            }
         }
 
         VisitDraft::where('expires_at', '<=', now())->delete();
@@ -74,6 +126,8 @@ class VisitController extends Controller
 
         return Inertia::render('Admin/Visits/Create', [
             'patient' => $patient,
+            'initialPastVisits' => $initialPastVisits,
+            'initialLastPrescription' => $initialLastPrescription,
             'responsibleDoctor' => $responsibleDoctor?->only(['id', 'name', 'credentials']),
             'hasSavedDraft' => $hasSavedDraft,
             'draftOwnerToken' => VisitDraft::ownerTokenFor($user),

@@ -195,6 +195,10 @@ export default function Show({ patient, relationshipOptions = [] }) {
                                     <span className="text-gray-400 font-medium">Known Allergies:</span>
                                     <p className="text-gray-800 mt-0.5">{patient.known_allergies || 'None reported'}</p>
                                 </div>}
+                                {canViewClinicalRecords && <div>
+                                    <span className="text-gray-400 font-medium">Medical History (অতীত চিকিৎসা ইতিহাস):</span>
+                                    <p className="text-gray-800 mt-0.5 whitespace-pre-wrap">{patient.medical_history || 'No chronic or surgical history recorded'}</p>
+                                </div>}
                                 <div>
                                     <span className="text-gray-400 font-medium">Referred By:</span>
                                     <span className="text-gray-800 block">{patient.referred_by || '—'}</span>

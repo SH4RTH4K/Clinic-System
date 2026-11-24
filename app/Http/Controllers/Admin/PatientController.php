@@ -226,6 +226,62 @@ class PatientController extends Controller
         return response()->json($patients);
     }
 
+    /**
+     * Fetch longitudinal clinical history and attachments for patient consultation drawer.
+     */
+    public function clinicalHistory(Patient $patient, Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user && ($user->hasRole('Super Admin') || $user->can('clinical_records.view')), 403);
+
+        $visits = $patient->visits()
+            ->with([
+                'doctor:id,name',
+                'prescriptionItems.medicine:id,name',
+                'prescriptionItems.pharmaceutical:id,brand_name,generic_name,strength,dosage_form',
+            ])
+            ->latest('visit_date')
+            ->limit(15)
+            ->get();
+
+        $lastPrescription = null;
+        $latestVisitWithRx = $visits->first(fn ($v) => $v->prescriptionItems->isNotEmpty());
+        if ($latestVisitWithRx) {
+            $lastPrescription = [
+                'visit_id' => $latestVisitWithRx->id,
+                'visit_date' => $latestVisitWithRx->visit_date,
+                'doctor_name' => $latestVisitWithRx->doctor?->name,
+                'items' => $latestVisitWithRx->prescriptionItems->map(fn ($item) => [
+                    'item_type' => $item->item_type ?? ($item->pharmaceutical_id ? 'pharmaceutical' : 'remedy'),
+                    'medicine_id' => $item->medicine_id,
+                    'medicine_name' => $item->medicine?->name,
+                    'pharmaceutical_id' => $item->pharmaceutical_id,
+                    'brand_name' => $item->pharmaceutical?->brand_name,
+                    'generic_name' => $item->pharmaceutical?->generic_name,
+                    'strength' => $item->pharmaceutical?->strength,
+                    'dosage_form' => $item->pharmaceutical?->dosage_form,
+                    'timing' => $item->timing,
+                    'before_after' => $item->before_after,
+                    'dose_qty' => $item->dose_qty,
+                    'dose_unit' => $item->dose_unit,
+                    'dilution_note' => $item->dilution_note,
+                    'duration_days' => $item->duration_days,
+                ])->values()->all(),
+            ];
+        }
+
+        $attachments = $patient->attachments()->limit(10)->get();
+
+        return response()->json([
+            'medical_history' => $patient->medical_history,
+            'known_allergies' => $patient->known_allergies,
+            'blood_group' => $patient->blood_group,
+            'last_prescription' => $lastPrescription,
+            'past_visits' => $visits,
+            'attachments' => $attachments,
+        ]);
+    }
+
     public function create(Request $request, AppointmentRequestPatientMatcher $patientMatcher)
     {
         $appointmentRequest = null;
@@ -428,6 +484,7 @@ class PatientController extends Controller
         if ($canViewClinicalRecords) {
             $patientDetails['blood_group'] = $patient->blood_group;
             $patientDetails['known_allergies'] = $patient->known_allergies;
+            $patientDetails['medical_history'] = $patient->medical_history;
             $patientDetails['vitals_history'] = $patient->vitals()
                 ->select([
                     'id', 'patient_id', 'visit_id', 'bp_systolic', 'bp_diastolic',
@@ -515,6 +572,7 @@ class PatientController extends Controller
         if ($canViewClinicalRecords) {
             $patientDetails['blood_group'] = $patient->blood_group;
             $patientDetails['known_allergies'] = $patient->known_allergies;
+            $patientDetails['medical_history'] = $patient->medical_history;
             $patientDetails['vitals_history'] = $patient->vitals()
                 ->select([
                     'id', 'patient_id', 'visit_id', 'bp_systolic', 'bp_diastolic',
@@ -766,6 +824,7 @@ class PatientController extends Controller
         if (! $canViewClinicalRecords) {
             $fieldConfig['blood_group']['visible'] = false;
             $fieldConfig['known_allergies']['visible'] = false;
+            $fieldConfig['medical_history']['visible'] = false;
         }
 
         return $fieldConfig;

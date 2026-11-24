@@ -36,6 +36,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
         address: patient.address || '',
         blood_group: patient.blood_group || '',
         known_allergies: patient.known_allergies || '',
+        medical_history: patient.medical_history || '',
         referred_by: patient.referred_by || '',
         photo: null,
         photo_webcam_data: '',
@@ -472,9 +473,9 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                         </div>}
 
                         {/* Medical Background */}
-                        {(field('blood_group').visible || field('known_allergies').visible) && <div>
+                        {(field('blood_group').visible || field('known_allergies').visible || field('medical_history').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
-                                Medical Background
+                                Medical Background (চিকিৎসা ইতিহাস)
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {field('blood_group').visible && <FormField style={{ order: field('blood_group').order }} label={field('blood_group').label} id="blood_group" required={field('blood_group').required} error={errors.blood_group}>
@@ -504,11 +505,27 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                                         value={data.known_allergies}
                                         onChange={(e) => setData('known_allergies', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
-                                        placeholder="Any known drug, food or chemical allergies"
+                                        placeholder="Any known drug, food or chemical allergies (e.g. Penicillin, Dust, Sulfa)"
                                         required={field('known_allergies').required}
                                     />
                                 </FormField>}
                             </div>
+
+                            {field('medical_history').visible && (
+                                <div className="mt-4">
+                                    <FormField style={{ order: field('medical_history').order }} label={field('medical_history').label} id="medical_history" required={field('medical_history').required} error={errors.medical_history}>
+                                        <textarea
+                                            id="medical_history"
+                                            rows={3}
+                                            value={data.medical_history}
+                                            onChange={(e) => setData('medical_history', e.target.value)}
+                                            className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                            placeholder="Past chronic diseases, major surgeries, hospitalizations, family illness history (উদা: উচ্চ রক্তচাপ, ডায়াবেটিস, হাঁপানি, শৈশবের রোগ)..."
+                                            required={field('medical_history').required}
+                                        />
+                                    </FormField>
+                                </div>
+                            )}
                         </div>}
 
                         {/* Form Submission */}

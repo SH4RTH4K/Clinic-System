@@ -49,11 +49,13 @@
 
 ### Phase 3: Clinical Consultations & Bilingual Prescription Engine (`[x] COMPLETED`)
 - [x] **Draft Auto-Saving**: Background debounced saving to `visit_drafts`.
+- [x] **Patient Medical History Auto-Population**: Automatic population of permanent medical history and allergies into Chief Complaints on `/admin/visits/create`.
+- [x] **Consultation Workbench Accelerators**: Longitudinal clinical history slide-over drawer, 1-click "Repeat Last Prescription", and common diagnoses autocomplete.
 - [x] **Repertory Grading & Suggestion**: Symptom rubrics mapped to remedies with cumulative scores.
 - [x] **Finalization & Amendments**: Record lock upon finalize, revision history in `visit_amendments`.
 - [x] **Prescription Cancellation**: Formal cancellation reason workflow with audit trail.
 - [x] **Bilingual Dompdf Output**: Embedded `NotoSansBengali` TrueType fonts with table geometry.
-- [x] **Verification**: 92 visit and clinical record feature tests passing.
+- [x] **Verification**: All visit and clinical record feature tests passing.
 
 ### Phase 4: Public Clinic Website & Appointment Intake (`[x] COMPLETED`)
 - [x] **Public Landing Portal**: Hero section, Visiting hours, Clinic about, and Contact details.

@@ -62,7 +62,8 @@ class ClinicSetting extends Model
             'address' => ['label' => 'Residential Address / Village & Area', 'visible' => true, 'required' => false, 'order' => 10],
             'blood_group' => ['label' => 'Blood Group', 'visible' => true, 'required' => false, 'order' => 11],
             'known_allergies' => ['label' => 'Known Allergies / Sensitivities', 'visible' => true, 'required' => false, 'order' => 12],
-            'reference_number' => ['label' => 'Reference Number', 'visible' => true, 'required' => false, 'order' => 13, 'max_length' => 100],
+            'medical_history' => ['label' => 'Medical History / অতীত চিকিৎসা ইতিহাস', 'visible' => true, 'required' => false, 'order' => 13],
+            'reference_number' => ['label' => 'Reference Number', 'visible' => true, 'required' => false, 'order' => 14, 'max_length' => 100],
         ];
     }
 
@@ -120,6 +121,7 @@ class ClinicSetting extends Model
             'address' => ['address'],
             'blood_group' => ['blood_group'],
             'known_allergies' => ['known_allergies'],
+            'medical_history' => ['medical_history'],
         ];
     }
 

@@ -65,7 +65,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 
 ### Module 2: Patient Registration & Sequential Identification
 - `[x] Done` **Configurable Numbering Profiles**: Multi-sequence numbering profiles (`patient_numbering_profiles`) with customizable prefixes, separators, sequence lengths, and reset periods (none, daily, monthly, yearly).
-- `[x] Done` **Comprehensive Demographics**: Patient records store full name, primary phone, secondary phone, gender, blood group, address, reference number, and date of birth.
+- `[x] Done` **Comprehensive Demographics**: Patient records store full name, primary phone, secondary phone, gender, blood group, address, reference number, date of birth, known allergies, and permanent medical history (`medical_history`).
+- `[x] Done` **Permanent Medical History & Auto-Show in Chief Complaints**: Patient master profile stores permanent Medical History with role-based clinical privacy protection (`clinical_records.view`). During New Visit consultations (`/admin/visits/create`), the patient's medical history automatically populates the Chief Complaints field, supported by a 1-click `+ Insert Medical History` action and dedicated clinical background badge.
+- `[x] Done` **Consultation Workbench Accelerators**:
+  - **Clinical History Drawer**: Slide-over panel on `/admin/visits/create` displaying previous consultations, diagnoses, prescription details, and lab attachments without leaving the consultation page.
+  - **1-Click Repeat Last Prescription**: Quickly duplicates the patient's previous finalized remedies, potencies, and instructions to the active Rx pad.
+  - **Common Diagnosis Autocomplete**: Pre-built clinical diagnoses dictionary for rapid input.
 - `[x] Done` **Precise Age Calculation**: Captures age in Years, Months, and Days, automatically calculated from Date of Birth or entered manually when DOB is unknown.
 - `[x] Done` **Guardian / Primary Contact System**: Full support for guardian name and configurable relationship types (Father, Mother, Spouse, Guardian, Son, Daughter, Other).
 - `[x] Done` **Old / Legacy ID Tracking**: Configurable auto-generation and manual recording of legacy clinic serial numbers (`old_or_other_id`).

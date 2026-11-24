@@ -91,7 +91,10 @@ The doctor's consultation experience adapts dynamically to the clinic's configur
 
 ```mermaid
 flowchart TD
-    StartConsult([Doctor Starts Consultation]) --> CheckMode{Practice Mode}
+    StartConsult([Doctor Starts Consultation]) --> SelectPat[Select Patient on /admin/visits/create]
+    SelectPat --> AutoHist[Auto-Populate Medical History & Allergies in Chief Complaints]
+    AutoHist --> CheckPast[Inspect Clinical History Drawer & Repeat Last Rx if Follow-up]
+    CheckPast --> CheckMode{Practice Mode}
     
     %% Homeopathy Path
     CheckMode -- Homeopathy Mode --> HomeoWorkbench[Homeopathic Consultation]

@@ -61,6 +61,7 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|patients.create'])
 Route::middleware(['auth', 'role_or_permission:Super Admin|patients.view'])->group(function () {
     Route::get('patients/export', [PatientController::class, 'export'])->name('patients.export');
     Route::get('patients/search', [PatientController::class, 'search'])->name('patients.search');
+    Route::get('patients/{patient}/clinical-history', [PatientController::class, 'clinicalHistory'])->name('patients.clinical_history');
     Route::get('patients/{patient}/opd-card', [PatientController::class, 'opdCard'])->name('patients.opd_card');
     Route::get('patients/{patient}/photo', [PatientController::class, 'photo'])->name('patients.photo');
     Route::resource('patients', PatientController::class)->only(['index', 'show']);

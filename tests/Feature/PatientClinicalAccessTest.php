@@ -54,7 +54,8 @@ class PatientClinicalAccessTest extends TestCase
                 ->has('patients.data', 1)
                 ->where('patients.data.0.name', $patient->name)
                 ->missing('patients.data.0.known_allergies')
-                ->missing('patients.data.0.blood_group'));
+                ->missing('patients.data.0.blood_group')
+                ->missing('patients.data.0.medical_history'));
         foreach (['Synthetic diagnosis text', 'Synthetic clinical complaint', 'Synthetic medicine detail', 'Synthetic prescription directions'] as $sensitiveValue) {
             $this->assertStringNotContainsString($sensitiveValue, (string) $patientListResponse->getContent());
         }
@@ -65,6 +66,7 @@ class PatientClinicalAccessTest extends TestCase
                 ->where('patient.name', 'Shared Synthetic Patient')
                 ->missing('patient.known_allergies')
                 ->missing('patient.blood_group')
+                ->missing('patient.medical_history')
                 ->missing('patient.visits'));
 
         foreach (['Synthetic diagnosis text', 'Synthetic clinical complaint', 'Synthetic medicine detail', 'Synthetic prescription directions'] as $sensitiveValue) {
@@ -77,7 +79,8 @@ class PatientClinicalAccessTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('canViewClinicalRecords', false)
                 ->where('fieldConfig.blood_group.visible', false)
-                ->where('fieldConfig.known_allergies.visible', false));
+                ->where('fieldConfig.known_allergies.visible', false)
+                ->where('fieldConfig.medical_history.visible', false));
 
         $profileId = DB::table('patient_numbering_profiles')->where('is_default', true)->value('id');
         $this->actingAs($receptionist)
@@ -87,11 +90,13 @@ class PatientClinicalAccessTest extends TestCase
                 'gender' => 'female',
                 'phone' => '01711111111',
                 'known_allergies' => 'Receptionist must not set clinical fields',
+                'medical_history' => 'Receptionist must not set clinical history',
             ])
             ->assertRedirect(route('admin.patients.index'));
 
         $registeredPatient = Patient::query()->where('name', 'Reception Registration')->firstOrFail();
         $this->assertNull($registeredPatient->known_allergies);
+        $this->assertNull($registeredPatient->medical_history);
 
         $appointment = AppointmentRequest::query()->create([
             'name' => 'Synthetic appointment contact',
@@ -205,8 +210,55 @@ class PatientClinicalAccessTest extends TestCase
         $this->actingAs($patientViewer)
             ->get(route('admin.patients.show', $patient))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->missing('patient.visits')->missing('patient.known_allergies'));
+            ->assertInertia(fn (Assert $page) => $page->missing('patient.visits')->missing('patient.known_allergies')->missing('patient.medical_history'));
         $this->actingAs($patientViewer)->get(route('admin.visits.show', $visit))->assertForbidden();
+    }
+
+    public function test_medical_history_is_protected_and_persisted_for_authorized_users(): void
+    {
+        $this->seedApplicationDefaults();
+        $admin = $this->userWithRole('Super Admin');
+        $profileId = DB::table('patient_numbering_profiles')->where('is_default', true)->value('id');
+
+        $this->actingAs($admin)
+            ->post(route('admin.patients.store'), [
+                'patient_numbering_profile_id' => $profileId,
+                'name' => 'Clinical Patient Test',
+                'gender' => 'male',
+                'phone' => '01733333333',
+                'medical_history' => 'Hypertension 5 yrs, Bronchial Asthma in childhood',
+                'known_allergies' => 'Penicillin, Dust',
+            ])
+            ->assertRedirect(route('admin.patients.index'));
+
+        $patient = Patient::query()->where('name', 'Clinical Patient Test')->firstOrFail();
+        $this->assertSame('Hypertension 5 yrs, Bronchial Asthma in childhood', $patient->medical_history);
+        $this->assertSame('Penicillin, Dust', $patient->known_allergies);
+
+        // Clinical history endpoint test
+        $this->actingAs($admin)
+            ->get(route('admin.patients.clinical_history', $patient))
+            ->assertOk()
+            ->assertJson([
+                'medical_history' => 'Hypertension 5 yrs, Bronchial Asthma in childhood',
+                'known_allergies' => 'Penicillin, Dust',
+            ]);
+
+        // Receptionist cannot access clinical history
+        $receptionist = $this->userWithRole('Receptionist');
+        $this->actingAs($receptionist)
+            ->get(route('admin.patients.clinical_history', $patient))
+            ->assertForbidden();
+
+        // Visit create preloads medical history
+        $doctor = $this->doctorUser('Dr. Clinical History');
+        $this->actingAs($doctor)
+            ->get(route('admin.visits.create', ['patient_id' => $patient->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('patient.name', 'Clinical Patient Test')
+                ->where('patient.medical_history', 'Hypertension 5 yrs, Bronchial Asthma in childhood')
+                ->where('patient.known_allergies', 'Penicillin, Dust'));
     }
 
     public function test_seeded_super_admin_receives_clinical_chart_access(): void

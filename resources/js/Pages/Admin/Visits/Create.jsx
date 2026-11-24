@@ -12,8 +12,23 @@ import axios from 'axios';
 
 const AUTH_SESSION_CHANNEL = 'hcs-auth-session';
 
+const buildHistorySnippet = (pat) => {
+    if (!pat) return '';
+    const parts = [];
+    if (pat.medical_history && String(pat.medical_history).trim()) {
+        parts.push(`[Medical History / অতীত চিকিৎসা ইতিহাস]:\n${String(pat.medical_history).trim()}`);
+    }
+    if (pat.known_allergies && String(pat.known_allergies).trim()) {
+        parts.push(`[Known Allergies / এলার্জি]: ${String(pat.known_allergies).trim()}`);
+    }
+    if (parts.length === 0) return '';
+    return parts.join('\n') + '\n\n[Chief Complaints / বর্তমান প্রধান লক্ষণ]:\n';
+};
+
 export default function Create({
     patient = null,
+    initialPastVisits = [],
+    initialLastPrescription = null,
     responsibleDoctor = null,
     symptoms = [],
     medicines = [],
@@ -46,6 +61,8 @@ export default function Create({
         initialDob = calculateDobFromAge(initialAgeYears, initialAgeMonths, initialAgeDays, initialVisitDate);
     }
 
+    const initialChiefComplaint = patient ? buildHistorySnippet(patient) : '';
+
     const { data, setData, post, processing, errors, transform } = useForm({
         patient_id: patient ? patient.id : '',
         visit_date: initialVisitDate,
@@ -53,7 +70,7 @@ export default function Create({
         age_months: initialAgeMonths,
         age_days: initialAgeDays,
         patient_dob: initialDob,
-        chief_complaint: '',
+        chief_complaint: initialChiefComplaint,
         bp_symptoms_notes: '',
         diagnosis_notes: '',
         provisional_diagnosis: '',
@@ -96,6 +113,11 @@ export default function Create({
     const [hasDraftNotice, setHasDraftNotice] = useState(Boolean(hasSavedDraft && !patient));
     const [draftDecisionMade, setDraftDecisionMade] = useState(!hasSavedDraft || Boolean(patient));
     const [selectedPatient, setSelectedPatient] = useState(patient || null);
+    const [pastVisits, setPastVisits] = useState(initialPastVisits || []);
+    const [lastPrescription, setLastPrescription] = useState(initialLastPrescription || null);
+    const [patientAttachments, setPatientAttachments] = useState([]);
+    const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     // ── Patient async combobox ────────────────────────────────────────────────
     const initialPatientLabel = patient
@@ -266,6 +288,94 @@ export default function Create({
         }, 300);
     };
 
+    const loadPatientClinicalHistory = (patientId) => {
+        if (!patientId) {
+            setPastVisits([]);
+            setLastPrescription(null);
+            setPatientAttachments([]);
+            return;
+        }
+        setHistoryLoading(true);
+        axios
+            .get(route('admin.patients.clinical_history', patientId))
+            .then((res) => {
+                const resData = res.data || {};
+                setPastVisits(resData.past_visits || []);
+                setLastPrescription(resData.last_prescription || null);
+                setPatientAttachments(resData.attachments || []);
+                if (resData.medical_history || resData.known_allergies || resData.blood_group) {
+                    setSelectedPatient((prev) =>
+                        prev
+                            ? {
+                                  ...prev,
+                                  medical_history: resData.medical_history ?? prev.medical_history,
+                                  known_allergies: resData.known_allergies ?? prev.known_allergies,
+                                  blood_group: resData.blood_group ?? prev.blood_group,
+                              }
+                            : prev
+                    );
+
+                    const snippet = buildHistorySnippet(resData);
+                    if (snippet) {
+                        setData((prev) => {
+                            if (!String(prev.chief_complaint || '').trim()) {
+                                return { ...prev, chief_complaint: snippet };
+                            }
+                            return prev;
+                        });
+                    }
+                }
+            })
+            .catch(() => {})
+            .finally(() => {
+                setHistoryLoading(false);
+            });
+    };
+
+    const insertMedicalHistory = () => {
+        const snippet = buildHistorySnippet(selectedPatient);
+        if (!snippet) return;
+
+        setData((prev) => {
+            const current = String(prev.chief_complaint || '').trim();
+            if (!current) {
+                return { ...prev, chief_complaint: snippet };
+            }
+            if (current.includes('[Medical History')) {
+                return prev;
+            }
+            return {
+                ...prev,
+                chief_complaint: `${snippet}${current}`,
+            };
+        });
+    };
+
+    const repeatLastPrescription = () => {
+        if (!lastPrescription?.items || lastPrescription.items.length === 0) return;
+        const newItems = lastPrescription.items.map((item) => ({
+            item_type: item.item_type || 'remedy',
+            medicine_id: item.medicine_id || '',
+            medicine_name: item.medicine_name || '',
+            pharmaceutical_id: item.pharmaceutical_id || '',
+            brand_name: item.brand_name || '',
+            generic_name: item.generic_name || '',
+            strength: item.strength || '',
+            dosage_form: item.dosage_form || 'Tablet',
+            timing: item.timing || ['morning', 'night'],
+            before_after: item.before_after || 'after',
+            dose_qty: item.dose_qty || 1,
+            dose_unit: item.dose_unit || 'drops',
+            dilution_note: item.dilution_note || '',
+            duration_days: item.duration_days || 7,
+        }));
+
+        setData('prescription_items', [
+            ...data.prescription_items,
+            ...newItems,
+        ]);
+    };
+
     const selectPatient = (p) => {
         setSelectedPatient(p);
         let y = p.age_years ?? '';
@@ -282,21 +392,38 @@ export default function Create({
             dob = calculateDobFromAge(y, m, d, data.visit_date);
         }
 
-        setData((prev) => ({
-            ...prev,
-            patient_id: p.id,
-            age_at_visit: y,
-            age_months: m,
-            age_days: d,
-            patient_dob: dob,
-        }));
+        const historySnippet = buildHistorySnippet(p);
+
+        setData((prev) => {
+            const next = {
+                ...prev,
+                patient_id: p.id,
+                age_at_visit: y,
+                age_months: m,
+                age_days: d,
+                patient_dob: dob,
+            };
+
+            // Auto-populate chief complaints if empty
+            if (!String(prev.chief_complaint || '').trim() && historySnippet) {
+                next.chief_complaint = historySnippet;
+            }
+
+            return next;
+        });
+
         setPatientQuery(`${p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`} – ${p.name}`);
         setPatientResults([]);
         setShowDropdown(false);
+
+        loadPatientClinicalHistory(p.id);
     };
 
     const clearPatient = () => {
         setSelectedPatient(null);
+        setPastVisits([]);
+        setLastPrescription(null);
+        setPatientAttachments([]);
         setData((prev) => ({
             ...prev,
             patient_id: '',
@@ -699,17 +826,33 @@ export default function Create({
                                                                 <span>Phone: <strong className="text-gray-800">{selectedPatient.phone}</strong></span>
                                                             </>
                                                         )}
+                                                        {selectedPatient.blood_group && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span>Blood: <strong className="text-gray-800">{selectedPatient.blood_group}</strong></span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <button
-                                                type="button"
-                                                onClick={clearPatient}
-                                                className="text-xs text-red-600 hover:text-red-800 font-bold px-3 py-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 transition cursor-pointer shadow-2xs"
-                                            >
-                                                ✕ Change
-                                            </button>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsHistoryDrawerOpen(true)}
+                                                    className="inline-flex items-center gap-1.5 text-xs text-indigo-700 hover:text-indigo-900 font-bold px-3 py-1.5 rounded-lg border border-indigo-200 bg-white hover:bg-indigo-50 transition cursor-pointer shadow-2xs"
+                                                    title="View previous consultations, prescriptions, and lab attachments"
+                                                >
+                                                    <span>📜</span> History ({pastVisits.length})
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={clearPatient}
+                                                    className="text-xs text-red-600 hover:text-red-800 font-bold px-3 py-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 transition cursor-pointer shadow-2xs"
+                                                >
+                                                    ✕ Change
+                                                </button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="relative" ref={patientSearchContainer}>
@@ -966,11 +1109,41 @@ export default function Create({
                                     </label>
                                     <span className="text-[11px] text-gray-500">প্রধান লক্ষণ</span>
                                 </div>
+
+                                {/* Medical History Context Banner */}
+                                {(selectedPatient?.medical_history || selectedPatient?.known_allergies) && (
+                                    <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-900 space-y-1">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="font-bold text-[11px] uppercase tracking-wider text-amber-950 flex items-center gap-1">
+                                                <span>📋</span> Medical History
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={insertMedicalHistory}
+                                                className="text-[10px] bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded px-1.5 py-0.5 font-bold shadow-2xs transition cursor-pointer"
+                                                title="Insert or prepend this medical history into Chief Complaints"
+                                            >
+                                                + Insert History
+                                            </button>
+                                        </div>
+                                        {selectedPatient.medical_history && (
+                                            <p className="text-[11px] text-amber-900/90 leading-tight line-clamp-2">
+                                                {selectedPatient.medical_history}
+                                            </p>
+                                        )}
+                                        {selectedPatient.known_allergies && (
+                                            <p className="text-[10px] text-red-700 font-semibold">
+                                                ⚠️ Allergies: {selectedPatient.known_allergies}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
                                 <textarea
                                     value={data.chief_complaint}
                                     onChange={(e) => setData('chief_complaint', e.target.value)}
                                     className="w-full rounded-lg border-gray-300 shadow-xs text-xs focus:border-primary-500 focus:ring-primary-500 bg-white"
-                                    rows={4}
+                                    rows={selectedPatient?.medical_history ? 6 : 4}
                                     placeholder="Enter primary symptoms, duration, sensations, modalities (worse/better with cold, heat, motion, night)..."
                                     required
                                 />
@@ -1010,6 +1183,7 @@ export default function Create({
                                 <div className="space-y-1.5">
                                     <input
                                         type="text"
+                                        list="common-diagnoses-list"
                                         placeholder="Final Diagnosis (চূড়ান্ত রোগ নির্ণয়)"
                                         value={data.final_diagnosis}
                                         onChange={(e) => setData('final_diagnosis', e.target.value)}
@@ -1017,11 +1191,34 @@ export default function Create({
                                     />
                                     <input
                                         type="text"
+                                        list="common-diagnoses-list"
                                         placeholder="Provisional / Differential Diagnosis"
                                         value={data.provisional_diagnosis}
                                         onChange={(e) => setData('provisional_diagnosis', e.target.value)}
                                         className="w-full rounded-lg border-gray-300 shadow-xs text-xs focus:border-primary-500 focus:ring-primary-500 bg-white"
                                     />
+                                    <datalist id="common-diagnoses-list">
+                                        {[
+                                            'Acute Bronchitis',
+                                            'Allergic Rhinitis',
+                                            'Bronchial Asthma',
+                                            'Chronic Gastritis / PUD',
+                                            'Common Cold / Acute Coryza',
+                                            'Contact Dermatitis',
+                                            'Eczema (Atopic)',
+                                            'Essential Hypertension',
+                                            'Gastroesophageal Reflux (GERD)',
+                                            'Irritable Bowel Syndrome (IBS)',
+                                            'Migraine / Tension Headache',
+                                            'Osteoarthritis',
+                                            'Rheumatoid Arthritis',
+                                            'Type 2 Diabetes Mellitus',
+                                            'Urinary Tract Infection (UTI)',
+                                            'Viral Fever / Pyrexia of Unknown Origin',
+                                        ].map((d) => (
+                                            <option key={d} value={d} />
+                                        ))}
+                                    </datalist>
                                 </div>
                                 <textarea
                                     value={data.diagnosis_notes}
@@ -1265,6 +1462,16 @@ export default function Create({
                             </div>
 
                             <div className="flex items-center gap-2.5">
+                                {lastPrescription?.items && lastPrescription.items.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={repeatLastPrescription}
+                                        className="inline-flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer"
+                                        title={`Repeat ${lastPrescription.items.length} items from previous visit on ${lastPrescription.visit_date}`}
+                                    >
+                                        <span>📋</span> Repeat Last Rx ({lastPrescription.items.length})
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={() => setIsConfigModalOpen(true)}
@@ -1999,6 +2206,162 @@ export default function Create({
                         setPendingRepertorySuggestion(null);
                     }}
                 />
+            )}
+
+            {/* Longitudinal Clinical History Slide-Over Drawer */}
+            {isHistoryDrawerOpen && (
+                <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
+                    <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-xs transition-opacity" onClick={() => setIsHistoryDrawerOpen(false)} />
+                    <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                        <div className="w-screen max-w-lg bg-white shadow-2xl border-l border-gray-200 flex flex-col">
+                            {/* Drawer Header */}
+                            <div className="bg-primary-900 text-white px-5 py-4 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-bold flex items-center gap-2">
+                                        <span>📜</span> Clinical Records &amp; Past History
+                                    </h3>
+                                    <p className="text-xs text-primary-200 mt-0.5">
+                                        {selectedPatient?.name} {selectedPatient && `· ID: ${selectedPatient.patient_identifier || `${selectedPatient.patient_no}${selectedPatient.patient_series || ''}`}`}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsHistoryDrawerOpen(false)}
+                                    className="text-white hover:text-gray-300 text-xl font-bold p-1 cursor-pointer"
+                                    title="Close drawer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {/* Drawer Content */}
+                            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                                {/* Medical History & Allergies Card */}
+                                <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                                            Permanent Medical History
+                                        </h4>
+                                        <button
+                                            type="button"
+                                            onClick={insertMedicalHistory}
+                                            className="text-[11px] bg-white text-amber-900 font-bold px-2 py-0.5 rounded border border-amber-300 hover:bg-amber-100 shadow-2xs cursor-pointer"
+                                        >
+                                            + Insert to Complaints
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-800 whitespace-pre-wrap">
+                                        {selectedPatient?.medical_history || 'No permanent medical history recorded.'}
+                                    </p>
+                                    {selectedPatient?.known_allergies && (
+                                        <div className="text-xs text-red-700 font-semibold pt-1 border-t border-amber-200">
+                                            ⚠️ Known Allergies: {selectedPatient.known_allergies}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Past Consultations List */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                                            Previous Consultations ({pastVisits.length})
+                                        </h4>
+                                        {lastPrescription && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    repeatLastPrescription();
+                                                    setIsHistoryDrawerOpen(false);
+                                                }}
+                                                className="text-[11px] bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition shadow-2xs cursor-pointer"
+                                            >
+                                                📋 Repeat Last Rx ({lastPrescription.items?.length})
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {historyLoading ? (
+                                        <div className="py-8 text-center text-xs text-gray-500">Loading clinical history...</div>
+                                    ) : pastVisits.length === 0 ? (
+                                        <div className="p-6 text-center bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-500">
+                                            No previous consultations found for this patient.
+                                        </div>
+                                    ) : (
+                                        pastVisits.map((v) => (
+                                            <div key={v.id} className="bg-gray-50/80 border border-gray-200 rounded-xl p-3.5 space-y-2 text-xs">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-bold text-gray-900">
+                                                        📅 {v.visit_date}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${v.status === 'finalized' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                                        {v.status}
+                                                    </span>
+                                                </div>
+                                                {v.doctor?.name && (
+                                                    <div className="text-gray-500 text-[11px]">
+                                                        Doctor: <strong className="text-gray-700">{v.doctor.name}</strong>
+                                                    </div>
+                                                )}
+                                                {v.final_diagnosis && (
+                                                    <div>
+                                                        <span className="font-semibold text-gray-700">Diagnosis: </span>
+                                                        <span className="text-primary-800 font-bold">{v.final_diagnosis}</span>
+                                                    </div>
+                                                )}
+                                                <div className="bg-white p-2.5 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-wrap">
+                                                    <span className="font-semibold text-gray-500 block mb-0.5">Chief Complaints:</span>
+                                                    {v.chief_complaint}
+                                                </div>
+                                                {v.prescription_items && v.prescription_items.length > 0 && (
+                                                    <div className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1">
+                                                        <span className="font-semibold text-gray-500 block">Prescribed Medicines:</span>
+                                                        <ul className="list-disc list-inside space-y-0.5 text-[11px] text-gray-800">
+                                                            {v.prescription_items.map((pi, piIdx) => (
+                                                                <li key={piIdx}>
+                                                                    <strong>{pi.medicine?.name || pi.pharmaceutical?.brand_name || 'Medicine'}</strong>
+                                                                    {pi.pharmaceutical?.strength ? ` (${pi.pharmaceutical.strength})` : ''}
+                                                                    {pi.dose_qty ? ` — ${pi.dose_qty} ${pi.dose_unit || ''}` : ''}
+                                                                    {pi.duration_days ? ` for ${pi.duration_days} days` : ''}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Patient Attachments / Lab Reports */}
+                                {patientAttachments.length > 0 && (
+                                    <div className="space-y-2 pt-2 border-t border-gray-200">
+                                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                                            Lab Reports &amp; Diagnostic Scans ({patientAttachments.length})
+                                        </h4>
+                                        <div className="space-y-1.5">
+                                            {patientAttachments.map((att) => (
+                                                <div key={att.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs">
+                                                    <div className="truncate pr-2">
+                                                        <span className="font-bold text-gray-800">{att.title || att.file_name}</span>
+                                                        <span className="text-gray-400 text-[10px] ml-1.5 uppercase font-mono">({att.category})</span>
+                                                    </div>
+                                                    <a
+                                                        href={`/admin/patients/attachments/${att.id}/view`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-primary-600 hover:text-primary-800 font-bold text-[11px] underline flex-shrink-0"
+                                                    >
+                                                        View
+                                                    </a>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </AuthenticatedLayout>
     );

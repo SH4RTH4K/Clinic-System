@@ -129,6 +129,8 @@ CREATE TABLE `patients` (
   `age_months` tinyint unsigned NULL,
   `age_days` tinyint unsigned NULL,
   `blood_group` enum('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-') NULL,
+  `known_allergies` text NULL,
+  `medical_history` text NULL,
   `address` text NULL,
   `guardian_name` varchar(255) NULL,
   `guardian_relationship` varchar(100) NULL,
