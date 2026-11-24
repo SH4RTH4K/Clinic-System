@@ -473,53 +473,7 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                             </div>
                         </div>}
 
-                        {/* Contact & Residential Address */}
-                        {(field('phone').visible || field('referred_by').visible || field('address').visible) && <div>
-                            <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
-                                Contact &amp; Residential Location
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {field('phone').visible && <FormField style={{ order: field('phone').order }} label={field('phone').label} id="phone" required={field('phone').required} error={errors.phone} helpText="Format: 017XXXXXXXX or +8801XXXXXXXX">
-                                    <input
-                                        id="phone"
-                                        type="tel"
-                                        value={data.phone}
-                                        onChange={(e) => setData('phone', e.target.value)}
-                                        className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
-                                        placeholder="01XXXXXXXXX"
-                                        required={field('phone').required}
-                                    />
-                                </FormField>}
-
-                                {field('referred_by').visible && <FormField style={{ order: field('referred_by').order }} label={field('referred_by').label} id="referred_by" required={field('referred_by').required} error={errors.referred_by}>
-                                    <input
-                                        id="referred_by"
-                                        type="text"
-                                        value={data.referred_by}
-                                        onChange={(e) => setData('referred_by', e.target.value)}
-                                        className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
-                                        placeholder="Doctor, friend or existing patient"
-                                        required={field('referred_by').required}
-                                    />
-                                </FormField>}
-
-                                {field('address').visible && <div className="md:col-span-2" style={{ order: field('address').order }}>
-                                    <FormField label={field('address').label} id="address" required={field('address').required} error={errors.address}>
-                                        <textarea
-                                            id="address"
-                                            rows={3}
-                                            value={data.address}
-                                            onChange={(e) => setData('address', e.target.value)}
-                                            className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
-                                            placeholder="House / Road, Village, Post Office, Upazila / Thana, District..."
-                                            required={field('address').required}
-                                        />
-                                    </FormField>
-                                </div>}
-                            </div>
-                        </div>}
-
-                        {/* Medical Background */}
+                        {/* Medical Background (Immediately after Identity) */}
                         {(field('blood_group').visible || field('known_allergies').visible || field('medical_history').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                                 Medical Background (চিকিৎসা ইতিহাস)
@@ -573,6 +527,52 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                                     </FormField>
                                 </div>
                             )}
+                        </div>}
+
+                        {/* Contact & Residential Address */}
+                        {(field('phone').visible || field('referred_by').visible || field('address').visible) && <div>
+                            <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
+                                Contact &amp; Residential Location
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {field('phone').visible && <FormField style={{ order: field('phone').order }} label={field('phone').label} id="phone" required={field('phone').required} error={errors.phone} helpText="Format: 017XXXXXXXX or +8801XXXXXXXX">
+                                    <input
+                                        id="phone"
+                                        type="tel"
+                                        value={data.phone}
+                                        onChange={(e) => setData('phone', e.target.value)}
+                                        className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                        placeholder="01XXXXXXXXX"
+                                        required={field('phone').required}
+                                    />
+                                </FormField>}
+
+                                {field('referred_by').visible && <FormField style={{ order: field('referred_by').order }} label={field('referred_by').label} id="referred_by" required={field('referred_by').required} error={errors.referred_by}>
+                                    <input
+                                        id="referred_by"
+                                        type="text"
+                                        value={data.referred_by}
+                                        onChange={(e) => setData('referred_by', e.target.value)}
+                                        className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                        placeholder="Doctor, friend or existing patient"
+                                        required={field('referred_by').required}
+                                    />
+                                </FormField>}
+
+                                {field('address').visible && <div className="md:col-span-2" style={{ order: field('address').order }}>
+                                    <FormField label={field('address').label} id="address" required={field('address').required} error={errors.address}>
+                                        <textarea
+                                            id="address"
+                                            rows={3}
+                                            value={data.address}
+                                            onChange={(e) => setData('address', e.target.value)}
+                                            className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                            placeholder="House / Road, Village, Post Office, Upazila / Thana, District..."
+                                            required={field('address').required}
+                                        />
+                                    </FormField>
+                                </div>}
+                            </div>
                         </div>}
 
                         {/* Historical Migration Data */}

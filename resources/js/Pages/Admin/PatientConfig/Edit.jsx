@@ -16,12 +16,12 @@ const FIELD_DETAILS = [
     { key: 'age_months', orderKey: 'age_years', name: 'Age: months', section: 'Identity' },
     { key: 'age_days', orderKey: 'age_years', name: 'Age: days', section: 'Identity' },
     { key: 'dob', name: 'Date of birth', section: 'Identity' },
-    { key: 'phone', name: 'Mobile phone number', section: 'Contact' },
-    { key: 'referred_by', name: 'Referred by', section: 'Contact' },
-    { key: 'address', name: 'Residential address', section: 'Contact' },
     { key: 'blood_group', name: 'Blood group', section: 'Medical background' },
     { key: 'known_allergies', name: 'Known allergies / sensitivities', section: 'Medical background' },
     { key: 'medical_history', name: 'Medical history / অতীত চিকিৎসা ইতিহাস', section: 'Medical background' },
+    { key: 'phone', name: 'Mobile phone number', section: 'Contact' },
+    { key: 'referred_by', name: 'Referred by', section: 'Contact' },
+    { key: 'address', name: 'Residential address', section: 'Contact' },
     { key: 'manual_last_visit_date', name: 'Last visit date (Migration) / শেষ সাক্ষাতের তারিখ', section: 'Legacy migration' },
     { key: 'legacy_visits_count', name: 'Past visits count (Migration) / পূর্ববর্তী সাক্ষাত সংখ্যা', section: 'Legacy migration' },
 ];
@@ -307,7 +307,7 @@ export default function Edit({ fields, relationships }) {
                             </div>
                         </section>
 
-                        {['Identity', 'Contact', 'Medical background', 'Legacy migration'].map((section) => (
+                        {['Identity', 'Medical background', 'Contact', 'Legacy migration'].map((section) => (
                             <section key={section} className="space-y-3">
                                 <div>
                                     <h3 className="border-b border-gray-100 pb-2 text-xs font-bold uppercase tracking-wider text-gray-700">{section}</h3>

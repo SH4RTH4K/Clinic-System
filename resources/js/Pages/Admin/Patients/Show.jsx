@@ -242,19 +242,11 @@ export default function Show({ patient, relationshipOptions = [] }) {
                                 <div><span className="text-gray-400 font-medium">Reference Number:</span> <span className="text-gray-800 block">{patient.reference_number || '—'}</span></div>
                                 <div><span className="text-gray-400 font-medium">{getGuardianRelationshipLabel(patient.guardian_relationship, patient.guardian_relationship_custom, relationshipOptions) || 'Guardian / Spouse'} Name:</span> <span className="text-gray-800 block">{patient.guardian_name || '—'}</span></div>
                                 <div><span className="text-gray-400 font-medium">Gender:</span> <span className="text-gray-800 capitalize block">{patient.gender}</span></div>
-                            </div>
-
-                            <div className="space-y-2">
                                 <div><span className="text-gray-400 font-medium">Age / Date of Birth:</span> <span className="text-gray-800 block">{formatAgeSummary(patient.age_years, patient.age_months, patient.age_days)} {patient.dob ? `(${patient.dob})` : ''}</span></div>
-                                <div><span className="text-gray-400 font-medium">Mobile Phone:</span> <span className="font-mono text-gray-900 block">{patient.phone || '—'}</span></div>
-                                {canViewClinicalRecords && <div><span className="text-gray-400 font-medium">Blood Group:</span> <span className="text-gray-800 font-semibold block">{patient.blood_group || 'Unknown'}</span></div>}
                             </div>
 
                             <div className="space-y-2">
-                                <div>
-                                    <span className="text-gray-400 font-medium">Residential Address:</span>
-                                    <p className="text-gray-800 font-medium mt-0.5 whitespace-pre-wrap">{patient.address || 'No address recorded'}</p>
-                                </div>
+                                {canViewClinicalRecords && <div><span className="text-gray-400 font-medium">Blood Group:</span> <span className="text-gray-800 font-semibold block">{patient.blood_group || 'Unknown'}</span></div>}
                                 {canViewClinicalRecords && <div>
                                     <span className="text-gray-400 font-medium">Known Allergies:</span>
                                     <p className="text-gray-800 mt-0.5">{patient.known_allergies || 'None reported'}</p>
@@ -263,9 +255,17 @@ export default function Show({ patient, relationshipOptions = [] }) {
                                     <span className="text-gray-400 font-medium">Medical History (অতীত চিকিৎসা ইতিহাস):</span>
                                     <p className="text-gray-800 mt-0.5 whitespace-pre-wrap">{patient.medical_history || 'No chronic or surgical history recorded'}</p>
                                 </div>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <div><span className="text-gray-400 font-medium">Mobile Phone:</span> <span className="font-mono text-gray-900 block">{patient.phone || '—'}</span></div>
                                 <div>
                                     <span className="text-gray-400 font-medium">Referred By:</span>
                                     <span className="text-gray-800 block">{patient.referred_by || '—'}</span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 font-medium">Residential Address:</span>
+                                    <p className="text-gray-800 font-medium mt-0.5 whitespace-pre-wrap">{patient.address || 'No address recorded'}</p>
                                 </div>
                             </div>
                         </div>
