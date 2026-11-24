@@ -65,7 +65,7 @@ class VisitController extends Controller
             $selectColumns = [
                 'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
                 'old_or_other_id', 'name', 'age_years', 'age_months', 'age_days', 'dob',
-                'gender', 'phone', 'photo_path',
+                'gender', 'phone', 'photo_path', 'manual_last_visit_date', 'legacy_visits_count',
             ];
             $canViewClinicalRecords = $user->hasRole('Super Admin') || $user->can('clinical_records.view');
             if ($canViewClinicalRecords) {
@@ -75,6 +75,12 @@ class VisitController extends Controller
             }
 
             $patient = Patient::select($selectColumns)->find($request->patient_id);
+
+            if ($patient) {
+                $patient->effective_last_visit_date = $patient->effective_last_visit_date;
+                $patient->effective_visits_count = $patient->effective_visits_count;
+                $patient->today_queue_token = $patient->todayQueueToken;
+            }
 
             if ($patient && $canViewClinicalRecords) {
                 $pastVisits = $patient->visits()

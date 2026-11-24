@@ -21,6 +21,9 @@ const FIELD_DETAILS = [
     { key: 'address', name: 'Residential address', section: 'Contact' },
     { key: 'blood_group', name: 'Blood group', section: 'Medical background' },
     { key: 'known_allergies', name: 'Known allergies / sensitivities', section: 'Medical background' },
+    { key: 'medical_history', name: 'Medical history / অতীত চিকিৎসা ইতিহাস', section: 'Medical background' },
+    { key: 'manual_last_visit_date', name: 'Last visit date (Migration) / শেষ সাক্ষাতের তারিখ', section: 'Legacy migration' },
+    { key: 'legacy_visits_count', name: 'Past visits count (Migration) / পূর্ববর্তী সাক্ষাত সংখ্যা', section: 'Legacy migration' },
 ];
 
 export default function Edit({ fields, relationships }) {
@@ -304,9 +307,16 @@ export default function Edit({ fields, relationships }) {
                             </div>
                         </section>
 
-                        {['Identity', 'Contact', 'Medical background'].map((section) => (
+                        {['Identity', 'Contact', 'Medical background', 'Legacy migration'].map((section) => (
                             <section key={section} className="space-y-3">
-                                <h3 className="border-b border-gray-100 pb-2 text-xs font-bold uppercase tracking-wider text-gray-700">{section}</h3>
+                                <div>
+                                    <h3 className="border-b border-gray-100 pb-2 text-xs font-bold uppercase tracking-wider text-gray-700">{section}</h3>
+                                    {section === 'Legacy migration' && (
+                                        <p className="mt-1 text-xs text-amber-700 bg-amber-50 rounded p-2">
+                                            Enable these fields during initial clinic onboarding to record historical visit counts and last visit dates for migrated patients. Turn off once migration is complete to prevent manual overrides.
+                                        </p>
+                                    )}
+                                </div>
                                 <div className="space-y-3">
                                     {FIELD_DETAILS
                                         .filter((field) => field.section === section)

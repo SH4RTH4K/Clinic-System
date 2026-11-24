@@ -64,6 +64,8 @@ class ClinicSetting extends Model
             'known_allergies' => ['label' => 'Known Allergies / Sensitivities', 'visible' => true, 'required' => false, 'order' => 12],
             'medical_history' => ['label' => 'Medical History / অতীত চিকিৎসা ইতিহাস', 'visible' => true, 'required' => false, 'order' => 13],
             'reference_number' => ['label' => 'Reference Number', 'visible' => true, 'required' => false, 'order' => 14, 'max_length' => 100],
+            'manual_last_visit_date' => ['label' => 'Last Visit Date (Migration) / শেষ সাক্ষাতের তারিখ', 'visible' => false, 'required' => false, 'order' => 15],
+            'legacy_visits_count' => ['label' => 'Past Visits Count (Migration) / পূর্ববর্তী সাক্ষাতের সংখ্যা', 'visible' => false, 'required' => false, 'order' => 16],
         ];
     }
 
@@ -122,6 +124,8 @@ class ClinicSetting extends Model
             'blood_group' => ['blood_group'],
             'known_allergies' => ['known_allergies'],
             'medical_history' => ['medical_history'],
+            'manual_last_visit_date' => ['manual_last_visit_date'],
+            'legacy_visits_count' => ['legacy_visits_count'],
         ];
     }
 

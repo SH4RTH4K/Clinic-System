@@ -131,6 +131,8 @@ CREATE TABLE `patients` (
   `blood_group` enum('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-') NULL,
   `known_allergies` text NULL,
   `medical_history` text NULL,
+  `manual_last_visit_date` date NULL,
+  `legacy_visits_count` int unsigned NULL DEFAULT 0,
   `address` text NULL,
   `guardian_name` varchar(255) NULL,
   `guardian_relationship` varchar(100) NULL,

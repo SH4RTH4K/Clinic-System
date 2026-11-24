@@ -45,6 +45,7 @@
 - [x] **Guardian Relationship Mapping**: Linked parent/guardian names with configurable relation catalog.
 - [x] **Unified Multi-Factor Search**: Instant search matching Name, Phone, ID, Old ID, and Guardian Name.
 - [x] **Patient Management Dashboard & 1-Click Actions**: Top KPI metrics (Total Patients, Registered Today, In Queue Today, Total Consultations), row-level 1-click Quick Actions (`+ Queue`, `+ Visit`, `OPD Card`), longitudinal visit counts and live queue indicators, role-guarded blood group display (`clinical_records.view`), and streaming CSV export.
+- [x] **Longitudinal Clinical Context & Legacy Migration Last Visit Date**: Dual-layer resolution engine on Patient model (`effective_last_visit_date`, `effective_visits_count`), configurable Yes/No in Patient Configuration (`/admin/patient-config`), table status badges on `/admin/patients`, overview card on `/admin/patients/{id}`, Step 1 context & token auto-linking on `/admin/visits/create`, and duplicate token warning on `/admin/queue/tokens/create`.
 - [x] **Verification**: `PatientGuardianRelationshipTest` and patient sequence tests verified.
 
 ### Phase 3: Clinical Consultations & Bilingual Prescription Engine (`[x] COMPLETED`)

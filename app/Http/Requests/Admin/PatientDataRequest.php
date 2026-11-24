@@ -45,6 +45,8 @@ abstract class PatientDataRequest extends FormRequest
             'blood_group' => ['string', 'max:10'],
             'known_allergies' => ['string', 'max:1000'],
             'medical_history' => ['string', 'max:5000'],
+            'manual_last_visit_date' => ['date', 'before_or_equal:today'],
+            'legacy_visits_count' => ['integer', 'min:0', 'max:10000'],
         ];
         $rules = [
             'old_or_other_id_mode' => ['sometimes', 'nullable', 'string', Rule::in(['auto', 'manual', 'none'])],

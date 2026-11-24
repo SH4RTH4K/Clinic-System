@@ -92,7 +92,9 @@ The doctor's consultation experience adapts dynamically to the clinic's configur
 ```mermaid
 flowchart TD
     StartConsult([Doctor Starts Consultation]) --> SelectPat[Select Patient on /admin/visits/create]
-    SelectPat --> AutoHist[Auto-Populate Medical History & Allergies in Chief Complaints]
+    SelectPat --> LongContext[Display Longitudinal Context: Total Visits, Last Visit Date, Today's Queue Token]
+    LongContext --> AutoLinkToken[Auto-Link Today's Token ID to Visit Payload]
+    AutoLinkToken --> AutoHist[Auto-Populate Medical History & Allergies in Chief Complaints]
     AutoHist --> CheckPast[Inspect Clinical History Drawer & Repeat Last Rx if Follow-up]
     CheckPast --> CheckMode{Practice Mode}
     

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
-export default function Create({ doctors, patients, selectedPatient, defaultDoctorId, appointmentRequestId }) {
+export default function Create({ doctors, patients, selectedPatient, defaultDoctorId, appointmentRequestId, todayActiveTokens = {} }) {
     const [isWalkIn, setIsWalkIn] = useState(!selectedPatient);
+    const activeTokenToday = data.patient_id ? todayActiveTokens[data.patient_id] : null;
 
     const { data, setData, post, processing, errors } = useForm({
         patient_id: selectedPatient?.id || '',
@@ -133,6 +134,17 @@ export default function Create({ doctors, patients, selectedPatient, defaultDoct
                                 </select>
                                 {errors.patient_id && (
                                     <p className="mt-1 text-xs text-red-600">{errors.patient_id}</p>
+                                )}
+                                {activeTokenToday && (
+                                    <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2.5">
+                                        <span className="text-base">⚠️</span>
+                                        <div>
+                                            <p className="font-bold">Active Token Already Issued Today / আজকের টোকেন ইতিমধ্যে বিদ্যমান</p>
+                                            <p className="mt-0.5 text-amber-800">
+                                                Patient holds Token <span className="font-mono font-bold">#{activeTokenToday.token_number}</span> ({activeTokenToday.token_code}) in status <span className="font-bold uppercase">{activeTokenToday.status}</span>. Avoid issuing duplicate tokens.
+                                            </p>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         ) : (

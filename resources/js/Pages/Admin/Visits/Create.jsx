@@ -65,6 +65,7 @@ export default function Create({
 
     const { data, setData, post, processing, errors, transform } = useForm({
         patient_id: patient ? patient.id : '',
+        token_id: patient?.today_queue_token?.id || '',
         visit_date: initialVisitDate,
         age_at_visit: initialAgeYears,
         age_months: initialAgeMonths,
@@ -303,18 +304,28 @@ export default function Create({
                 setPastVisits(resData.past_visits || []);
                 setLastPrescription(resData.last_prescription || null);
                 setPatientAttachments(resData.attachments || []);
+                if (resData.today_queue_token) {
+                    setData((prev) => ({
+                        ...prev,
+                        token_id: resData.today_queue_token.id,
+                    }));
+                }
+                setSelectedPatient((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              medical_history: resData.medical_history ?? prev.medical_history,
+                              known_allergies: resData.known_allergies ?? prev.known_allergies,
+                              blood_group: resData.blood_group ?? prev.blood_group,
+                              effective_last_visit_date: resData.effective_last_visit_date ?? prev.effective_last_visit_date,
+                              effective_visits_count: resData.effective_visits_count ?? prev.effective_visits_count,
+                              manual_last_visit_date: resData.manual_last_visit_date ?? prev.manual_last_visit_date,
+                              legacy_visits_count: resData.legacy_visits_count ?? prev.legacy_visits_count,
+                              today_queue_token: resData.today_queue_token ?? prev.today_queue_token,
+                          }
+                        : prev
+                );
                 if (resData.medical_history || resData.known_allergies || resData.blood_group) {
-                    setSelectedPatient((prev) =>
-                        prev
-                            ? {
-                                  ...prev,
-                                  medical_history: resData.medical_history ?? prev.medical_history,
-                                  known_allergies: resData.known_allergies ?? prev.known_allergies,
-                                  blood_group: resData.blood_group ?? prev.blood_group,
-                              }
-                            : prev
-                    );
-
                     const snippet = buildHistorySnippet(resData);
                     if (snippet) {
                         setData((prev) => {
@@ -427,6 +438,7 @@ export default function Create({
         setData((prev) => ({
             ...prev,
             patient_id: '',
+            token_id: '',
             age_at_visit: '',
             age_months: '',
             age_days: '',
@@ -831,6 +843,21 @@ export default function Create({
                                                                 <span>•</span>
                                                                 <span>Blood: <strong className="text-gray-800">{selectedPatient.blood_group}</strong></span>
                                                             </>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Longitudinal Summary Badges */}
+                                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded">
+                                                            🩺 Visits: {selectedPatient.effective_visits_count ?? (pastVisits.length || 0)}
+                                                        </span>
+                                                        <span className="inline-flex items-center gap-1 bg-gray-50 text-gray-700 border border-gray-200 text-[11px] font-medium px-2 py-0.5 rounded">
+                                                            📅 Last: {selectedPatient.effective_last_visit_date || (pastVisits[0]?.visit_date ? pastVisits[0].visit_date : 'First time')}
+                                                        </span>
+                                                        {selectedPatient.today_queue_token && (
+                                                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 text-[11px] font-bold px-2 py-0.5 rounded">
+                                                                🎟️ Token #{selectedPatient.today_queue_token.token_number} ({selectedPatient.today_queue_token.status}) · Linked
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </div>

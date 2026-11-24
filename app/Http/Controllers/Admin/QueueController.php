@@ -80,6 +80,12 @@ class QueueController extends Controller
 
         $preselectedPatientId = $request->input('patient_id');
         $selectedPatient = $preselectedPatientId ? Patient::find($preselectedPatientId) : null;
+        $todayActiveTokens = PatientQueueToken::query()
+            ->whereDate('token_date', now()->toDateString())
+            ->whereIn('status', ['waiting', 'calling', 'in_consultation'])
+            ->whereNotNull('patient_id')
+            ->get(['id', 'token_number', 'token_code', 'patient_id', 'status', 'doctor_id'])
+            ->keyBy('patient_id');
 
         return Inertia::render('Admin/Queue/Create', [
             'doctors' => $doctors,
@@ -87,6 +93,7 @@ class QueueController extends Controller
             'selectedPatient' => $selectedPatient,
             'defaultDoctorId' => $request->input('doctor_id'),
             'appointmentRequestId' => $request->input('appointment_request_id'),
+            'todayActiveTokens' => $todayActiveTokens,
         ]);
     }
 

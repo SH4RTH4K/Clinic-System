@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\LogOptions;
@@ -20,6 +21,8 @@ class Patient extends Model
 
     protected $casts = [
         'dob' => 'date',
+        'manual_last_visit_date' => 'date',
+        'legacy_visits_count' => 'integer',
         'age_years' => 'integer',
         'age_months' => 'integer',
         'age_days' => 'integer',
@@ -37,6 +40,11 @@ class Patient extends Model
         return $this->hasMany(Visit::class);
     }
 
+    public function latestVisit(): HasOne
+    {
+        return $this->hasOne(Visit::class)->latestOfMany('visit_date');
+    }
+
     public function vitals(): HasMany
     {
         return $this->hasMany(PatientVital::class)->latest();
@@ -50,6 +58,48 @@ class Patient extends Model
     public function queueTokens(): HasMany
     {
         return $this->hasMany(PatientQueueToken::class);
+    }
+
+    public function todayQueueToken(): HasOne
+    {
+        return $this->hasOne(PatientQueueToken::class)
+            ->whereDate('token_date', now()->toDateString())
+            ->whereIn('status', ['waiting', 'calling', 'in_consultation'])
+            ->latest('id');
+    }
+
+    public function getEffectiveLastVisitDateAttribute(): ?string
+    {
+        $rawDigitalDate = $this->visits_max_visit_date
+            ?? ($this->relationLoaded('latestVisit') ? $this->latestVisit?->visit_date : null)
+            ?? $this->visits()->max('visit_date');
+
+        $digitalDate = null;
+        if ($rawDigitalDate instanceof \DateTimeInterface) {
+            $digitalDate = $rawDigitalDate->format('Y-m-d');
+        } elseif (is_string($rawDigitalDate) && trim($rawDigitalDate) !== '') {
+            $digitalDate = substr(trim($rawDigitalDate), 0, 10);
+        }
+
+        if ($digitalDate && $this->manual_last_visit_date) {
+            $manualDate = $this->manual_last_visit_date->toDateString();
+
+            return $digitalDate > $manualDate ? (string) $digitalDate : $manualDate;
+        }
+
+        if ($digitalDate) {
+            return (string) $digitalDate;
+        }
+
+        return $this->manual_last_visit_date?->toDateString();
+    }
+
+    public function getEffectiveVisitsCountAttribute(): int
+    {
+        $digitalCount = $this->visits_count ?? $this->visits()->count();
+        $legacyCount = (int) ($this->legacy_visits_count ?? 0);
+
+        return $digitalCount + $legacyCount;
     }
 
     public function getPhotoUrlAttribute(): ?string

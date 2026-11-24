@@ -75,6 +75,7 @@ class PatientController extends Controller
             'old_or_other_id',
             'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
             'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'photo_path', 'created_at',
+            'manual_last_visit_date', 'legacy_visits_count',
         ];
 
         if ($canViewClinicalRecords) {
@@ -84,6 +85,7 @@ class PatientController extends Controller
         $paginated = $query
             ->select($selectColumns)
             ->withCount('visits')
+            ->withMax('visits', 'visit_date')
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -99,6 +101,8 @@ class PatientController extends Controller
 
             $paginated->getCollection()->transform(function ($patient) use ($todayTokens) {
                 $patient->today_queue_token = $todayTokens->get($patient->id);
+                $patient->effective_last_visit_date = $patient->effective_last_visit_date;
+                $patient->effective_visits_count = $patient->effective_visits_count;
 
                 return $patient;
             });
@@ -276,6 +280,11 @@ class PatientController extends Controller
             'medical_history' => $patient->medical_history,
             'known_allergies' => $patient->known_allergies,
             'blood_group' => $patient->blood_group,
+            'effective_last_visit_date' => $patient->effective_last_visit_date,
+            'effective_visits_count' => $patient->effective_visits_count,
+            'manual_last_visit_date' => $patient->manual_last_visit_date?->toDateString(),
+            'legacy_visits_count' => $patient->legacy_visits_count,
+            'today_queue_token' => $patient->todayQueueToken,
             'last_prescription' => $lastPrescription,
             'past_visits' => $visits,
             'attachments' => $attachments,
@@ -474,12 +483,15 @@ class PatientController extends Controller
             'address',
             'referred_by',
             'created_at',
+            'manual_last_visit_date',
+            'legacy_visits_count',
         ]);
         $patientDetails['patient_identifier'] = $patient->patient_identifier;
         $patientDetails['photo_path'] = $patient->photo_path;
         $patientDetails['photo_url'] = $patient->photo_url;
-        $patientDetails['photo_path'] = $patient->photo_path;
-        $patientDetails['photo_url'] = $patient->photo_url;
+        $patientDetails['effective_last_visit_date'] = $patient->effective_last_visit_date;
+        $patientDetails['effective_visits_count'] = $patient->effective_visits_count;
+        $patientDetails['today_queue_token'] = $patient->todayQueueToken;
 
         if ($canViewClinicalRecords) {
             $patientDetails['blood_group'] = $patient->blood_group;
@@ -566,7 +578,7 @@ class PatientController extends Controller
             'old_or_other_id',
             'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
             'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'address',
-            'referred_by', 'created_at',
+            'referred_by', 'created_at', 'manual_last_visit_date', 'legacy_visits_count',
         ]);
 
         if ($canViewClinicalRecords) {

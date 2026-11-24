@@ -29,6 +29,8 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
         blood_group: '',
         known_allergies: '',
         medical_history: '',
+        manual_last_visit_date: '',
+        legacy_visits_count: 0,
         referred_by: '',
         photo: null,
         photo_webcam_data: '',
@@ -572,6 +574,50 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                                 </div>
                             )}
                         </div>}
+
+                        {/* Historical Migration Data */}
+                        {(field('manual_last_visit_date').visible || field('legacy_visits_count').visible) && (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                                <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <span>📦 Historical Migration Data / পূর্ববর্তী তথ্য</span>
+                                    <span className="text-[11px] font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Migration Mode</span>
+                                </h3>
+                                <p className="text-xs text-amber-700 mb-4">
+                                    Use these fields for patients migrating from old paper records or legacy systems to establish their past visit count and last visit date.
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {field('manual_last_visit_date').visible && (
+                                        <FormField style={{ order: field('manual_last_visit_date').order }} label={field('manual_last_visit_date').label} id="manual_last_visit_date" required={field('manual_last_visit_date').required} error={errors.manual_last_visit_date}>
+                                            <input
+                                                type="date"
+                                                id="manual_last_visit_date"
+                                                max={new Date().toISOString().split('T')[0]}
+                                                value={data.manual_last_visit_date}
+                                                onChange={(e) => setData('manual_last_visit_date', e.target.value)}
+                                                className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                                required={field('manual_last_visit_date').required}
+                                            />
+                                        </FormField>
+                                    )}
+
+                                    {field('legacy_visits_count').visible && (
+                                        <FormField style={{ order: field('legacy_visits_count').order }} label={field('legacy_visits_count').label} id="legacy_visits_count" required={field('legacy_visits_count').required} error={errors.legacy_visits_count}>
+                                            <input
+                                                type="number"
+                                                id="legacy_visits_count"
+                                                min="0"
+                                                max="10000"
+                                                value={data.legacy_visits_count}
+                                                onChange={(e) => setData('legacy_visits_count', e.target.value)}
+                                                className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                                placeholder="0"
+                                                required={field('legacy_visits_count').required}
+                                            />
+                                        </FormField>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Form Submission */}
                         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">

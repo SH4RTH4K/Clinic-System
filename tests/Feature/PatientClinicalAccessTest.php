@@ -397,4 +397,58 @@ class PatientClinicalAccessTest extends TestCase
 
         return $patient;
     }
+
+    public function test_effective_last_visit_date_and_visits_count_resolution(): void
+    {
+        $this->seedApplicationDefaults();
+
+        $patient = Patient::factory()->create([
+            'name' => 'Legacy Migrated Patient',
+            'manual_last_visit_date' => '2025-08-15',
+            'legacy_visits_count' => 5,
+        ]);
+
+        $this->assertSame('2025-08-15', $patient->effective_last_visit_date);
+        $this->assertSame(5, $patient->effective_visits_count);
+
+        // Record a digital visit in 2026
+        Visit::factory()->for($patient)->create([
+            'visit_date' => '2026-11-20',
+            'status' => 'finalized',
+        ]);
+
+        $patient->refresh();
+
+        $this->assertSame('2026-11-20', $patient->effective_last_visit_date);
+        $this->assertSame(6, $patient->effective_visits_count);
+    }
+
+    public function test_patient_form_config_and_longitudinal_context_exposure(): void
+    {
+        $this->seedApplicationDefaults();
+        $superAdmin = $this->userWithRole('Super Admin');
+
+        $patient = Patient::factory()->create([
+            'name' => 'Longitudinal Patient',
+            'manual_last_visit_date' => '2025-10-01',
+            'legacy_visits_count' => 3,
+        ]);
+
+        $response = $this->actingAs($superAdmin)->get(route('admin.patients.index'));
+        $response->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('patients.data', 1)
+                ->where('patients.data.0.effective_visits_count', 3)
+                ->where('patients.data.0.effective_last_visit_date', '2025-10-01'));
+
+        $historyResponse = $this->actingAs($superAdmin)
+            ->getJson(route('admin.patients.clinical_history', $patient));
+        $historyResponse->assertOk()
+            ->assertJson([
+                'effective_visits_count' => 3,
+                'effective_last_visit_date' => '2025-10-01',
+                'manual_last_visit_date' => '2025-10-01',
+                'legacy_visits_count' => 3,
+            ]);
+    }
 }

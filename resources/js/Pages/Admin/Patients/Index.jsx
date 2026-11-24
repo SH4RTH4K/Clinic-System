@@ -154,29 +154,62 @@ export default function Index({
         {
             key: 'visits_and_queue',
             label: 'Visits & Queue',
-            render: (p) => (
-                <div className="space-y-1">
-                    <div>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                            {p.visits_count || 0} {p.visits_count === 1 ? 'visit' : 'visits'}
-                        </span>
-                    </div>
-                    {p.today_queue_token ? (
-                        <div>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
-                                p.today_queue_token.status === 'waiting'
-                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                    : p.today_queue_token.status === 'in_consultation' || p.today_queue_token.status === 'calling'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse'
-                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
-                            }`}>
-                                <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
-                                Token #{p.today_queue_token.token_number}
-                            </span>
+            render: (p) => {
+                const totalVisits = p.effective_visits_count ?? (p.visits_count || 0);
+                const lastVisit = p.effective_last_visit_date;
+
+                return (
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            {totalVisits <= 0 ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                                    New (0 visits)
+                                </span>
+                            ) : totalVisits === 1 ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                    1st visit
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    {totalVisits} visits
+                                </span>
+                            )}
                         </div>
-                    ) : null}
-                </div>
-            ),
+
+                        <div className="text-[11px] text-gray-500">
+                            {lastVisit ? (
+                                <span title="Last attendance date">📅 {lastVisit}</span>
+                            ) : (
+                                <span className="text-gray-400">📅 Never</span>
+                            )}
+                        </div>
+
+                        {p.today_queue_token ? (
+                            <div>
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                                    p.today_queue_token.status === 'waiting'
+                                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                        : p.today_queue_token.status === 'in_consultation' || p.today_queue_token.status === 'calling'
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse'
+                                        : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                }`}>
+                                    <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                                    Token #{p.today_queue_token.token_number} ({p.today_queue_token.status})
+                                </span>
+                            </div>
+                        ) : (
+                            <div>
+                                <Link
+                                    href={route('admin.queue.tokens.create', { patient_id: p.id })}
+                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary-600 hover:text-primary-800"
+                                >
+                                    <span>+</span> Issue Token
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             key: 'actions',

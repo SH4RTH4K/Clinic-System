@@ -151,6 +151,70 @@ export default function Show({ patient, relationshipOptions = [] }) {
                     }
                 />
 
+                {/* Longitudinal Clinical Overview Banner */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 flex items-center justify-between">
+                        <div>
+                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Total Lifetime Visits</span>
+                            <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-2xl font-black text-gray-900">{patient.effective_visits_count ?? (patient.visits?.length || 0)}</span>
+                                <span className="text-xs text-gray-500 font-medium">consultations</span>
+                            </div>
+                            {patient.legacy_visits_count > 0 && (
+                                <p className="text-[11px] text-amber-700 mt-0.5">
+                                    Includes {patient.legacy_visits_count} migrated records
+                                </p>
+                            )}
+                        </div>
+                        <span className="text-3xl opacity-80">🩺</span>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 flex items-center justify-between">
+                        <div>
+                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Last Attendance Date</span>
+                            <div className="mt-1">
+                                {patient.effective_last_visit_date ? (
+                                    <span className="text-base font-bold text-gray-900">{patient.effective_last_visit_date}</span>
+                                ) : (
+                                    <span className="text-sm font-medium text-gray-400">First time patient</span>
+                                )}
+                            </div>
+                            {patient.manual_last_visit_date && patient.effective_last_visit_date === patient.manual_last_visit_date && (
+                                <p className="text-[11px] text-amber-700 mt-0.5">
+                                    Migrated historical date
+                                </p>
+                            )}
+                        </div>
+                        <span className="text-3xl opacity-80">📅</span>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 flex items-center justify-between">
+                        <div>
+                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Today's Queue Status</span>
+                            <div className="mt-1">
+                                {patient.today_queue_token ? (
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${
+                                        patient.today_queue_token.status === 'waiting'
+                                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                    }`}>
+                                        <span className="h-2 w-2 rounded-full bg-current"></span>
+                                        Token #{patient.today_queue_token.token_number} ({patient.today_queue_token.status})
+                                    </span>
+                                ) : (
+                                    <Link
+                                        href={route('admin.queue.tokens.create', { patient_id: patient.id })}
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-primary-700 hover:text-primary-900 bg-primary-50 px-2.5 py-1 rounded-md border border-primary-200"
+                                    >
+                                        + Issue Queue Token
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                        <span className="text-3xl opacity-80">🎟️</span>
+                    </div>
+                </div>
+
                 {/* Patient Summary Card */}
                 <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-6 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 pb-2">
