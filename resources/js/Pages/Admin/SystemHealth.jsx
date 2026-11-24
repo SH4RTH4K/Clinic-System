@@ -72,12 +72,6 @@ function BackupButton({ type, label, description, available }) {
             download_after_create: downloadAfterCreate ? '1' : '0',
         }, {
             preserveScroll: true,
-            onSuccess: (page) => {
-                const downloadFilename = page.props.flash?.download_backup;
-                if (downloadFilename) {
-                    triggerFileDownload(downloadFilename);
-                }
-            },
             onFinish: () => setCreating(false),
         });
     }
@@ -359,9 +353,11 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
     const storage = health.storage ?? {};
     const databaseHealthy = health.database?.status === 'Connected';
     const migrationsHealthy = migrations.status === 'Up to date';
+    const downloadedFileRef = useRef(null);
 
     useEffect(() => {
-        if (flash?.download_backup) {
+        if (flash?.download_backup && downloadedFileRef.current !== flash.download_backup) {
+            downloadedFileRef.current = flash.download_backup;
             triggerFileDownload(flash.download_backup);
         }
     }, [flash?.download_backup]);
