@@ -9,6 +9,7 @@ use App\Models\ClinicSetting;
 use App\Models\Patient;
 use App\Models\PatientNumberingProfile;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ClinicSettingController extends Controller
@@ -17,7 +18,11 @@ class ClinicSettingController extends Controller
     {
         $settings = ClinicSetting::first();
 
-        return Inertia::render('Admin/Settings/Edit', ['settings' => $settings]);
+        return Inertia::render('Admin/Settings/Edit', [
+            'settings' => $settings,
+            'logoUrl' => $settings?->logo_path ? route('clinic.logo') : null,
+            'faviconUrl' => $settings?->favicon_path ? route('clinic.favicon') : null,
+        ]);
     }
 
     public function editGeneral()
@@ -99,8 +104,36 @@ class ClinicSettingController extends Controller
     public function update(UpdateClinicSettingsRequest $request)
     {
         $validated = $request->validated();
-
         $settings = ClinicSetting::first();
+
+        // Handle Clinic Logo upload / removal
+        if ($request->boolean('remove_logo')) {
+            if ($settings?->logo_path) {
+                Storage::disk('public')->delete($settings->logo_path);
+            }
+            $validated['logo_path'] = null;
+        } elseif ($request->hasFile('logo')) {
+            if ($settings?->logo_path) {
+                Storage::disk('public')->delete($settings->logo_path);
+            }
+            $validated['logo_path'] = $request->file('logo')->store('branding', 'public');
+        }
+        unset($validated['logo'], $validated['remove_logo']);
+
+        // Handle Clinic Favicon upload / removal
+        if ($request->boolean('remove_favicon')) {
+            if ($settings?->favicon_path) {
+                Storage::disk('public')->delete($settings->favicon_path);
+            }
+            $validated['favicon_path'] = null;
+        } elseif ($request->hasFile('favicon')) {
+            if ($settings?->favicon_path) {
+                Storage::disk('public')->delete($settings->favicon_path);
+            }
+            $validated['favicon_path'] = $request->file('favicon')->store('branding', 'public');
+        }
+        unset($validated['favicon'], $validated['remove_favicon']);
+
         if ($settings) {
             $settings->update($validated);
         } else {

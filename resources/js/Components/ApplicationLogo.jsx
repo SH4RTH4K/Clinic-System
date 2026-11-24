@@ -1,4 +1,20 @@
-export default function ApplicationLogo({ className = 'h-9 w-auto', ...props }) {
+import { usePage } from '@inertiajs/react';
+
+export default function ApplicationLogo({ className = 'h-9 w-auto', src, ...props }) {
+    const clinic = usePage()?.props?.clinic;
+    const logoSrc = src || clinic?.logo_url;
+
+    if (logoSrc) {
+        return (
+            <img
+                src={logoSrc}
+                alt={clinic?.name_en || 'Clinic Logo'}
+                className={`${className} object-contain`}
+                {...props}
+            />
+        );
+    }
+
     return (
         <svg
             className={className}
@@ -8,7 +24,6 @@ export default function ApplicationLogo({ className = 'h-9 w-auto', ...props }) 
             {...props}
         >
             <rect width="40" height="40" rx="10" fill="#147a96" />
-            {/* Medical cross & H monogram */}
             <path
                 d="M16 11V29M24 11V29M16 20H24M11 20H29"
                 stroke="white"

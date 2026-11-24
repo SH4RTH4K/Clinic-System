@@ -39,6 +39,8 @@ export default function Create({ doctorAccounts = [], canManageDoctorAccounts = 
         sort_order: 0,
         user_id: '',
         photo: null,
+        signature: null,
+        seal: null,
     });
 
     const submit = (event) => {

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Doctor extends Model
 {
@@ -20,6 +21,8 @@ class Doctor extends Model
         'bio',
         'bio_bn',
         'photo_path',
+        'signature_path',
+        'seal_path',
         'govt_reg_no',
         'phone',
         'appointment_phone',
@@ -55,5 +58,20 @@ class Doctor extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(DoctorSchedule::class);
+    }
+
+    public function leaves(): HasMany
+    {
+        return $this->hasMany(DoctorLeave::class);
+    }
+
+    public function queueTokens(): HasMany
+    {
+        return $this->hasMany(PatientQueueToken::class);
     }
 }

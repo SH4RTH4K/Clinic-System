@@ -58,6 +58,11 @@ abstract class DoctorFormRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'signature' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'seal' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_photo' => ['nullable', 'boolean'],
+            'remove_signature' => ['nullable', 'boolean'],
+            'remove_seal' => ['nullable', 'boolean'],
         ];
     }
 }

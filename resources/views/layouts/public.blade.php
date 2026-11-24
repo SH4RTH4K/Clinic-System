@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" href="{{ route('clinic.favicon') }}">
 
     @php
         $clinicName = (app()->getLocale() === 'bn' && !empty($settings->clinic_name_bn))
@@ -25,10 +25,14 @@
             <div class="flex justify-between items-center h-16">
                 <!-- Brand logo & title -->
                 <a href="/" class="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg p-1">
-                    <svg class="h-8 w-8 shrink-0" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="40" height="40" rx="10" fill="#147a96"/>
-                        <path d="M16 11V29M24 11V29M16 20H24M11 20H29" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    @if(!empty($settings->logo_path))
+                        <img src="{{ route('clinic.logo') }}" alt="{{ $clinicName }}" class="h-9 w-auto max-w-[160px] object-contain shrink-0">
+                    @else
+                        <svg class="h-8 w-8 shrink-0" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="40" height="40" rx="10" fill="#147a96"/>
+                            <path d="M16 11V29M24 11V29M16 20H24M11 20H29" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    @endif
                     <span class="text-xl font-bold text-primary-500 group-hover:text-primary-700 transition">
                         {{ $clinicName }}
                     </span>

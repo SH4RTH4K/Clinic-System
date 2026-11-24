@@ -66,6 +66,8 @@ export default function DoctorForm({
     canManageDoctorAccounts = false,
 }) {
     const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
+    const [selectedSignatureUrl, setSelectedSignatureUrl] = useState(null);
+    const [selectedSealUrl, setSelectedSealUrl] = useState(null);
 
     useEffect(() => {
         if (!data.photo) {
@@ -80,7 +82,43 @@ export default function DoctorForm({
         return () => URL.revokeObjectURL(previewUrl);
     }, [data.photo]);
 
-    const photoUrl = selectedPhotoUrl || (doctor?.photo_path ? route('admin.doctors.photo', doctor.id) : null);
+    useEffect(() => {
+        if (!data.signature) {
+            setSelectedSignatureUrl(null);
+
+            return undefined;
+        }
+
+        const previewUrl = URL.createObjectURL(data.signature);
+        setSelectedSignatureUrl(previewUrl);
+
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [data.signature]);
+
+    useEffect(() => {
+        if (!data.seal) {
+            setSelectedSealUrl(null);
+
+            return undefined;
+        }
+
+        const previewUrl = URL.createObjectURL(data.seal);
+        setSelectedSealUrl(previewUrl);
+
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [data.seal]);
+
+    const photoUrl = data.remove_photo
+        ? null
+        : (selectedPhotoUrl || doctor?.photo_url || (doctor?.photo_path ? route('admin.doctors.photo', doctor.id) : null));
+
+    const signatureUrl = data.remove_signature
+        ? null
+        : (selectedSignatureUrl || doctor?.signature_url || (doctor?.signature_path ? route('doctors.signature', doctor.id) : null));
+
+    const sealUrl = data.remove_seal
+        ? null
+        : (selectedSealUrl || doctor?.seal_url || (doctor?.seal_path ? route('doctors.seal', doctor.id) : null));
 
     return (
         <form onSubmit={onSubmit} className="space-y-6">
@@ -357,10 +395,20 @@ export default function DoctorForm({
                             <input
                                 type="file"
                                 accept="image/png,image/jpeg,image/webp"
-                                onChange={(event) => setData('photo', event.target.files[0] || null)}
+                                onChange={(event) => setData((prev) => ({ ...prev, photo: event.target.files[0] || null, remove_photo: false }))}
                                 className="block w-full text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-gray-800 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-gray-700"
                             />
                         </Field>
+
+                        {photoUrl && (
+                            <button
+                                type="button"
+                                onClick={() => setData((prev) => ({ ...prev, photo: null, remove_photo: true }))}
+                                className="mt-2 text-xs font-semibold text-red-600 hover:text-red-800 transition"
+                            >
+                                Remove Photo
+                            </button>
+                        )}
 
                         {data.photo && (
                             <p className="mt-2 text-sm text-gray-500">Selected: {data.photo.name}</p>
@@ -374,6 +422,72 @@ export default function DoctorForm({
                                 <p className="mt-1 text-xs text-gray-500">{progress.percentage}% uploaded</p>
                             </div>
                         )}
+                    </div>
+
+                    {/* Doctor Digital Signature */}
+                    <div className="rounded-lg border border-gray-200 p-4 bg-white shadow-2xs">
+                        <label className="block text-sm font-semibold text-gray-800 mb-2">Digital Signature (প্রেসক্রিপশন স্বাক্ষর)</label>
+                        <div className="mb-3 flex h-24 w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/60 p-2 overflow-hidden">
+                            {signatureUrl ? (
+                                <img src={signatureUrl} alt="Signature preview" className="max-h-full max-w-full object-contain" />
+                            ) : (
+                                <div className="text-center text-xs text-gray-400">
+                                    <span className="block text-xl mb-0.5">✍️</span>
+                                    No digital signature uploaded
+                                </div>
+                            )}
+                        </div>
+                        <Field error={errors.signature}>
+                            <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                onChange={(event) => setData((prev) => ({ ...prev, signature: event.target.files[0] || null, remove_signature: false }))}
+                                className="block w-full text-xs text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-gray-700 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-gray-600"
+                            />
+                        </Field>
+                        {signatureUrl && (
+                            <button
+                                type="button"
+                                onClick={() => setData((prev) => ({ ...prev, signature: null, remove_signature: true }))}
+                                className="mt-2 text-xs font-semibold text-red-600 hover:text-red-800 transition"
+                            >
+                                Remove Signature
+                            </button>
+                        )}
+                        <p className="mt-1.5 text-[11px] text-gray-400">Transparent PNG recommended. Automatically appended to finalized prescription PDFs.</p>
+                    </div>
+
+                    {/* Official Registration Seal */}
+                    <div className="rounded-lg border border-gray-200 p-4 bg-white shadow-2xs">
+                        <label className="block text-sm font-semibold text-gray-800 mb-2">Official Seal / Stamp (অফিসিয়াল সিল)</label>
+                        <div className="mb-3 flex h-24 w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/60 p-2 overflow-hidden">
+                            {sealUrl ? (
+                                <img src={sealUrl} alt="Seal preview" className="max-h-full max-w-full object-contain" />
+                            ) : (
+                                <div className="text-center text-xs text-gray-400">
+                                    <span className="block text-xl mb-0.5">🔖</span>
+                                    No seal/stamp uploaded
+                                </div>
+                            )}
+                        </div>
+                        <Field error={errors.seal}>
+                            <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                onChange={(event) => setData((prev) => ({ ...prev, seal: event.target.files[0] || null, remove_seal: false }))}
+                                className="block w-full text-xs text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-gray-700 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-gray-600"
+                            />
+                        </Field>
+                        {sealUrl && (
+                            <button
+                                type="button"
+                                onClick={() => setData((prev) => ({ ...prev, seal: null, remove_seal: true }))}
+                                className="mt-2 text-xs font-semibold text-red-600 hover:text-red-800 transition"
+                            >
+                                Remove Seal
+                            </button>
+                        )}
+                        <p className="mt-1.5 text-[11px] text-gray-400">Clinic or doctor official registration stamp image (PNG/JPG).</p>
                     </div>
 
                     <label className="inline-flex items-center gap-2">

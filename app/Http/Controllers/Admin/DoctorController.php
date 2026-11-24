@@ -47,8 +47,14 @@ class DoctorController extends Controller
         if ($request->hasFile('photo')) {
             $validated['photo_path'] = $request->file('photo')->store('doctors', 'public');
         }
+        if ($request->hasFile('signature')) {
+            $validated['signature_path'] = $request->file('signature')->store('doctors', 'public');
+        }
+        if ($request->hasFile('seal')) {
+            $validated['seal_path'] = $request->file('seal')->store('doctors', 'public');
+        }
 
-        unset($validated['photo']);
+        unset($validated['photo'], $validated['signature'], $validated['seal'], $validated['remove_photo'], $validated['remove_signature'], $validated['remove_seal']);
         $validated['is_active'] = $validated['is_active'] ?? false;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
@@ -62,7 +68,12 @@ class DoctorController extends Controller
         $canManageDoctorAccounts = request()->user()->hasRole('Super Admin');
 
         return Inertia::render('Admin/Doctors/Edit', [
-            'doctor' => $doctor,
+            'doctor' => [
+                ...$doctor->toArray(),
+                'photo_url' => $doctor->photo_path ? route('doctors.photo', $doctor) : null,
+                'signature_url' => $doctor->signature_path ? route('doctors.signature', $doctor) : null,
+                'seal_url' => $doctor->seal_path ? route('doctors.seal', $doctor) : null,
+            ],
             'canManageDoctorAccounts' => $canManageDoctorAccounts,
             'doctorAccounts' => $canManageDoctorAccounts ? $this->availableDoctorAccounts($doctor) : [],
         ]);
@@ -71,14 +82,42 @@ class DoctorController extends Controller
     public function update(UpdateDoctorRequest $request, Doctor $doctor): RedirectResponse
     {
         $validated = $request->validated();
-        $newPhotoPath = $request->hasFile('photo')
-            ? $request->file('photo')->store('doctors', 'public')
-            : null;
 
-        unset($validated['photo']);
-        if ($newPhotoPath !== null) {
+        // Photo handling
+        $newPhotoPath = null;
+        if ($request->boolean('remove_photo')) {
+            $validated['photo_path'] = null;
+        } elseif ($request->hasFile('photo')) {
+            $newPhotoPath = $request->file('photo')->store('doctors', 'public');
             $validated['photo_path'] = $newPhotoPath;
         }
+
+        // Signature handling
+        $newSignaturePath = null;
+        if ($request->boolean('remove_signature')) {
+            $validated['signature_path'] = null;
+        } elseif ($request->hasFile('signature')) {
+            $newSignaturePath = $request->file('signature')->store('doctors', 'public');
+            $validated['signature_path'] = $newSignaturePath;
+        }
+
+        // Seal handling
+        $newSealPath = null;
+        if ($request->boolean('remove_seal')) {
+            $validated['seal_path'] = null;
+        } elseif ($request->hasFile('seal')) {
+            $newSealPath = $request->file('seal')->store('doctors', 'public');
+            $validated['seal_path'] = $newSealPath;
+        }
+
+        unset(
+            $validated['photo'],
+            $validated['signature'],
+            $validated['seal'],
+            $validated['remove_photo'],
+            $validated['remove_signature'],
+            $validated['remove_seal'],
+        );
 
         $wasUpdated = DB::transaction(function () use ($doctor, $validated): bool {
             $lockedDoctor = Doctor::query()->lockForUpdate()->findOrFail($doctor->id);
@@ -98,14 +137,26 @@ class DoctorController extends Controller
             if ($newPhotoPath !== null) {
                 Storage::disk('public')->delete($newPhotoPath);
             }
+            if ($newSignaturePath !== null) {
+                Storage::disk('public')->delete($newSignaturePath);
+            }
+            if ($newSealPath !== null) {
+                Storage::disk('public')->delete($newSealPath);
+            }
 
             return back()->withErrors([
                 'user_id' => 'This Doctor has visit history. Changing the linked account requires a separately approved handover process.',
             ]);
         }
 
-        if ($newPhotoPath !== null && $doctor->photo_path !== null) {
+        if (($newPhotoPath !== null || $request->boolean('remove_photo')) && $doctor->photo_path !== null) {
             $this->deleteDoctorPhotoIfUnused($doctor->photo_path, $doctor->id);
+        }
+        if (($newSignaturePath !== null || $request->boolean('remove_signature')) && $doctor->signature_path !== null) {
+            $this->deleteDoctorPhotoIfUnused($doctor->signature_path, $doctor->id);
+        }
+        if (($newSealPath !== null || $request->boolean('remove_seal')) && $doctor->seal_path !== null) {
+            $this->deleteDoctorPhotoIfUnused($doctor->seal_path, $doctor->id);
         }
 
         return redirect()->route('admin.doctors.index')->with('success', 'Doctor updated successfully.');
@@ -160,7 +211,11 @@ class DoctorController extends Controller
     {
         if (! is_string($path)
             || preg_match('/\Adoctors\/[a-z0-9][a-z0-9._-]*\.(?:jpe?g|png|webp)\z/i', $path) !== 1
-            || Doctor::query()->where('photo_path', $path)->where('id', '!=', $doctorId)->exists()) {
+            || Doctor::query()->where(function ($query) use ($path) {
+                $query->where('photo_path', $path)
+                    ->orWhere('signature_path', $path)
+                    ->orWhere('seal_path', $path);
+            })->where('id', '!=', $doctorId)->exists()) {
             return;
         }
 

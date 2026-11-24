@@ -40,6 +40,11 @@ export default function Edit({ doctor, doctorAccounts = [], canManageDoctorAccou
         sort_order: doctor.sort_order ?? 0,
         user_id: doctor.user_id || '',
         photo: null,
+        signature: null,
+        seal: null,
+        remove_photo: false,
+        remove_signature: false,
+        remove_seal: false,
     });
 
     const submit = (event) => {
