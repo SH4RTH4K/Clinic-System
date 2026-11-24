@@ -23,11 +23,14 @@ php_binary=''
 for candidate in /opt/cpanel/ea-php83/root/usr/bin/php /usr/local/bin/ea-php83 /opt/alt/php83/usr/bin/php; do
     if [[ -x "$candidate" ]]; then php_binary="$candidate"; break; fi
 done
+if [[ -z "$php_binary" ]] && command -v php >/dev/null 2>&1; then
+    php_binary="$(command -v php)"
+fi
 if [[ -z "$php_binary" ]]; then
-    printf '%s\n' 'The host must provide a PHP 8.3 command-line binary for cPanel Git deployment.' >&2
+    printf '%s\n' 'The host must provide a PHP 8.3/8.4 command-line binary for cPanel Git deployment.' >&2
     exit 1
 fi
-"$php_binary" -r 'if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 3 || ! extension_loaded("pdo_mysql")) { fwrite(STDERR, "PHP 8.3 with PDO MySQL is required.\n"); exit(1); }'
+"$php_binary" -r 'if (PHP_MAJOR_VERSION !== 8 || (PHP_MINOR_VERSION !== 3 && PHP_MINOR_VERSION !== 4) || ! extension_loaded("pdo_mysql")) { fwrite(STDERR, "PHP 8.3/8.4 with PDO MySQL is required.\n"); exit(1); }'
 
 composer_binary=''
 for candidate in /opt/cpanel/composer/bin/composer /usr/local/bin/composer /usr/bin/composer; do
@@ -48,6 +51,90 @@ if [[ -z "$composer_binary" ]]; then
     fi
     composer_binary="$tooling_directory/composer.phar"
     mv "$composer_download" "$composer_binary"
+fi
+
+account_root="${CLINIC_ACCOUNT_ROOT:-${HOME:?}}"
+private_path="$account_root/private"
+
+# If pre-compiled frontend assets exist in the repository, stage directly without requiring Node.js, npm, or full composer rebuild
+if [[ -f "$repository_root/public/build/manifest.json" ]]; then
+    stage_directory="$(mktemp -d "$release_base/.build-XXXXXXXX")"
+    trap 'rm -rf -- "$stage_directory"' EXIT
+    staged_release="$stage_directory/$release_name"
+    mkdir -p "$staged_release/private" "$staged_release/public"
+
+    for entry in app config database lang resources routes; do
+        if [[ -d "$repository_root/$entry" ]]; then
+            cp -a "$repository_root/$entry" "$staged_release/private/"
+        fi
+    done
+
+    if [[ -d "$repository_root/bootstrap" ]]; then
+        cp -a "$repository_root/bootstrap" "$staged_release/private/"
+        rm -f "$staged_release/private/bootstrap/cache/"*.php 2>/dev/null || true
+    fi
+
+    for file in artisan composer.json composer.lock; do
+        if [[ -f "$repository_root/$file" ]]; then
+            cp -a "$repository_root/$file" "$staged_release/private/"
+        fi
+    done
+
+    # Vendor handling: search known live and repo vendor locations
+    vendor_source=''
+    for candidate in \
+        "$repository_root/vendor" \
+        "$private_path/vendor" \
+        "$account_root/private/vendor" \
+        "$(dirname "$repository_root")/../../vendor" \
+        "$(dirname "$repository_root")/../../../vendor"; do
+        if [[ -d "$candidate" && -f "$candidate/autoload.php" ]]; then
+            vendor_source="$candidate"
+            break
+        fi
+    done
+    if [[ -n "$vendor_source" ]]; then
+        cp -a "$vendor_source" "$staged_release/private/"
+    fi
+
+    if [[ -d "$repository_root/public/build" ]]; then
+        cp -a "$repository_root/public/build" "$staged_release/public/"
+    fi
+
+    if [[ -d "$repository_root/public/fonts" ]]; then
+        cp -a "$repository_root/public/fonts" "$staged_release/public/"
+    fi
+
+    for pub_file in .htaccess favicon.ico robots.txt; do
+        if [[ -f "$repository_root/public/$pub_file" ]]; then
+            cp -a "$repository_root/public/$pub_file" "$staged_release/public/"
+        fi
+    done
+
+    if [[ -f "$repository_root/deploy/cpanel/index.php" ]]; then
+        cp -a "$repository_root/deploy/cpanel/index.php" "$staged_release/public/index.php"
+    elif [[ -f "$repository_root/public/index.php" ]]; then
+        cp -a "$repository_root/public/index.php" "$staged_release/public/"
+    fi
+
+    mkdir -p "$staged_release/private/storage/fonts"
+    if [[ -f "$repository_root/storage/fonts/NotoSansBengali-Regular.ttf" ]]; then
+        cp -a "$repository_root/storage/fonts/NotoSansBengali-Regular.ttf" "$staged_release/private/storage/fonts/"
+    elif [[ -f "$staged_release/public/fonts/NotoSansBengali-Regular.ttf" ]]; then
+        cp -a "$staged_release/public/fonts/NotoSansBengali-Regular.ttf" "$staged_release/private/storage/fonts/"
+    fi
+
+    test -f "$staged_release/private/vendor/autoload.php"
+    test -f "$staged_release/public/build/manifest.json"
+    test ! -e "$staged_release/private/.env"
+
+    chmod 755 "$staged_release"
+    find "$staged_release/public" -type d -exec chmod 755 {} + 2>/dev/null || true
+    find "$staged_release/public" -type f -exec chmod 644 {} + 2>/dev/null || true
+    printf '%s\n' "$release_commit" > "$staged_release/VERIFIED_COMMIT"
+    mv "$staged_release" "$release_path"
+    printf 'Verified release staged: %s\n' "$release_name"
+    exit 0
 fi
 
 node_binary=''

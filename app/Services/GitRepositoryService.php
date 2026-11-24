@@ -1139,7 +1139,7 @@ class GitRepositoryService
 
         foreach ($changes as $change) {
             $parts = explode("\t", $change, 2);
-            if (count($parts) !== 2 || $parts[0] !== 'A' || ! str_ends_with($parts[1], '.php')) {
+            if (count($parts) !== 2 || ! in_array($parts[0], ['A', 'M'], true) || ! str_ends_with($parts[1], '.php')) {
                 return false;
             }
         }

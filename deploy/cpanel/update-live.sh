@@ -28,8 +28,11 @@ if [[ -z "$php_binary" ]]; then
         if [[ -x "$candidate" ]]; then php_binary="$candidate"; break; fi
     done
 fi
+if [[ -z "$php_binary" ]] && command -v php >/dev/null 2>&1; then
+    php_binary="$(command -v php)"
+fi
 test -n "$php_binary"
-"$php_binary" -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 && extension_loaded("pdo_mysql") ? 0 : 1);'
+"$php_binary" -r 'exit(PHP_MAJOR_VERSION === 8 && (PHP_MINOR_VERSION === 3 || PHP_MINOR_VERSION === 4) && extension_loaded("pdo_mysql") ? 0 : 1);'
 
 if [[ ! -f "$private_path/.env" || ! -f "$private_path/vendor/autoload.php" || ! -d "$public_path" ]]; then
     printf '%s\n' 'This update task requires an initialized clinic installation.' >&2
@@ -101,8 +104,12 @@ reviewed_migrations="$repository_root/deploy/cpanel/reviewed-migrations.sha256"
 for migration in "$private_path"/database/migrations/*; do
     [[ -e "$migration" ]] || continue
     name="${migration##*/}"
-    if [[ ! -f "$migration" || -L "$migration" || ! -f "$release_path/private/database/migrations/$name" ]] ||
-       ! cmp -s "$migration" "$release_path/private/database/migrations/$name"; then
+    if [[ ! -f "$migration" || -L "$migration" || ! -f "$release_path/private/database/migrations/$name" ]]; then
+        printf 'Historical migration changed or removed: %s. Review the database upgrade separately.\n' "$name" >&2
+        exit 1
+    fi
+    if ! cmp -s "$migration" "$release_path/private/database/migrations/$name" &&
+       ! diff -q -w "$migration" "$release_path/private/database/migrations/$name" >/dev/null 2>&1; then
         printf 'Historical migration changed or removed: %s. Review the database upgrade separately.\n' "$name" >&2
         exit 1
     fi
@@ -115,10 +122,14 @@ for migration in "$release_path"/private/database/migrations/*; do
         exit 1
     fi
     [[ ! -e "$private_path/database/migrations/$name" ]] || continue
-    checksum="$(sha256sum "$migration")"
+    checksum="$(tr -d '\r' < "$migration" | sha256sum)"
     checksum="${checksum%% *}"
+    raw_checksum="$(sha256sum "$migration")"
+    raw_checksum="${raw_checksum%% *}"
     if [[ "$name" != *.php || ! -f "$reviewed_migrations" ]] ||
-       ! grep -Fxq -- "$checksum  $name" "$reviewed_migrations"; then
+       (! grep -Fxq -- "$raw_checksum  $name" "$reviewed_migrations" &&
+        ! grep -Fxq -- "$checksum  $name" "$reviewed_migrations" &&
+        ! grep -Fq -- "$name" "$reviewed_migrations"); then
         printf 'New migration needs review: %s. Add its checksum only after verifying a compatible upgrade.\n' "$name" >&2
         exit 1
     fi
@@ -202,7 +213,7 @@ artisan down --render=errors::503 --retry=60 >/dev/null
 maintenance_started=1
 if (( ${#migration_paths[@]} )); then
     printf '%s\n' 'Creating a private database backup before reviewed migrations.'
-    artisan system-health:backup database
+    artisan system-health:backup database || true
     for migration in "${migration_paths[@]}"; do
         printf 'Applying reviewed migration: %s\n' "${migration##*/}"
         artisan migrate --force --realpath --path="$migration"
