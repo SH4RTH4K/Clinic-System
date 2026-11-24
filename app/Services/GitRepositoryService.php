@@ -137,7 +137,9 @@ class GitRepositoryService
             $snapshot['pull_available'] = $snapshot['deploy_available'];
 
             if ($incomingCount > 0 && ! $snapshot['deploy_available']) {
-                $snapshot['message'] = 'This update is blocked by a safety check. Review protected paths, migration settings, and frontend build requirements before deploying.';
+                $snapshot['message'] = $this->incomingChangesContainMigrations($deployedCommit)
+                    ? 'This update includes database migrations. Enable "Run migrations after deployment" in settings or confirm migrations during deployment to proceed.'
+                    : 'This update is blocked by a safety check. Review protected paths, migration settings, and frontend build requirements before deploying.';
             }
         } catch (RuntimeException $exception) {
             $snapshot['status'] = 'Unavailable';
@@ -440,7 +442,7 @@ class GitRepositoryService
     }
 
     /** @return array<string, mixed> */
-    public function pull(): array
+    public function pull(?bool $allowMigrations = null): array
     {
         $this->assertOperationsAllowed();
         $this->assertRepositoryReady();
@@ -468,22 +470,28 @@ class GitRepositoryService
                 $commitsApplied = (int) $snapshot['incoming_commits'];
                 $incomingMigrations = $this->incomingChangesContainMigrations($previousCommit);
 
-                if ($snapshot['status'] !== 'Update available' || ! $snapshot['deploy_available']) {
+                $deployEligible = $allowMigrations === true
+                    ? ($snapshot['status'] === 'Update available' && $this->incomingChangesAreSafe($previousCommit, true))
+                    : ($snapshot['status'] === 'Update available' && $snapshot['deploy_available']);
+
+                if (! $deployEligible) {
                     throw new RuntimeException((string) $snapshot['message']);
                 }
 
                 $this->runGit(['merge', '--ff-only', $this->remoteTrackingBranch()]);
                 $checks = ['Clean tracked checkout', 'Untracked files preserved', 'Approved GitHub URL', 'Fast-forward only'];
 
+                $runMigrations = $allowMigrations ?? (bool) $this->settings()['run_migrations'];
+
                 if ($this->isCpanelSplitDeployment()) {
-                    $this->runSplitDeployment((string) $targetCommit);
+                    $this->runSplitDeployment((string) $targetCommit, $runMigrations);
                     $checks[] = 'Verified application release installed';
                     $checks[] = 'Application caches rebuilt';
 
-                    if ($incomingMigrations) {
+                    if ($incomingMigrations || $runMigrations) {
                         $checks[] = 'Reviewed forward migrations completed';
                     }
-                } elseif ($incomingMigrations && $this->settings()['run_migrations']) {
+                } elseif ($incomingMigrations && $runMigrations) {
                     $this->runArtisan(['migrate', '--force']);
                     $checks[] = 'Forward migrations completed';
                 }
@@ -496,6 +504,12 @@ class GitRepositoryService
                 if ($this->settings()['health_check']) {
                     $this->healthCheck();
                     $checks[] = 'Database health check passed';
+                }
+
+                if ($allowMigrations !== null && $allowMigrations !== (bool) $this->settings()['run_migrations']) {
+                    $currentSettings = $this->settings();
+                    $currentSettings['run_migrations'] = $allowMigrations;
+                    $this->writeSettings($currentSettings);
                 }
 
                 $this->recordHistory([
@@ -988,7 +1002,7 @@ class GitRepositoryService
         return array_values(array_filter(preg_split('/\R/', trim($output)) ?: []));
     }
 
-    private function incomingChangesAreSafe(string $fromCommit): bool
+    private function incomingChangesAreSafe(string $fromCommit, ?bool $allowMigrations = null): bool
     {
         if ($this->isSplitDeployment() && ! $this->settings()['clear_cache']) {
             return false;
@@ -1026,9 +1040,11 @@ class GitRepositoryService
             }
         }
 
+        $canMigrate = $allowMigrations ?? (bool) $this->settings()['run_migrations'];
+
         return $this->incomingFrontendBuildIsValid($fromCommit)
             && (! $this->incomingChangesContainMigrations($fromCommit)
-                || ($this->settings()['run_migrations'] && $this->incomingMigrationsAreForwardOnly($fromCommit)));
+                || ($canMigrate && $this->incomingMigrationsAreForwardOnly($fromCommit)));
     }
 
     private function incomingFrontendBuildIsValid(string $fromCommit): bool
@@ -1147,7 +1163,7 @@ class GitRepositoryService
         return true;
     }
 
-    private function runSplitDeployment(string $targetCommit): void
+    private function runSplitDeployment(string $targetCommit, ?bool $allowMigrations = null): void
     {
         $repositoryRoot = $this->repositoryRoot();
         $script = $repositoryRoot.DIRECTORY_SEPARATOR.'deploy/cpanel/update-live.sh';
@@ -1157,12 +1173,14 @@ class GitRepositoryService
             throw new RuntimeException('The reviewed application deployment task is unavailable. No live files were changed by this page.');
         }
 
+        $canMigrate = $allowMigrations ?? (bool) $this->settings()['run_migrations'];
+
         try {
             $process = new Process(['/bin/bash', $script], $repositoryRoot, [
                 'HOME' => $accountRoot,
                 'CLINIC_ACCOUNT_ROOT' => $accountRoot,
                 'CLINIC_DEPLOY_EXPECTED_COMMIT' => $targetCommit,
-                'CLINIC_DEPLOY_ALLOW_MIGRATIONS' => $this->settings()['run_migrations'] ? '1' : '0',
+                'CLINIC_DEPLOY_ALLOW_MIGRATIONS' => $canMigrate ? '1' : '0',
             ], null, 1800);
             $process->run();
         } catch (\Throwable) {

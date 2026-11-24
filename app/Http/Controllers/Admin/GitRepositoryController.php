@@ -96,13 +96,20 @@ class GitRepositoryController extends Controller
     public function pull(Request $request, GitRepositoryService $repository): RedirectResponse
     {
         try {
-            $status = $repository->pull();
+            $allowMigrations = $request->has('run_migrations')
+                ? $request->boolean('run_migrations')
+                : null;
+
+            $status = $repository->pull($allowMigrations);
 
             try {
                 activity('system_repository')
                     ->causedBy($request->user())
                     ->event('deployment.completed')
-                    ->withProperties(['commit' => $status['local_commit'] ?? null])
+                    ->withProperties([
+                        'commit' => $status['local_commit'] ?? null,
+                        'migrations_allowed' => $allowMigrations,
+                    ])
                     ->log('Applied fast-forward deployment update');
             } catch (Throwable) {
                 // Ignore activity log failure

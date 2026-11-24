@@ -181,6 +181,7 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **In-App Private Backups**: Create, list, download, and delete database SQL dumps, media files, or full system backups directly inside private storage.
 - `[x] Done` **cPanel Deployment Package**: One-click generation and download of complete cPanel deployment zip bundles.
 - `[x] Done` **In-App Git Repository Manager**: Super Admin can check for updates from remote GitHub repository, inspect commits, pull updates, run database migrations, and clear application caches directly from the UI without SSH.
+- `[x] Done` **Cryptographic Migration Manifest Verification**: All database migrations strictly verified via SHA-256 manifest (`deploy/cpanel/reviewed-migrations.sha256`) during cPanel split deployments, preventing unverified or broken database mutations.
 - `[x] Done` **Rate-Limiting & Security Controls**: All sensitive system health operations protected by strict rate-limiters (`throttle`) and Super Admin role enforcement.
 
 ---

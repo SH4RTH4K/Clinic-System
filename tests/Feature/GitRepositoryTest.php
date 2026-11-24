@@ -96,6 +96,18 @@ class GitRepositoryTest extends TestCase
             ->assertSessionHas('error', 'Git settings and actions are disabled in the automated testing environment.');
     }
 
+    public function test_pull_is_rejected_in_automated_tests_with_or_without_migration_flag(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole(Role::findOrCreate('Super Admin', 'web'));
+
+        $this->actingAs($user)
+            ->from(route('admin.git_repository.index'))
+            ->post(route('admin.git_repository.pull'), ['run_migrations' => true])
+            ->assertRedirect(route('admin.git_repository.index'))
+            ->assertSessionHas('error', 'Git settings and actions are disabled in the automated testing environment.');
+    }
+
     public function test_git_connection_failure_shows_safe_actionable_diagnostic_without_raw_process_output(): void
     {
         $service = app(GitRepositoryService::class);

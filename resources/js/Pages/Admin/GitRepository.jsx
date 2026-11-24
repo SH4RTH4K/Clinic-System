@@ -65,6 +65,7 @@ export default function GitRepository({ repository, settings, history = [], data
     const [expandedHistory, setExpandedHistory] = useState(null);
     const [migrationSearch, setMigrationSearch] = useState('');
     const [migrationFilter, setMigrationFilter] = useState('all'); // all | pending | ran
+    const [deployWithMigrations, setDeployWithMigrations] = useState(true);
 
     const { props } = usePage();
     const { success, error } = props.flash ?? {};
@@ -167,12 +168,13 @@ export default function GitRepository({ repository, settings, history = [], data
     };
 
     const deployReviewedUpdate = () => {
-        const migrationNotice = form.data.run_migrations
-            ? ' Forward database migrations are enabled and will run automatically if included in the release.'
-            : ' Database migrations are currently turned off in settings.';
+        const willMigrate = form.data.run_migrations || deployWithMigrations;
+        const migrationNotice = willMigrate
+            ? '\n\n✅ Database migrations are ENABLED and will run automatically if included in the release.'
+            : '\n\n⚠️ Database migrations are turned off in settings.';
 
         if (window.confirm(`Apply the reviewed fast-forward update to the deployed application?${migrationNotice}`)) {
-            run('pull');
+            run('pull', { run_migrations: willMigrate });
         }
     };
 
@@ -567,14 +569,32 @@ export default function GitRepository({ repository, settings, history = [], data
                                     )}
                                 </article>
 
-                                <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">03</span>
-                                    <h3 className="mt-3 text-sm font-semibold text-slate-900">Deploy reviewed update</h3>
-                                    <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">
-                                        Apply the reviewed update through the verified deployment path and record the result.
-                                    </p>
+                                <article className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <div>
+                                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">03</span>
+                                        <h3 className="mt-3 text-sm font-semibold text-slate-900">Deploy reviewed update</h3>
+                                        <p className="mt-1 min-h-10 text-xs leading-5 text-slate-600">
+                                            Apply the reviewed update through the verified deployment path and record the result.
+                                        </p>
+
+                                        {!form.data.run_migrations && (
+                                            <div className="mb-3 mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                                                <label className="flex cursor-pointer items-start gap-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={deployWithMigrations}
+                                                        onChange={(e) => setDeployWithMigrations(e.target.checked)}
+                                                        className="mt-0.5 rounded border-amber-300 text-orange-600 focus:ring-orange-500"
+                                                    />
+                                                    <span className="leading-snug">
+                                                        <strong className="font-semibold">Run database migrations</strong> with this update (recommended if release includes schema changes)
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        )}
+                                    </div>
                                     <ActionButton tone="cyan" disabled={busy || !repository.pull_available} onClick={deployReviewedUpdate}>
-                                        Deploy reviewed update
+                                        {busy ? 'Deploying...' : 'Deploy reviewed update'}
                                     </ActionButton>
                                 </article>
                             </div>

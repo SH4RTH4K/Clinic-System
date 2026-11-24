@@ -248,3 +248,15 @@
 - [x] **Task 17.3**: Automated Feature Verification & Testing
   - Added `test_user_can_store_and_update_patient_with_mobile_camera_photo_upload()` in `PatientAttachmentsAndOpdCardTest.php` testing high-resolution mobile camera snaps (`image/jpeg`), storage persistence, URL generation, and automatic old photo cleanup upon update.
 - [x] **Verification**: All 11 tests in `PatientAttachmentsAndOpdCardTest` and related test suites passing (130 assertions). Pint formatted and Vite build completed.
+
+### Phase 18: In-App Git Deployment Cryptographic Checksum Audit & Migration Workflow Hardening (`[x] COMPLETED`)
+- [x] **Task 18.1**: Cryptographic Migration Audit Manifest Registration
+  - Audited all 92 migrations in `database/migrations/` and registered the SHA-256 signatures for `2026_11_25_001500_add_medical_history_to_patients_table.php` and `2026_11_25_004500_add_migration_fields_to_patients_table.php` in `deploy/cpanel/reviewed-migrations.sha256`.
+  - Resolved `New migration needs review` cPanel deployment stop.
+- [x] **Task 18.2**: Explicit Migration Allowance on Deployment Pull
+  - Updated `GitRepositoryController::pull` and `GitRepositoryService::pull` to accept optional `run_migrations` parameter and pass `CLINIC_DEPLOY_ALLOW_MIGRATIONS=1` during split deployments when approved by the operator.
+  - Enhanced `incomingChangesAreSafe` to report clear actionable notices when pending migrations require operator review.
+- [x] **Task 18.3**: Deployment Step 03 UI & Confirmation Prompts
+  - Added inline `[x] Run database migrations with this update` toggle in Step 03 of `GitRepository.jsx` when migrations are disabled in settings.
+  - Enhanced deployment confirmation alert dialog to specify migration status.
+- [x] **Verification**: Added `test_pull_is_rejected_in_automated_tests_with_or_without_migration_flag` in `GitRepositoryTest.php`. All 30 tests in `GitRepositoryTest` and `DatabaseMigrationManagementTest` passing (199 assertions). Pint formatted and Vite build completed.
