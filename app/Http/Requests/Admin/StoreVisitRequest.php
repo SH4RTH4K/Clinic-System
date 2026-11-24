@@ -30,6 +30,9 @@ class StoreVisitRequest extends FormRequest
 
         return [
             'patient_id' => 'required|exists:patients,id',
+            'token_id' => 'nullable|integer|exists:patient_queue_tokens,id',
+            'redirect_to' => 'nullable|string|in:index,show',
+            'sync_diagnosis_to_medical_history' => 'nullable|boolean',
             'doctor_id' => ['prohibited'],
             'visit_date' => 'required|date|before_or_equal:today',
             'age_at_visit' => 'nullable|integer|min:0|max:150',

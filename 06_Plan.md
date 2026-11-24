@@ -211,3 +211,15 @@
   - Documented cPanel private storage architecture: clarified ~141 MB / ~26,000 files in private storage as in-app Git deployment checkout repository (`storage/app/private/git-repository/source`).
   - Added cPanel guidance in `SystemHealth.jsx` for setting `SYSTEM_HEALTH_BACKUP_PATH` outside `public_html` to prevent `Check permissions` warnings.
 - [x] **Verification**: All 20 tests in `PatientFormConfigurationTest` and all 128 tests across Patient and System Health suites passing (1,181 assertions). Pint formatted and Vite build completed.
+
+### Phase 15: Visit Consultation Workflow Hardening & Medical Field Ordering (`[x] COMPLETED`)
+- [x] **Task 15.1**: Consultation Patient Disambiguation & Queue Integration
+  - Integrated today's waiting queue tokens quick-picker ribbon (`todayWaitingQueueTokens`) in `Admin/Visits/Create.jsx` for 1-click patient loading.
+  - Enhanced patient search combobox with avatar/photo, Old/Other ID badge, age, gender, and guardian details for safe disambiguation while preserving search privacy boundaries.
+- [x] **Task 15.2**: Inline Clinical Medical History Quick-Update & Diagnosis Sync
+  - Added modal `<QuickMedicalHistoryModal>` and backend endpoint `POST /admin/patients/{patient}/quick-medical-update` (`patients.quick_medical_update`) to allow doctors to update permanent medical history, allergies, and blood group inline during consultation without page reload.
+  - Added `sync_diagnosis_to_medical_history` checkbox on consultation finalization to automatically append final diagnosis to patient permanent medical history.
+  - Added `redirect_to: 'show'` support on `admin.visits.finalize` to navigate directly to the finalized visit digital prescription view (`admin.visits.show`).
+- [x] **Task 15.3**: Medical Background Field Grid Ordering Fix
+  - Unified `blood_group`, `known_allergies`, and `medical_history` into a shared CSS grid container in `Patients/Create.jsx` and `Patients/Edit.jsx` so that individual field ordering (`style={{ order: field(...).order }}`) strictly takes effect when `medical_history` is moved ahead of blood group or allergies.
+- [x] **Verification**: All 5 feature tests in `VisitConsultationWorkflowTest` and all 64 related visit integrity, authorization, case taking, and configuration tests passing (431 assertions). Pint formatted and Vite build completed.

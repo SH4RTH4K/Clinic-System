@@ -523,23 +523,23 @@ export default function Create({ defaults = {}, appointmentRequestId = null, fie
                                         required={field('known_allergies').required}
                                     />
                                 </FormField>}
-                            </div>
 
-                            {field('medical_history').visible && (
-                                <div className="mt-4">
-                                    <FormField style={{ order: field('medical_history').order }} label={field('medical_history').label} id="medical_history" required={field('medical_history').required} error={errors.medical_history}>
-                                        <textarea
-                                            id="medical_history"
-                                            rows={3}
-                                            value={data.medical_history}
-                                            onChange={(e) => setData('medical_history', e.target.value)}
-                                            className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
-                                            placeholder="Past chronic diseases, major surgeries, hospitalizations, family illness history (উদা: উচ্চ রক্তচাপ, ডায়াবেটিস, হাঁপানি, শৈশবের রোগ)..."
-                                            required={field('medical_history').required}
-                                        />
-                                    </FormField>
-                                </div>
-                            )}
+                                {field('medical_history').visible && (
+                                    <div className="col-span-1 md:col-span-2" style={{ order: field('medical_history').order }}>
+                                        <FormField label={field('medical_history').label} id="medical_history" required={field('medical_history').required} error={errors.medical_history}>
+                                            <textarea
+                                                id="medical_history"
+                                                rows={3}
+                                                value={data.medical_history}
+                                                onChange={(e) => setData('medical_history', e.target.value)}
+                                                className="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500"
+                                                placeholder="Past chronic diseases, major surgeries, hospitalizations, family illness history (উদা: উচ্চ রক্তচাপ, ডায়াবেটিস, হাঁপানি, শৈশবের রোগ)..."
+                                                required={field('medical_history').required}
+                                            />
+                                        </FormField>
+                                    </div>
+                                )}
+                            </div>
                         </div>}
 
                         {/* Contact & Residential Address */}

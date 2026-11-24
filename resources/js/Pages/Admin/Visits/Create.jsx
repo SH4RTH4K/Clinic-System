@@ -29,6 +29,7 @@ export default function Create({
     patient = null,
     initialPastVisits = [],
     initialLastPrescription = null,
+    todayWaitingQueueTokens = [],
     responsibleDoctor = null,
     symptoms = [],
     medicines = [],
@@ -104,6 +105,8 @@ export default function Create({
         },
         follow_up_date: '',
         status: 'draft',
+        redirect_to: 'show',
+        sync_diagnosis_to_medical_history: false,
         symptoms: [],
         lab_investigations: [],
         prescription_items: [],
@@ -113,12 +116,25 @@ export default function Create({
 
     const [hasDraftNotice, setHasDraftNotice] = useState(Boolean(hasSavedDraft && !patient));
     const [draftDecisionMade, setDraftDecisionMade] = useState(!hasSavedDraft || Boolean(patient));
+    const [autosaveStatus, setAutosaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+    const [lastSavedTime, setLastSavedTime] = useState(null);
     const [selectedPatient, setSelectedPatient] = useState(patient || null);
     const [pastVisits, setPastVisits] = useState(initialPastVisits || []);
     const [lastPrescription, setLastPrescription] = useState(initialLastPrescription || null);
     const [patientAttachments, setPatientAttachments] = useState([]);
     const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(false);
+
+    // ── Inline Medical History Quick Modal State ───────────────────────────────
+    const [isMedicalModalOpen, setIsMedicalModalOpen] = useState(false);
+    const [medicalForm, setMedicalForm] = useState({
+        medical_history: '',
+        known_allergies: '',
+        blood_group: '',
+    });
+    const [savingMedical, setSavingMedical] = useState(false);
+    const [medicalUpdateError, setMedicalUpdateError] = useState('');
+    const [medicalUpdateSuccess, setMedicalUpdateSuccess] = useState('');
 
     // ── Patient async combobox ────────────────────────────────────────────────
     const initialPatientLabel = patient
@@ -234,11 +250,16 @@ export default function Create({
             return undefined;
         }
 
+        setAutosaveStatus('saving');
         const timer = setTimeout(() => {
             axios.put(route('admin.visits.draft.update'), {
                 owner_token: draftOwnerToken,
                 payload: data,
+            }).then(() => {
+                setAutosaveStatus('saved');
+                setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             }).catch((error) => {
+                setAutosaveStatus('error');
                 if ([401, 403].includes(error.response?.status)) {
                     window.location.replace(route('login'));
                 }
@@ -247,6 +268,44 @@ export default function Create({
 
         return () => clearTimeout(timer);
     }, [data, draftDecisionMade, draftOwnerToken]);
+
+    const openMedicalModal = () => {
+        if (!selectedPatient) return;
+        setMedicalForm({
+            medical_history: selectedPatient.medical_history || '',
+            known_allergies: selectedPatient.known_allergies || '',
+            blood_group: selectedPatient.blood_group || '',
+        });
+        setMedicalUpdateError('');
+        setMedicalUpdateSuccess('');
+        setIsMedicalModalOpen(true);
+    };
+
+    const handleSaveMedicalHistory = async (e) => {
+        e.preventDefault();
+        if (!selectedPatient) return;
+        setSavingMedical(true);
+        setMedicalUpdateError('');
+        try {
+            const res = await axios.post(route('admin.patients.quick_medical_update', selectedPatient.id), medicalForm);
+            const updated = res.data.patient;
+            setSelectedPatient((prev) => ({
+                ...prev,
+                medical_history: updated.medical_history,
+                known_allergies: updated.known_allergies,
+                blood_group: updated.blood_group,
+            }));
+            setMedicalUpdateSuccess('Patient permanent medical record updated successfully.');
+            setTimeout(() => {
+                setIsMedicalModalOpen(false);
+                setMedicalUpdateSuccess('');
+            }, 800);
+        } catch (err) {
+            setMedicalUpdateError(err.response?.data?.message || 'Failed to update patient medical record.');
+        } finally {
+            setSavingMedical(false);
+        }
+    };
 
     const handlePatientSearch = (value) => {
         setPatientQuery(value);
@@ -664,7 +723,11 @@ export default function Create({
         if (e) e.preventDefault();
         const isFinalizing = statusToSet === 'finalized';
         transform((formValues) => {
-            const payload = { ...formValues, status: 'draft' };
+            const payload = {
+                ...formValues,
+                status: 'draft',
+                redirect_to: 'show',
+            };
 
             delete payload.doctor_id;
 
@@ -729,14 +792,31 @@ export default function Create({
                 {/* Header */}
                 <PageHeader
                     title="New Visit / Consultation (নতুন চিকিৎসা পরামর্শ)"
-                    subtitle="Record patient clinical history, examination, repertory symptoms, and prescribe homeopathic remedies"
+                    subtitle="Record patient clinical history, examination, repertory symptoms, and prescribe remedies"
                     actions={
-                        <Link
-                            href={route('admin.visits.index')}
-                            className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-md shadow-xs transition inline-flex items-center gap-1.5"
-                        >
-                            &larr; Back to Visits
-                        </Link>
+                        <div className="flex items-center gap-3">
+                            {autosaveStatus === 'saving' && (
+                                <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg animate-pulse">
+                                    <span>⏳</span> Saving draft...
+                                </span>
+                            )}
+                            {autosaveStatus === 'saved' && (
+                                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-800 font-medium bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg shadow-2xs">
+                                    <span>✓</span> Auto-saved {lastSavedTime ? `at ${lastSavedTime}` : ''}
+                                </span>
+                            )}
+                            {autosaveStatus === 'error' && (
+                                <span className="inline-flex items-center gap-1.5 text-xs text-red-700 font-medium bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">
+                                    <span>⚠️</span> Draft unsaved
+                                </span>
+                            )}
+                            <Link
+                                href={route('admin.visits.index')}
+                                className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-md shadow-xs transition inline-flex items-center gap-1.5"
+                            >
+                                &larr; Back to Visits
+                            </Link>
+                        </div>
                     }
                 />
 
@@ -882,80 +962,143 @@ export default function Create({
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="relative" ref={patientSearchContainer}>
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    value={patientQuery}
-                                                    onChange={(e) => handlePatientSearch(e.target.value)}
-                                                    onFocus={() => {
-                                                        if (patientQuery.trim().length >= 2 && patientSearchStatus !== 'idle') {
-                                                            setShowDropdown(true);
-                                                        }
-                                                    }}
-                                                    onBlur={() => setTimeout(() => {
-                                                        if (!patientSearchContainer.current?.contains(document.activeElement)) {
-                                                            setShowDropdown(false);
-                                                        }
-                                                    }, 250)}
-                                                    onKeyDown={(event) => {
-                                                        if (event.key === 'Escape') {
-                                                            setShowDropdown(false);
-                                                        } else if (event.key === 'Enter') {
-                                                            event.preventDefault();
-                                                        }
-                                                    }}
-                                                    role="combobox"
-                                                    aria-label="Search patient by name, phone, or ID"
-                                                    aria-autocomplete="list"
-                                                    aria-expanded={showDropdown}
-                                                    aria-controls={showDropdown && patientResults.length > 0 ? 'visit-patient-search-results' : undefined}
-                                                    aria-haspopup="listbox"
-                                                    inputMode="search"
-                                                    className="w-full rounded-lg border-gray-300 shadow-xs text-sm pl-10 pr-4 py-2.5 focus:border-primary-500 focus:ring-primary-500"
-                                                    placeholder="Search patient by Name, Guardian, Phone, or ID (e.g. Fazlul, 017..., 101A)..."
-                                                    required
-                                                />
-                                                <div className="absolute left-3 top-3 text-gray-400 pointer-events-none">
-                                                    🔍
-                                                </div>
-                                            </div>
-
-                                            {showDropdown && patientResults.length > 0 && (
-                                                <ul id="visit-patient-search-results" role="listbox" className="absolute z-50 bg-white border border-gray-200 rounded-xl shadow-xl w-full mt-1.5 max-h-56 overflow-y-auto divide-y divide-gray-100">
-                                                    {patientResults.map((p) => (
-                                                        <li key={p.id}>
+                                        <div>
+                                            {/* Today's Queue Quick-Picker Ribbon */}
+                                            {todayWaitingQueueTokens && todayWaitingQueueTokens.length > 0 && (
+                                                <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 mb-3 space-y-2 shadow-2xs">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                                                            <span>🎟️</span> Waiting in Queue Today ({todayWaitingQueueTokens.length})
+                                                        </span>
+                                                        <span className="text-[11px] text-amber-800 font-medium">Click a patient to load consultation</span>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {todayWaitingQueueTokens.map((token) => (
                                                             <button
+                                                                key={token.id}
                                                                 type="button"
-                                                                role="option"
-                                                                aria-selected="false"
-                                                                onMouseDown={(event) => event.preventDefault()}
-                                                                onClick={() => selectPatient(p)}
-                                                                className="w-full min-h-11 px-4 py-3 cursor-pointer hover:bg-primary-50 focus:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 transition flex items-center justify-between text-left touch-manipulation"
+                                                                onClick={() => {
+                                                                    if (token.patient) {
+                                                                        selectPatient(token.patient);
+                                                                        setData((prev) => ({ ...prev, token_id: token.id }));
+                                                                    }
+                                                                }}
+                                                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs transition cursor-pointer ${
+                                                                    token.priority === 'urgent'
+                                                                        ? 'bg-red-50 border-red-300 text-red-900 hover:bg-red-100'
+                                                                        : 'bg-white border-amber-300 text-amber-950 hover:bg-amber-100'
+                                                                }`}
                                                             >
-                                                                <div>
-                                                                    <div>
-                                                                        <span className="font-bold text-primary-900 text-sm">
-                                                                            {p.name}
-                                                                        </span>
-                                                                        <span className="text-gray-500 text-xs ml-2">
-                                                                            ({p.gender}, {p.age_years ?? '?'} yrs)
-                                                                        </span>
-                                                                    </div>
-                                                                    {p.guardian_name ? (
-                                                                        <div className="text-xs text-gray-500 mt-0.5">
-                                                                            C/O: {p.guardian_name}
-                                                                        </div>
-                                                                    ) : null}
-                                                                </div>
-                                                                <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                                                                    {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
+                                                                <span className="font-mono font-bold bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded text-[10px]">
+                                                                    #{token.token_number}
                                                                 </span>
+                                                                <span>{token.patient?.name || 'Walk-in Patient'}</span>
+                                                                {token.patient?.age_years && (
+                                                                    <span className="text-gray-500 text-[11px]">({token.patient.age_years}y)</span>
+                                                                )}
+                                                                {token.priority === 'urgent' && (
+                                                                    <span className="text-[10px] font-bold text-red-600 uppercase">Urgent</span>
+                                                                )}
                                                             </button>
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
+
+                                            <div className="relative" ref={patientSearchContainer}>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={patientQuery}
+                                                        onChange={(e) => handlePatientSearch(e.target.value)}
+                                                        onFocus={() => {
+                                                            if (patientQuery.trim().length >= 2 && patientSearchStatus !== 'idle') {
+                                                                setShowDropdown(true);
+                                                            }
+                                                        }}
+                                                        onBlur={() => setTimeout(() => {
+                                                            if (!patientSearchContainer.current?.contains(document.activeElement)) {
+                                                                setShowDropdown(false);
+                                                            }
+                                                        }, 250)}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === 'Escape') {
+                                                                setShowDropdown(false);
+                                                            } else if (event.key === 'Enter') {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
+                                                        role="combobox"
+                                                        aria-label="Search patient by name, phone, or ID"
+                                                        aria-autocomplete="list"
+                                                        aria-expanded={showDropdown}
+                                                        aria-controls={showDropdown && patientResults.length > 0 ? 'visit-patient-search-results' : undefined}
+                                                        aria-haspopup="listbox"
+                                                        inputMode="search"
+                                                        className="w-full rounded-lg border-gray-300 shadow-xs text-sm pl-10 pr-4 py-2.5 focus:border-primary-500 focus:ring-primary-500"
+                                                        placeholder="Search patient by Name, Guardian, Phone, or ID (e.g. Fazlul, 017..., 101A)..."
+                                                        required
+                                                    />
+                                                    <div className="absolute left-3 top-3 text-gray-400 pointer-events-none">
+                                                        🔍
+                                                    </div>
+                                                </div>
+
+                                                {showDropdown && patientResults.length > 0 && (
+                                                    <ul id="visit-patient-search-results" role="listbox" className="absolute z-50 bg-white border border-gray-200 rounded-xl shadow-xl w-full mt-1.5 max-h-64 overflow-y-auto divide-y divide-gray-100">
+                                                        {patientResults.map((p) => (
+                                                            <li key={p.id}>
+                                                                <button
+                                                                    type="button"
+                                                                    role="option"
+                                                                    aria-selected="false"
+                                                                    onMouseDown={(event) => event.preventDefault()}
+                                                                    onClick={() => selectPatient(p)}
+                                                                    className="w-full min-h-12 px-4 py-3 cursor-pointer hover:bg-primary-50 focus:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 transition flex items-center justify-between text-left touch-manipulation"
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        {p.photo_path ? (
+                                                                            <img src={`/admin/patients/${p.id}/photo`} alt={p.name} className="w-9 h-9 rounded-full object-cover border border-gray-200 flex-shrink-0" />
+                                                                        ) : (
+                                                                            <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-800 font-bold text-xs flex items-center justify-center border border-primary-200 flex-shrink-0">
+                                                                                {p.name.charAt(0).toUpperCase()}
+                                                                            </div>
+                                                                        )}
+                                                                        <div>
+                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                <span className="font-bold text-primary-900 text-sm">
+                                                                                    {p.name}
+                                                                                </span>
+                                                                                <span className="text-gray-500 text-xs">
+                                                                                    ({p.gender}, {p.age_years ?? '?'} yrs)
+                                                                                </span>
+                                                                                {p.old_or_other_id && (
+                                                                                    <span className="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 rounded font-mono font-bold border border-amber-200">
+                                                                                        Old: {p.old_or_other_id}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                                                                {p.phone && <span>📞 <strong className="text-gray-700">{p.phone}</strong></span>}
+                                                                                {p.phone && p.address && <span>•</span>}
+                                                                                {p.address && <span className="truncate max-w-xs">📍 {p.address}</span>}
+                                                                                {p.guardian_name && (
+                                                                                    <>
+                                                                                        <span>•</span>
+                                                                                        <span>C/O: {p.guardian_name} ({p.guardian_relationship || 'Contact'})</span>
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded flex-shrink-0">
+                                                                        {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
+                                                                    </span>
+                                                                </button>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
 
                                             {showDropdown && patientResults.length === 0 && (
                                                 <div role="status" className="absolute z-50 w-full mt-1.5 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-xl">
@@ -980,7 +1123,8 @@ export default function Create({
                                                 </div>
                                             )}
                                         </div>
-                                    )}
+                                    </div>
+                                )}
                                     {errors.patient_id && (
                                         <p className="text-xs text-red-600 font-semibold mt-1">{errors.patient_id}</p>
                                     )}
@@ -1138,20 +1282,30 @@ export default function Create({
                                 </div>
 
                                 {/* Medical History Context Banner */}
-                                {(selectedPatient?.medical_history || selectedPatient?.known_allergies) && (
+                                {(selectedPatient?.medical_history || selectedPatient?.known_allergies) ? (
                                     <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-900 space-y-1">
                                         <div className="flex items-center justify-between gap-2">
                                             <span className="font-bold text-[11px] uppercase tracking-wider text-amber-950 flex items-center gap-1">
                                                 <span>📋</span> Medical History
                                             </span>
-                                            <button
-                                                type="button"
-                                                onClick={insertMedicalHistory}
-                                                className="text-[10px] bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded px-1.5 py-0.5 font-bold shadow-2xs transition cursor-pointer"
-                                                title="Insert or prepend this medical history into Chief Complaints"
-                                            >
-                                                + Insert History
-                                            </button>
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={openMedicalModal}
+                                                    className="text-[10px] bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded px-1.5 py-0.5 font-bold shadow-2xs transition cursor-pointer"
+                                                    title="Update permanent medical record for this patient"
+                                                >
+                                                    ✏️ Edit Record
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={insertMedicalHistory}
+                                                    className="text-[10px] bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded px-1.5 py-0.5 font-bold shadow-2xs transition cursor-pointer"
+                                                    title="Insert or prepend this medical history into Chief Complaints"
+                                                >
+                                                    + Insert History
+                                                </button>
+                                            </div>
                                         </div>
                                         {selectedPatient.medical_history && (
                                             <p className="text-[11px] text-amber-900/90 leading-tight line-clamp-2">
@@ -1164,6 +1318,19 @@ export default function Create({
                                             </p>
                                         )}
                                     </div>
+                                ) : (
+                                    selectedPatient && (
+                                        <div className="flex items-center justify-between text-[11px] text-gray-500 bg-gray-50 p-2 rounded-lg border border-dashed border-gray-200">
+                                            <span>No permanent medical history recorded.</span>
+                                            <button
+                                                type="button"
+                                                onClick={openMedicalModal}
+                                                className="text-primary-700 font-bold hover:underline cursor-pointer"
+                                            >
+                                                + Add Medical History
+                                            </button>
+                                        </div>
+                                    )
                                 )}
 
                                 <textarea
@@ -1216,6 +1383,17 @@ export default function Create({
                                         onChange={(e) => setData('final_diagnosis', e.target.value)}
                                         className="w-full rounded-lg border-gray-300 shadow-xs text-xs font-bold focus:border-primary-500 focus:ring-primary-500 bg-white"
                                     />
+                                    {data.final_diagnosis && (
+                                        <label className="flex items-center gap-1.5 text-[11px] text-primary-800 cursor-pointer pt-0.5">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.sync_diagnosis_to_medical_history}
+                                                onChange={(e) => setData('sync_diagnosis_to_medical_history', e.target.checked)}
+                                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3 w-3"
+                                            />
+                                            <span>Add to patient&apos;s permanent medical history</span>
+                                        </label>
+                                    )}
                                     <input
                                         type="text"
                                         list="common-diagnoses-list"
@@ -2269,13 +2447,22 @@ export default function Create({
                                         <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
                                             Permanent Medical History
                                         </h4>
-                                        <button
-                                            type="button"
-                                            onClick={insertMedicalHistory}
-                                            className="text-[11px] bg-white text-amber-900 font-bold px-2 py-0.5 rounded border border-amber-300 hover:bg-amber-100 shadow-2xs cursor-pointer"
-                                        >
-                                            + Insert to Complaints
-                                        </button>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={openMedicalModal}
+                                                className="text-[11px] bg-white text-amber-900 font-bold px-2 py-0.5 rounded border border-amber-300 hover:bg-amber-100 shadow-2xs cursor-pointer"
+                                            >
+                                                ✏️ Edit
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={insertMedicalHistory}
+                                                className="text-[11px] bg-white text-amber-900 font-bold px-2 py-0.5 rounded border border-amber-300 hover:bg-amber-100 shadow-2xs cursor-pointer"
+                                            >
+                                                + Insert to Complaints
+                                            </button>
+                                        </div>
                                     </div>
                                     <p className="text-xs text-gray-800 whitespace-pre-wrap">
                                         {selectedPatient?.medical_history || 'No permanent medical history recorded.'}
@@ -2386,6 +2573,106 @@ export default function Create({
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Quick Medical History Update Modal */}
+            {isMedicalModalOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+                    <div className="flex min-h-screen items-center justify-center p-4 text-center">
+                        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs transition-opacity" onClick={() => !savingMedical && setIsMedicalModalOpen(false)} />
+                        <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 text-left shadow-2xl border border-gray-200 transition-all">
+                            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+                                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                    <span>📋</span> Update Permanent Medical History
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => !savingMedical && setIsMedicalModalOpen(false)}
+                                    className="text-gray-400 hover:text-gray-600 text-lg font-bold p-1 cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <form onSubmit={handleSaveMedicalHistory} className="mt-4 space-y-4">
+                                <p className="text-xs text-gray-600">
+                                    Updates saved here permanently update <strong>{selectedPatient?.name}</strong>&apos;s master profile across all future consultations.
+                                </p>
+
+                                {medicalUpdateSuccess && (
+                                    <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-lg text-xs font-semibold text-emerald-800">
+                                        ✓ {medicalUpdateSuccess}
+                                    </div>
+                                )}
+                                {medicalUpdateError && (
+                                    <div className="p-2.5 bg-red-50 border border-red-300 rounded-lg text-xs font-semibold text-red-800">
+                                        ⚠️ {medicalUpdateError}
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                        Permanent Medical History (অতীত চিকিৎসা ইতিহাস)
+                                    </label>
+                                    <textarea
+                                        value={medicalForm.medical_history}
+                                        onChange={(e) => setMedicalForm({ ...medicalForm, medical_history: e.target.value })}
+                                        rows={4}
+                                        className="w-full rounded-lg border-gray-300 text-xs shadow-xs focus:border-primary-500 focus:ring-primary-500"
+                                        placeholder="Chronic conditions, surgeries, past diseases, family illnesses..."
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                            Known Allergies (এলার্জি)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={medicalForm.known_allergies}
+                                            onChange={(e) => setMedicalForm({ ...medicalForm, known_allergies: e.target.value })}
+                                            className="w-full rounded-lg border-gray-300 text-xs shadow-xs focus:border-primary-500 focus:ring-primary-500"
+                                            placeholder="Drug, food, or chemical allergies..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                            Blood Group (রক্তের গ্রুপ)
+                                        </label>
+                                        <select
+                                            value={medicalForm.blood_group}
+                                            onChange={(e) => setMedicalForm({ ...medicalForm, blood_group: e.target.value })}
+                                            className="w-full rounded-lg border-gray-300 text-xs shadow-xs focus:border-primary-500 focus:ring-primary-500"
+                                        >
+                                            <option value="">-- Select Blood Group --</option>
+                                            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                                                <option key={bg} value={bg}>{bg}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsMedicalModalOpen(false)}
+                                        disabled={savingMedical}
+                                        className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={savingMedical}
+                                        className="px-4 py-2 text-xs font-bold text-white bg-primary-700 rounded-lg hover:bg-primary-800 shadow-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                                    >
+                                        {savingMedical ? 'Saving...' : 'Save to Patient Profile'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

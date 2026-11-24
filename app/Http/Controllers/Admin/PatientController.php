@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePatientRequest;
+use App\Http\Requests\Admin\UpdatePatientMedicalHistoryRequest;
 use App\Http\Requests\Admin\UpdatePatientRequest;
 use App\Models\AppointmentRequest;
 use App\Models\ClinicSetting;
@@ -217,17 +218,51 @@ class PatientController extends Controller
 
         $term = $request->q;
 
-        $patients = Patient::select([
+        $columns = [
             'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
-            'old_or_other_id', 'name', 'guardian_name', 'guardian_relationship',
+            'old_or_other_id', 'name', 'photo_path',
+            'guardian_name', 'guardian_relationship',
             'guardian_relationship_custom', 'age_years', 'age_months', 'age_days', 'gender',
-        ])
+        ];
+
+        $patients = Patient::select($columns)
             ->search($term)
             ->orderBy('name')
             ->limit(10)
             ->get();
 
         return response()->json($patients);
+    }
+
+    /**
+     * Quickly update patient permanent medical history, allergies, or blood group from consultation.
+     */
+    public function quickMedicalHistoryUpdate(UpdatePatientMedicalHistoryRequest $request, Patient $patient)
+    {
+        $validated = $request->validated();
+
+        $updateData = [];
+        if (array_key_exists('medical_history', $validated)) {
+            $updateData['medical_history'] = $validated['medical_history'];
+        }
+        if (array_key_exists('known_allergies', $validated)) {
+            $updateData['known_allergies'] = $validated['known_allergies'];
+        }
+        if (array_key_exists('blood_group', $validated)) {
+            $updateData['blood_group'] = $validated['blood_group'];
+        }
+
+        $patient->update($updateData);
+
+        return response()->json([
+            'message' => 'Patient medical history updated successfully.',
+            'patient' => [
+                'id' => $patient->id,
+                'medical_history' => $patient->medical_history,
+                'known_allergies' => $patient->known_allergies,
+                'blood_group' => $patient->blood_group,
+            ],
+        ]);
     }
 
     /**

@@ -130,10 +130,27 @@ class VisitController extends Controller
         $prescriptionConfig = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
         $practiceType = $settings->practice_type ?? 'homeopathy';
 
+        $todayWaitingQueueTokens = PatientQueueToken::query()
+            ->with(['patient:id,name,gender,age_years,age_months,age_days,phone,photo_path,patient_no,patient_series,old_or_other_id'])
+            ->whereDate('token_date', now()->toDateString())
+            ->whereIn('status', ['waiting', 'calling'])
+            ->whereNotNull('patient_id')
+            ->when($responsibleDoctor, function ($q) use ($responsibleDoctor) {
+                $q->where(function ($sub) use ($responsibleDoctor) {
+                    $sub->where('doctor_id', $responsibleDoctor->id)
+                        ->orWhereNull('doctor_id');
+                });
+            })
+            ->orderByRaw("CASE WHEN priority = 'urgent' THEN 0 ELSE 1 END")
+            ->orderBy('token_number', 'asc')
+            ->limit(15)
+            ->get(['id', 'token_number', 'token_code', 'patient_id', 'status', 'doctor_id', 'priority', 'service_room']);
+
         return Inertia::render('Admin/Visits/Create', [
             'patient' => $patient,
             'initialPastVisits' => $initialPastVisits,
             'initialLastPrescription' => $initialLastPrescription,
+            'todayWaitingQueueTokens' => $todayWaitingQueueTokens,
             'responsibleDoctor' => $responsibleDoctor?->only(['id', 'name', 'credentials']),
             'hasSavedDraft' => $hasSavedDraft,
             'draftOwnerToken' => VisitDraft::ownerTokenFor($user),
@@ -258,6 +275,19 @@ class VisitController extends Controller
                 }
             }
 
+            if (! empty($validated['sync_diagnosis_to_medical_history']) && ! empty($validated['final_diagnosis'])) {
+                $patient = $visit->patient;
+                if ($patient) {
+                    $dateStr = $visit->visit_date ? $visit->visit_date->toDateString() : now()->toDateString();
+                    $diagnosisEntry = "[Diagnosis on {$dateStr}]: ".trim($validated['final_diagnosis']);
+                    $currentHistory = trim((string) $patient->medical_history);
+                    if (! str_contains($currentHistory, trim($validated['final_diagnosis']))) {
+                        $updatedHistory = $currentHistory !== '' ? "{$currentHistory}\n{$diagnosisEntry}" : $diagnosisEntry;
+                        $patient->update(['medical_history' => $updatedHistory]);
+                    }
+                }
+            }
+
             $smsConfig = $settings?->getSmsConfig() ?? ClinicSetting::defaultSmsConfig();
             if (! empty($smsConfig['sms_enabled']) && ! empty($smsConfig['auto_sms_prescriptions']) && $visit->patient?->phone) {
                 try {
@@ -284,8 +314,13 @@ class VisitController extends Controller
 
         VisitDraft::where('user_id', $user->id)->delete();
 
+        $targetRoute = ($request->input('redirect_to') === 'show')
+            ? 'admin.visits.show'
+            : ($request->input('redirect_to') === 'index' ? 'admin.visits.index' : ($visit->wasRecentlyCreated ? 'admin.visits.index' : 'admin.visits.show'));
+        $targetParams = $targetRoute === 'admin.visits.show' ? $visit->id : [];
+
         return redirect()
-            ->route($visit->wasRecentlyCreated ? 'admin.visits.index' : 'admin.visits.show', $visit->wasRecentlyCreated ? [] : $visit->id)
+            ->route($targetRoute, $targetParams)
             ->with('success', 'Visit finalized by the authorized prescriber.');
     }
 

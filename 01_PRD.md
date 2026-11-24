@@ -100,6 +100,11 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Homeopathic Physical Generals**: Structured inputs for Thermal State (Hot/Chilly/Ambithermal), Thirst, Food Cravings & Aversions, Tongue, Sweat, Sleep & Dreams, and Modalities (`<` / `>`).
 - `[x] Done` **Diagnostic Lab Test Order Builder**: Interface to order diagnostic investigations (e.g., CBC, Serum Creatinine, USG of Whole Abdomen, Chest X-Ray) with instructions.
 - `[x] Done` **Universal Vital Signs Tracking**: Form fields and longitudinal tracking graphs for Blood Pressure (systolic/diastolic), Pulse, Body Temp (°F/°C), Weight (kg), Height (cm), calculated BMI, and Random Blood Sugar (RBS).
+- `[x] Done` **Queue-Driven Consultation Picker**: 1-click loading from today's waiting queue tokens ribbon on consultation start.
+- `[x] Done` **Inline Medical History Quick-Update**: Doctors can edit permanent medical history, allergies, and blood group inline during consultation without page reload.
+- `[x] Done` **Diagnosis to Medical History Sync**: Optional 1-click sync of final diagnosis to patient permanent medical history upon finalization.
+- `[x] Done` **Post-Finalization Direct Redirection**: Redirects directly to digitized prescription display (`admin.visits.show`) upon completion.
+- `[x] Done` **Flexible Medical Background Field Grid Ordering**: Unified grid styling ensuring individual field ordering (`order`) is respected across `blood_group`, `known_allergies`, and `medical_history`.
 
 ---
 

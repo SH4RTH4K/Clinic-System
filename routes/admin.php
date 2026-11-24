@@ -68,6 +68,9 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|patients.view'])->gro
 });
 Route::middleware(['auth', 'role_or_permission:Super Admin|patients.update'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['edit', 'update']));
+Route::middleware(['auth', 'role_or_permission:Super Admin|patients.update|clinical_records.view'])
+    ->post('patients/{patient}/quick-medical-update', [PatientController::class, 'quickMedicalHistoryUpdate'])
+    ->name('patients.quick_medical_update');
 Route::middleware(['auth', 'role_or_permission:Super Admin|patients.delete'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['destroy']));
 
