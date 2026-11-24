@@ -21,7 +21,7 @@ class DigitalPrescriptionController extends Controller
         $visit = Visit::query()
             ->where('share_token', $token)
             ->with([
-                'patient:id,name,gender,dob,age_years,age_months,age_days,phone,patient_number',
+                'patient:id,name,gender,dob,age_years,age_months,age_days,phone,patient_no,patient_series,patient_code',
                 'doctor:id,name,name_bn,credentials,credentials_bn,specialty,specialty_bn,govt_reg_no',
                 'prescriptionItems.medicine:id,name,common_name,potency',
                 'prescriptionItems.pharmaceutical:id,brand_name,generic_name,form,strength',

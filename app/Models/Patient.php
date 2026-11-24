@@ -18,7 +18,7 @@ class Patient extends Model
 
     protected $guarded = [];
 
-    protected $appends = ['patient_identifier', 'photo_url'];
+    protected $appends = ['patient_identifier', 'patient_number', 'photo_url'];
 
     public function numberingProfile(): BelongsTo
     {
@@ -109,6 +109,11 @@ class Patient extends Model
         }
 
         return (string) $this->patient_no.(string) $this->patient_series;
+    }
+
+    public function getPatientNumberAttribute(): string
+    {
+        return $this->patient_identifier;
     }
 
     public function getActivitylogOptions(): LogOptions

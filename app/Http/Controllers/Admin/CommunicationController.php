@@ -30,7 +30,7 @@ class CommunicationController extends Controller
         $search = $request->input('search');
 
         $query = PatientNotification::query()
-            ->with(['patient:id,name,phone,patient_number', 'sender:id,name'])
+            ->with(['patient:id,name,phone,patient_no,patient_series,patient_code', 'sender:id,name'])
             ->latest('id');
 
         if ($channel) {
@@ -51,7 +51,10 @@ class CommunicationController extends Controller
                     ->orWhere('message_body', 'like', "%{$search}%")
                     ->orWhereHas('patient', function ($pq) use ($search) {
                         $pq->where('name', 'like', "%{$search}%")
-                            ->orWhere('patient_number', 'like', "%{$search}%");
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('patient_code', 'like', "%{$search}%")
+                            ->orWhere('patient_no', 'like', "%{$search}%")
+                            ->orWhere('old_or_other_id', 'like', "%{$search}%");
                     });
             });
         }
@@ -66,7 +69,7 @@ class CommunicationController extends Controller
             'today_count' => PatientNotification::whereDate('created_at', Carbon::today())->count(),
         ];
 
-        $recentPatients = Patient::query()->latest('id')->take(20)->get(['id', 'name', 'phone', 'patient_number']);
+        $recentPatients = Patient::query()->latest('id')->take(20)->get(['id', 'name', 'phone', 'patient_no', 'patient_series', 'patient_code']);
 
         return Inertia::render('Admin/Communications/Index', [
             'notifications' => $notifications,

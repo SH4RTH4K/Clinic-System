@@ -368,6 +368,12 @@ class QueueManagementAndCalendarTest extends TestCase
         $this->assertCount(3, $events);
     }
 
+    public function test_can_render_queue_token_create_page(): void
+    {
+        $response = $this->actingAs($this->staff)->get(route('admin.queue.tokens.create'));
+        $response->assertOk();
+    }
+
     public function test_unauthorized_user_cannot_access_queue_or_calendar(): void
     {
         $queueResponse = $this->actingAs($this->unauthorizedUser)->get(route('admin.queue.index'));

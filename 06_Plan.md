@@ -174,7 +174,7 @@
   - Fullscreen waiting room digital signage TV view `Admin/Queue/Display.jsx` (`/queue/display`) featuring real-time calling hero card, patient name privacy masking (`maskName()`), digital clock, offline Web Audio API synthesized hospital chime ("Ding-Dong"), and optional speech synthesis.
   - Dedicated doctor chamber queue workbench `Admin/Queue/Workbench.jsx` for desktop/tablet with 1-click calling, recall, and direct visit creation.
   - Reception queue manager `Admin/Queue/Index.jsx`, token issuance `Admin/Queue/Create.jsx`, and thermal 80mm POS token slip `Admin/Queue/PrintToken.jsx`.
-- [x] **Verification**: All 8 feature tests in `QueueManagementAndCalendarTest` passing (52 assertions). Core regression suite (31 tests, 251 assertions) passing. Pint formatted cleanly and Vite build succeeded.
+- [x] **Verification**: All 9 feature tests in `QueueManagementAndCalendarTest` passing (53 assertions). Core regression suite (31 tests, 251 assertions) passing. Pint formatted cleanly and Vite build succeeded.
 
 ### Phase 13: Automated Patient Communications (`[x] COMPLETED`)
 - [x] **Task 13.1**: Multi-Driver SMS Gateway Engine

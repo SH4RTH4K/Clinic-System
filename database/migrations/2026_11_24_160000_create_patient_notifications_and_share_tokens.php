@@ -61,6 +61,7 @@ return new class extends Migration
 
         Schema::table('visits', function (Blueprint $table) {
             if (Schema::hasColumn('visits', 'share_token')) {
+                $table->dropUnique(['share_token']);
                 $table->dropColumn('share_token');
             }
         });

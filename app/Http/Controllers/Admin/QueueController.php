@@ -30,7 +30,7 @@ class QueueController extends Controller
 
         $query = PatientQueueToken::query()
             ->with([
-                'patient:id,name,phone,patient_number',
+                'patient:id,name,phone,patient_no,patient_series,patient_code',
                 'doctor:id,name,name_bn,credentials,specialty',
                 'visit:id,status',
             ])
@@ -76,7 +76,7 @@ class QueueController extends Controller
     public function create(Request $request): Response
     {
         $doctors = Doctor::query()->where('is_active', true)->with('schedules')->orderBy('sort_order')->get();
-        $patients = Patient::query()->latest('id')->take(20)->get(['id', 'name', 'phone', 'patient_number']);
+        $patients = Patient::query()->latest('id')->take(20)->get(['id', 'name', 'phone', 'patient_no', 'patient_series', 'patient_code']);
 
         $preselectedPatientId = $request->input('patient_id');
         $selectedPatient = $preselectedPatientId ? Patient::find($preselectedPatientId) : null;
@@ -199,7 +199,7 @@ class QueueController extends Controller
         $today = Carbon::today()->toDateString();
 
         $todayTokens = PatientQueueToken::query()
-            ->with(['patient:id,name,phone,patient_number', 'visit:id,status'])
+            ->with(['patient:id,name,phone,patient_no,patient_series,patient_code', 'visit:id,status'])
             ->whereDate('token_date', $today)
             ->when($selectedDoctorId, fn ($q) => $q->where('doctor_id', $selectedDoctorId))
             ->orderBy('token_number', 'asc')

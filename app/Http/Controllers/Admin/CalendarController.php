@@ -42,7 +42,7 @@ class CalendarController extends Controller
 
         // 2. Clinical Visits
         $visits = Visit::query()
-            ->with(['patient:id,name,phone,patient_number', 'doctor:id,name'])
+            ->with(['patient:id,name,phone,patient_no,patient_series,patient_code', 'doctor:id,name'])
             ->whereDate('visit_date', '>=', $startDate)
             ->whereDate('visit_date', '<=', $endDate)
             ->when($doctorId, fn ($q) => $q->where('doctor_id', $doctorId))
