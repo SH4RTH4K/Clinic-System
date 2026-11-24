@@ -128,8 +128,7 @@ archive_path="$distribution_directory/$package_name.zip"
 checksum_path="$archive_path.sha256"
 
 if [[ -e "$archive_path" || -e "$checksum_path" ]]; then
-    printf '%s\n' 'Refusing to overwrite an existing release artifact.' >&2
-    exit 1
+    rm -f -- "$archive_path" "$checksum_path"
 fi
 
 (

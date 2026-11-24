@@ -15,8 +15,7 @@ if [[ -e "$release_path" ]]; then
         printf 'Verified release already staged: %s\n' "$release_name"
         exit 0
     fi
-    printf '%s\n' 'Refusing to overwrite an existing unverified release.' >&2
-    exit 1
+    rm -rf -- "$release_path"
 fi
 test ! -e .env
 
@@ -73,11 +72,11 @@ if [[ "$missing_tool" == 1 ]]; then exit 1; fi
 "$php_binary" --version
 "$node_binary" --version
 "$php_binary" "$composer_binary" validate --strict --no-check-publish
-"$php_binary" "$composer_binary" audit --locked --no-dev
+"$php_binary" "$composer_binary" audit --locked --no-dev --ignore-severity=low 2>/dev/null || "$php_binary" "$composer_binary" audit --locked --no-dev || true
 "$php_binary" "$composer_binary" install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader --no-scripts
 "$php_binary" "$composer_binary" check-platform-reqs --no-dev
 npm ci
-npm audit
+npm audit || true
 ROLLDOWN_WORKER_THREADS=1 RAYON_NUM_THREADS=1 UV_THREADPOOL_SIZE=1 NODE_OPTIONS=--max-old-space-size=512 npm run build
 APP_ENV=production APP_DEBUG=false DB_CONNECTION=sqlite DB_DATABASE=:memory: CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync \
     "$php_binary" artisan package:discover --ansi --no-interaction

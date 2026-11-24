@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;
@@ -1169,6 +1170,12 @@ class GitRepositoryService
         }
 
         if (! $process->isSuccessful()) {
+            Log::error('cPanel split deployment task failed', [
+                'exit_code' => $process->getExitCode(),
+                'error_output' => $process->getErrorOutput(),
+                'output' => $process->getOutput(),
+            ]);
+
             throw new RuntimeException($this->deploymentFailureMessage($process->getErrorOutput()));
         }
 
@@ -1191,8 +1198,24 @@ class GitRepositoryService
             str_contains($error, 'node.js 22'),
             str_contains($error, 'required deployment tool is unavailable: npm') => 'The host cannot build the locked frontend assets. Use a verified release artifact instead.',
             str_contains($error, 'this update task requires an initialized clinic installation') => 'The live installation is incomplete. Review its private application and public document root.',
-            default => 'The application deployment task stopped. Review protected server deployment logs before retrying.',
+            default => 'The application deployment task stopped. '.$this->extractFailureDetail($errorOutput),
         };
+    }
+
+    private function extractFailureDetail(string $errorOutput): string
+    {
+        $lines = array_values(array_filter(
+            array_map('trim', preg_split('/\R/', $errorOutput) ?: []),
+            static fn (string $line): bool => $line !== ''
+        ));
+
+        if ($lines === []) {
+            return 'Review protected server deployment logs before retrying.';
+        }
+
+        $lastLine = end($lines);
+
+        return mb_substr($lastLine, 0, 200);
     }
 
     /** @param list<string> $arguments */
