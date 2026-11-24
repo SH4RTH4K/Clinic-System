@@ -100,9 +100,46 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     /**
-     * Checks if current user has the required permission/role for a link.
+     * Resolves a named route safely without throwing if Ziggy doesn't have it registered.
      */
-    const canSeeLink = ({ permission, role, requiresClinicalChart = false, requiresPermissions = [], superAdminAccess = false }) => {
+    const safeRoute = (name, params) => {
+        try {
+            if (typeof route === 'function' && route().has(name)) {
+                return route(name, params);
+            }
+        } catch {
+            // Graceful fallback
+        }
+        return '#';
+    };
+
+    /**
+     * Checks if route pattern is active without throwing.
+     */
+    const safeIsActive = (pattern) => {
+        try {
+            if (typeof route === 'function') {
+                return route().current(pattern);
+            }
+        } catch {
+            // Graceful fallback
+        }
+        return false;
+    };
+
+    /**
+     * Checks if current user has the required permission/role for a link and the route exists.
+     */
+    const canSeeLink = ({ permission, role, route: routeName, requiresClinicalChart = false, requiresPermissions = [], superAdminAccess = false }) => {
+        if (routeName) {
+            try {
+                if (typeof route === 'function' && !route().has(routeName)) {
+                    return false;
+                }
+            } catch {
+                return false;
+            }
+        }
         if (role && !roles.includes(role)) return false;
         if (requiresClinicalChart && !permissions.includes('clinical_records.view')) return false;
         if (requiresPermissions.some((requiredPermission) => !permissions.includes(requiredPermission))) return false;
@@ -496,7 +533,7 @@ export default function AuthenticatedLayout({ header, children }) {
         <div className="flex h-full flex-col min-h-0 bg-white">
             {/* Brand / Logo (Sticky Top) */}
             <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <Link href={route('dashboard')} onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg">
+                <Link href={safeRoute('dashboard')} onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg">
                     <ApplicationLogo className="h-8 w-8 text-primary-500 shrink-0" />
                     <div className="flex flex-col">
                         <span className="text-base font-bold text-gray-900 tracking-tight leading-tight">
@@ -523,12 +560,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </h3>
                                 <div className="space-y-1 pt-1">
                                     {visibleItems.map((item) => {
-                                        const isActive = route().current(item.active);
+                                        const isActive = safeIsActive(item.active);
 
                                         return (
                                              <Link
                                                 key={item.label}
-                                                href={route(item.route)}
+                                                href={safeRoute(item.route)}
                                                 onClick={() => setSidebarOpen(false)}
                                                 className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                                                     isActive
@@ -569,7 +606,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         </p>
                     </div>
                     <Link
-                        href={route('logout')}
+                        href={safeRoute('logout')}
                         method="post"
                         as="button"
                         onClick={() => {
@@ -707,10 +744,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     View Website
                                 </a>
-                                <Dropdown.Link href={route('profile.edit')}>
+                                <Dropdown.Link href={safeRoute('profile.edit')}>
                                     Profile
                                 </Dropdown.Link>
-                                <Dropdown.Link href={route('logout')} method="post" as="button" onClick={notifyLogoutToOtherTabs}>
+                                <Dropdown.Link href={safeRoute('logout')} method="post" as="button" onClick={notifyLogoutToOtherTabs}>
                                     Log Out
                                 </Dropdown.Link>
                             </Dropdown.Content>
