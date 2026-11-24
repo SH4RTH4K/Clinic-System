@@ -1,0 +1,44 @@
+# Cursor AI Agent Guidelines - RemediQ Dual-Purpose Clinic Platform
+
+## Foundational Context
+- **Application**: RemediQ Dual-Purpose Medical & Homeopathy Practice Management System.
+- **Practice Modes**: 
+  1. Classical & Modern Homeopathy (Repertory, Rubrics, Potencies CH/LM/X, Dilutions).
+  2. General Practice / Allopathy (Brand/Generic Medications, Strengths in mg/ml, Lab Orders).
+  3. Integrative / Dual Clinic Mode.
+- **Framework & Language**: Laravel 11, PHP 8.3, Inertia.js v2, React 18, Tailwind CSS v3/v4, Vite.
+- **Target Hosting**: Shared cPanel hosting (LiteSpeed/Apache, MySQL 8/MariaDB).
+- **Constraints**: No persistent Node process in production. Assets built with `npm run build`. No root shell dependencies.
+
+## Canonical Documentation Suite
+Always refer to the root markdown documentation files before proposing or writing code:
+- `01_PRD.md`: Dual-purpose feature requirements with `[x] Done` (existing) and `[ ] Pending` (gaps).
+- `02_AppFlow.md`: User journeys for Homeopathy, General Medicine, Intake, and Administration.
+- `03_UI_Spec.md`: Design system, dual consultation builders, Bengali typography, and `@media print` specs.
+- `04_TRD.md`: Technical architecture, practice type adapters, Dompdf Bengali setup, and security policies.
+- `05_Schema.md`: Database schema, tables, foreign keys, indexes, and future dual-practice tables.
+- `06_Plan.md`: Master phased implementation plan and roadmap.
+
+## Sensitive Clinical Data & Security Rules
+- **Confidentiality**: Treat all patient information as strictly private. Never log, print, or expose medical history, phone numbers, or credentials.
+- **Server-Side Authorization**: Hiding UI buttons in React is never enough. Every route MUST be protected by Spatie permission middleware or policy checks.
+- **Super Admin Protection**: Only Super Admin can manage staff, roles, permissions, system health, and backups. Never allow removal or demotion of the last Super Admin.
+- **Self-Hosted Assets**: Never add external CDN links for fonts or libraries. Everything is self-hosted.
+
+## Coding Conventions
+### PHP (Backend)
+- PHP 8.3: Constructor property promotion, strict typing, explicit return types.
+- Always use curly braces for control structures.
+- Use Laravel FormRequest classes for validation.
+- Format PHP code with `vendor/bin/pint --dirty --format agent`.
+
+### React & Inertia (Frontend)
+- Inertia v2 with React 18 functional components and hooks (`useForm`, `usePage`, `router`).
+- Practice-mode adaptive components for consultation and medication entry.
+- Support bilingual UI (English / Bengali) and UTF-8 rendering.
+- For print views (Prescription, OPD Card, Invoices), use `@media print` CSS utility classes.
+
+### Testing & Verification
+- Test runner: PHPUnit via `php artisan test --compact` or `vendor/bin/phpunit`.
+- Write feature tests for all business logic and authorization boundaries.
+- Run tests narrowly using `--filter=TestName`.

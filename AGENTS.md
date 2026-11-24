@@ -38,7 +38,15 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Documentation Files
 
-- You must only create documentation files if explicitly requested by the user.
+- Maintain the canonical workflow documentation files in the repository root:
+  - `01_PRD.md`: Product Requirements Document (Existing & Missing features with `[x]` and `[ ]`).
+  - `02_AppFlow.md`: Application User Journey & State Flow diagrams.
+  - `03_UI_Spec.md`: Design System, UI Components, Bengali Typography & Print Specifications.
+  - `04_TRD.md`: Technical Requirements, Architecture, cPanel Constraints & Security.
+  - `05_Schema.md`: Database Schema, Tables, Relationships & Planned Extensions.
+  - `06_Plan.md`: Master Implementation Plan & Phased Checklist.
+  - `.cursorrules`: Cursor IDE agent configuration rules.
+- When features or gaps are completed or modified, keep these documentation files synchronized.
 
 ## Replies
 
@@ -102,8 +110,9 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 # Deployment
 
-- Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
-- Activate the `deploying-to-cloud` skill whenever deploying to Laravel Cloud, configuring Cloud environments or resources, using the Cloud CLI, or troubleshooting Cloud deployments.
+- Target production environment: Shared cPanel hosting with PHP 8.3, Apache/LiteSpeed, MySQL 8/MariaDB.
+- Application supports in-app deployment via GitRepositoryController and in-app backup packaging via SystemHealthController.
+- For Laravel Cloud or alternative deployments, activate the `deploying-to-cloud` skill.
 
 === tests rules ===
 
@@ -189,17 +198,38 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 </laravel-boost-guidelines>
 
-## Security & design hardening rules
-- This is a clinical records system. Treat all patient data as sensitive. Never log, echo, or
-  commit patient data, passwords, tokens, or .env values. Never print secrets in chat or artifacts.
-- Authorization is enforced SERVER-SIDE (route middleware or policies). Hiding a button is never enough.
-  Every state-changing route needs its own permission check matching the action
-  (view / create / update / delete). Never gate a write route with a *.view permission.
-- Only the "Super Admin" role may manage users, roles, permissions, clinic settings, and audit logs.
-- Never edit the "Super Admin" role's permissions. Never allow removal, deactivation, or deletion of the last Super Admin by any path.
-- Validate every request field with a Form Request class: type, length, enum, exists:, array item rules.
-- Do not add external CDNs or hotlinked assets. Self-host fonts and images (the host is shared cPanel, and privacy matters).
-- Production target is shared cPanel PHP hosting. No persistent Node process. Assets are built locally with `npm run build`.
-- Add or update automated tests for every fix. Run `php artisan test`, `vendor/bin/pint --test`, and `npm run build` before declaring a phase done.
-- Do not remove existing behavior that is not in scope. Prefer small, reviewable diffs. Ask before destructive migrations.
+# RemediQ - Dual-Purpose Practice & Instruction Standards
 
+## 1. System Vision: Dual-Purpose Practice
+RemediQ is designed as a **Dual-Purpose / Multi-Disciplinary Practice Platform** capable of operating in:
+1. **Homeopathy Mode**: Specialized classical case-taking, repertory rubric scoring (Grades 1-4), potencies (CH, LM/Q, X), dilutions, and classical dietary restrictions.
+2. **General Practice / Allopathy Mode**: Conventional consultation with primary/secondary diagnosis, generic & brand medication catalog (Tablet, Syrup, Capsule, Injection, mg/ml), lab investigation orders, and clinical advice.
+3. **Integrative / Dual Mode**: Clinics or polyclinics where doctors can practice both conventional medicine and homeopathy, or select practice mode per consultation.
+
+## 2. Canonical Documentation Framework
+Always reference and maintain the root markdown documentation files:
+- `01_PRD.md`: Product Requirements Document (Dual-purpose specifications with `[x] Done` and `[ ] Pending`).
+- `02_AppFlow.md`: Application User Journeys (Homeopathy flow, General Practice flow, Intake, Deployments).
+- `03_UI_Spec.md`: Design System, dual prescription builders, Bengali typography, and `@media print` specs.
+- `04_TRD.md`: Technical Requirements, practice type adapters, Dompdf Bengali setup, and cPanel constraints.
+- `05_Schema.md`: Database Schema covering active tables and dual-purpose schema extensions (generics, strengths, lab tests).
+- `06_Plan.md`: Master Implementation Plan tracking completed milestones and dual-purpose roadmap phases.
+
+## 3. Core Security & Clinical Hardening Rules
+- **Patient Privacy**: Treat all clinical and patient data as strictly confidential. Never log, echo, dump, or commit patient identifying data, passwords, API tokens, or `.env` secrets.
+- **Server-Side Authorization**: Hiding UI elements is strictly cosmetic. Every state-changing route MUST be protected by explicit server-side role/permission middleware or policies.
+- **Super Admin Protection**:
+  - Only the "Super Admin" role can manage users, roles, system health, git repository operations, and clinic settings.
+  - Never alter or revoke Super Admin permissions. Never allow deletion or deactivation of the last Super Admin.
+- **Form Validation**: Validate all incoming request data using dedicated Laravel `FormRequest` classes with strict validation rules.
+- **Production cPanel Target**:
+  - PHP 8.3 target, shared hosting compatible. No persistent Node daemon on production.
+  - All frontend assets built with `npm run build`.
+
+## 4. Workflow Protocol for Agents
+1. **Check Requirements**: Consult `01_PRD.md` and `06_Plan.md` before planning or writing code.
+2. **Practice Type Awareness**: Ensure features respect the clinic's configured `practice_type` (Homeopathy, General Practice, or Dual).
+3. **Targeted Code**: Strictly typed PHP 8.3, constructor promotion, Inertia React components with Tailwind CSS.
+4. **Enforce Testing**: Run targeted feature tests before and after code changes (`php artisan test --filter=...`).
+5. **Format Code**: Run `vendor/bin/pint --dirty --format agent` after modifying PHP files.
+6. **Update Documentation**: Mark completed items as `[x] Done` in `01_PRD.md` and `06_Plan.md`.
