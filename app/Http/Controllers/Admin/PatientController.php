@@ -352,6 +352,7 @@ class PatientController extends Controller
                 'preview' => $nextOldOrOtherIdPreview,
             ]),
             'fieldConfig' => $this->patientFormConfig($canViewClinicalRecords),
+            'sectionConfig' => ClinicSetting::currentPatientFormSections(),
             'canViewClinicalRecords' => $canViewClinicalRecords,
             'relationshipOptions' => ClinicSetting::currentPatientRelationshipOptions(),
             'numberingProfiles' => $numberingProfiles,
@@ -612,6 +613,7 @@ class PatientController extends Controller
                 'preview' => $nextOldOrOtherIdPreview,
             ]),
             'fieldConfig' => $this->patientFormConfig($canViewClinicalRecords),
+            'sectionConfig' => ClinicSetting::currentPatientFormSections(),
             'canViewClinicalRecords' => $canViewClinicalRecords,
             'relationshipOptions' => ClinicSetting::currentPatientRelationshipOptions(),
         ]);
@@ -832,6 +834,18 @@ class PatientController extends Controller
     private function patientFormConfig(bool $canViewClinicalRecords): array
     {
         $fieldConfig = ClinicSetting::currentPatientFormConfig();
+        $sections = collect(ClinicSetting::currentPatientFormSections())->keyBy('name');
+        $fieldSections = ClinicSetting::patientFieldSections();
+
+        foreach ($fieldConfig as $key => &$field) {
+            $sectionName = $fieldSections[$key] ?? 'Identity';
+            $section = $sections[$sectionName] ?? null;
+
+            if ($section && ! $section['visible'] && ! in_array($key, ['name', 'gender'], true)) {
+                $field['visible'] = false;
+            }
+        }
+        unset($field);
 
         if (! $canViewClinicalRecords) {
             $fieldConfig['blood_group']['visible'] = false;

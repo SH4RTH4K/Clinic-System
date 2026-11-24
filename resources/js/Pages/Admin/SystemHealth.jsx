@@ -51,11 +51,14 @@ function StatusCard({ label, value, detail, healthy = true }) {
     );
 }
 
-function StorageLine({ label, summary }) {
+function StorageLine({ label, summary, note }) {
     return (
         <li className="flex items-center justify-between gap-4 text-xs text-slate-600">
-            <span>{label}</span>
-            <span className="text-right">{summary.files.toLocaleString()} files · {formatBytes(summary.bytes)}</span>
+            <span>
+                {label}
+                {note && <span className="block text-[10px] text-slate-400 font-normal">{note}</span>}
+            </span>
+            <span className="text-right shrink-0">{summary.files.toLocaleString()} files · {formatBytes(summary.bytes)}</span>
         </li>
     );
 }
@@ -400,6 +403,16 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                         {flash.error}
                     </div>
                 )}
+                {health.backup_storage === 'Check permissions' && (
+                    <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+                        <div className="flex items-start gap-2">
+                            <span className="font-bold text-amber-800 shrink-0">cPanel Backup Storage Notice:</span>
+                            <span>
+                                On cPanel shared hosting, set <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">SYSTEM_HEALTH_BACKUP_PATH</code> in your <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">.env</code> to an absolute directory outside <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">public_html</code> (e.g. <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">/home/username/remediq_backups</code>) with write permissions (<code className="font-mono bg-amber-100 px-1 py-0.5 rounded">chmod 755</code>) to satisfy private storage security requirements.
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <StatusCard label="Database" value={health.database?.status ?? 'Unknown'} detail={`Configured connection · size ${formatBytes(health.database?.size_bytes)}`} healthy={databaseHealthy} />
@@ -412,7 +425,7 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                         <ul className="mt-3 space-y-2">
                             <StorageLine label="Uploads" summary={storage.uploads ?? { files: 0, bytes: 0 }} />
                             <StorageLine label="Build assets" summary={storage.build_assets ?? { files: 0, bytes: 0 }} />
-                            <StorageLine label="Private files" summary={storage.private ?? { files: 0, bytes: 0 }} />
+                            <StorageLine label="Private files" note="Includes managed in-app Git checkout repository" summary={storage.private ?? { files: 0, bytes: 0 }} />
                             <StorageLine label="Logs" summary={storage.logs ?? { files: 0, bytes: 0 }} />
                             <StorageLine label="Framework cache" summary={storage.framework_cache ?? { files: 0, bytes: 0 }} />
                         </ul>

@@ -71,7 +71,17 @@ abstract class PatientDataRequest extends FormRequest
             ];
         }
 
+        $sections = collect(ClinicSetting::currentPatientFormSections())->keyBy('name');
+        $fieldSections = ClinicSetting::patientFieldSections();
+
         foreach ($fieldRules as $field => $rulesForField) {
+            $sectionName = $fieldSections[$field] ?? 'Identity';
+            $section = $sections[$sectionName] ?? null;
+
+            if ($section && ! $section['visible'] && ! in_array($field, ['name', 'gender'], true)) {
+                continue;
+            }
+
             if (in_array($field, ['blood_group', 'known_allergies', 'medical_history'], true) && ! $canViewClinicalRecords) {
                 continue;
             }

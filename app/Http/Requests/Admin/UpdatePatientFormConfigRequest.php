@@ -30,6 +30,12 @@ class UpdatePatientFormConfigRequest extends FormRequest
             'relationships.*' => ['required', 'array:value,label'],
             'relationships.*.value' => ['required', 'string', 'max:50', 'regex:/^[a-z][a-z0-9_]{1,49}$/', 'distinct:strict'],
             'relationships.*.label' => ['required', 'string', 'max:80'],
+            'sections' => ['sometimes', 'array'],
+            'sections.*.key' => ['required', 'string', 'in:identity,medical_background,contact,legacy_migration'],
+            'sections.*.name' => ['required', 'string', 'max:80'],
+            'sections.*.label' => ['required', 'string', 'max:120'],
+            'sections.*.visible' => ['required', 'boolean'],
+            'sections.*.order' => ['required', 'integer', 'min:1', 'max:20'],
         ];
 
         foreach ($fieldKeys as $fieldKey) {

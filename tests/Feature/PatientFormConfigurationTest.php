@@ -457,6 +457,54 @@ class PatientFormConfigurationTest extends TestCase
             ->assertSessionHasErrors('relationship');
     }
 
+    public function test_super_admin_can_save_section_configuration(): void
+    {
+        $user = $this->userWithRole('Super Admin', ['settings.view', 'settings.update']);
+        $settings = $this->createClinicSetting();
+
+        $sections = ClinicSetting::defaultPatientFormSections();
+        // Reorder: put medical_background first (order 1), identity second (order 2), contact third, legacy fourth
+        $sections[0]['order'] = 2; // identity
+        $sections[1]['order'] = 1; // medical_background
+        $sections[1]['label'] = 'Patient Clinical History';
+        $sections[3]['visible'] = false; // disable legacy migration
+
+        $this->actingAs($user)->put(route('admin.patient_config.update'), [
+            'fields' => ClinicSetting::defaultPatientFormConfig(),
+            'relationships' => ClinicSetting::defaultPatientRelationshipOptions(),
+            'sections' => $sections,
+        ])->assertRedirect(route('admin.patient_config.edit'));
+
+        $savedSections = $settings->fresh()->getPatientFormSections();
+        $savedByKey = collect($savedSections)->keyBy('key')->all();
+
+        $this->assertSame('Patient Clinical History', $savedByKey['medical_background']['label']);
+        $this->assertSame(1, $savedByKey['medical_background']['order']);
+        $this->assertSame(2, $savedByKey['identity']['order']);
+        $this->assertTrue($savedByKey['identity']['visible']);
+        $this->assertFalse($savedByKey['legacy_migration']['visible']);
+    }
+
+    public function test_identity_section_cannot_be_disabled_even_if_submitted_false(): void
+    {
+        $user = $this->userWithRole('Super Admin', ['settings.view', 'settings.update']);
+        $settings = $this->createClinicSetting();
+
+        $sections = ClinicSetting::defaultPatientFormSections();
+        $sections[0]['visible'] = false; // try to disable identity
+
+        $this->actingAs($user)->put(route('admin.patient_config.update'), [
+            'fields' => ClinicSetting::defaultPatientFormConfig(),
+            'relationships' => ClinicSetting::defaultPatientRelationshipOptions(),
+            'sections' => $sections,
+        ])->assertRedirect(route('admin.patient_config.edit'));
+
+        $savedSections = $settings->fresh()->getPatientFormSections();
+        $savedByKey = collect($savedSections)->keyBy('key')->all();
+
+        $this->assertTrue($savedByKey['identity']['visible']);
+    }
+
     private function userWithRole(string $roleName, array $permissionNames): User
     {
         $permissions = collect($permissionNames)->map(fn (string $name): Permission => Permission::firstOrCreate([

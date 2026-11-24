@@ -20,6 +20,7 @@ class PatientConfigController extends Controller
         return Inertia::render('Admin/PatientConfig/Edit', [
             'fields' => ClinicSetting::currentPatientFormConfig(),
             'relationships' => ClinicSetting::currentPatientRelationshipOptions(),
+            'sections' => ClinicSetting::currentPatientFormSections(),
         ]);
     }
 
@@ -27,10 +28,21 @@ class PatientConfigController extends Controller
     {
         $fields = $request->validated('fields');
         $relationships = $request->validated('relationships');
+        $sections = $request->validated('sections');
         $fields['name']['visible'] = true;
         $fields['name']['required'] = true;
         $fields['gender']['visible'] = true;
         $fields['gender']['required'] = true;
+
+        if (is_array($sections)) {
+            foreach ($sections as &$sec) {
+                if ($sec['key'] === 'identity') {
+                    $sec['visible'] = true;
+                    $sec['is_core'] = true;
+                }
+            }
+            unset($sec);
+        }
 
         $orderGroups = ClinicSetting::patientFormFieldOrderGroups();
         $orderedGroups = array_keys($orderGroups);
@@ -44,6 +56,8 @@ class PatientConfigController extends Controller
 
         $existingFields = ClinicSetting::currentPatientFormConfig();
         $existingRelationships = ClinicSetting::currentPatientRelationshipOptions();
+        $existingSections = ClinicSetting::currentPatientFormSections();
+
         $fieldsWithoutOrder = collect($fields)
             ->map(fn (array $field): array => collect($field)->except('order')->all())
             ->all();
@@ -53,6 +67,24 @@ class PatientConfigController extends Controller
         $requiresOrder = collect($fields)->contains(
             fn (array $field, string $fieldKey): bool => $field['order'] !== $existingFields[$fieldKey]['order'],
         );
+
+        $requiresSectionOrder = false;
+        $requiresSectionUpdate = false;
+        if (is_array($sections)) {
+            $existingSectionsByKey = collect($existingSections)->keyBy('key')->all();
+            foreach ($sections as $sec) {
+                $key = $sec['key'];
+                if (isset($existingSectionsByKey[$key])) {
+                    if ($sec['order'] !== $existingSectionsByKey[$key]['order']) {
+                        $requiresSectionOrder = true;
+                    }
+                    if ($sec['label'] !== $existingSectionsByKey[$key]['label'] || (bool) $sec['visible'] !== (bool) $existingSectionsByKey[$key]['visible']) {
+                        $requiresSectionUpdate = true;
+                    }
+                }
+            }
+        }
+
         $existingRelationshipsByValue = collect($existingRelationships)->keyBy('value')->all();
         $updatedRelationshipsByValue = collect($relationships)->keyBy('value')->all();
         $existingValues = array_keys($existingRelationshipsByValue);
@@ -63,7 +95,8 @@ class PatientConfigController extends Controller
             ->contains(fn (string $value): bool => $existingRelationshipsByValue[$value]['label'] !== $updatedRelationshipsByValue[$value]['label']);
         $user = $request->user();
         $isSuperAdmin = $user->hasRole('Super Admin');
-        $requiresUpdate = $fieldsWithoutOrder != $existingFieldsWithoutOrder || $updatedExistingRelationships;
+        $requiresUpdate = $fieldsWithoutOrder != $existingFieldsWithoutOrder || $updatedExistingRelationships || $requiresSectionUpdate;
+        $requiresOrder = $requiresOrder || $requiresSectionOrder;
 
         abort_if($removedValues !== [], 403);
         abort_unless($isSuperAdmin || $addedValues === [] || $user->can('patient_config.create'), 403);
@@ -84,10 +117,21 @@ class PatientConfigController extends Controller
             ]);
         }
 
-        $settings->update(['patient_form_config' => [
+        $existingConfig = $settings->patient_form_config ?? [];
+        $payload = [
             'fields' => $fields,
             'relationships' => $relationships,
-        ]]);
+        ];
+        if (isset($existingConfig['old_or_other_id_numbering'])) {
+            $payload['old_or_other_id_numbering'] = $existingConfig['old_or_other_id_numbering'];
+        }
+        if (is_array($sections)) {
+            $payload['sections'] = $sections;
+        } elseif (isset($existingConfig['sections'])) {
+            $payload['sections'] = $existingConfig['sections'];
+        }
+
+        $settings->update(['patient_form_config' => $payload]);
 
         return redirect()->route('admin.patient_config.edit')->with('success', 'Patient form configuration updated.');
     }

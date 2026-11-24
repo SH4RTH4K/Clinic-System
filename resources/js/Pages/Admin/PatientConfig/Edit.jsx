@@ -26,7 +26,14 @@ const FIELD_DETAILS = [
     { key: 'legacy_visits_count', name: 'Past visits count (Migration) / পূর্ববর্তী সাক্ষাত সংখ্যা', section: 'Legacy migration' },
 ];
 
-export default function Edit({ fields, relationships }) {
+const DEFAULT_SECTIONS = [
+    { key: 'identity', name: 'Identity', label: 'Identity & Demographics', visible: true, is_core: true, order: 1 },
+    { key: 'medical_background', name: 'Medical background', label: 'Medical Background (চিকিৎসা ইতিহাস)', visible: true, is_core: false, order: 2 },
+    { key: 'contact', name: 'Contact', label: 'Contact & Residential Location', visible: true, is_core: false, order: 3 },
+    { key: 'legacy_migration', name: 'Legacy migration', label: 'Legacy Migration (পূর্ববর্তী তথ্য স্থানান্তর)', visible: true, is_core: false, order: 4 },
+];
+
+export default function Edit({ fields, relationships, sections: initialSections }) {
     const can = usePermission();
     const { auth = {} } = usePage().props;
     const canCreate = can('patient_config.create');
@@ -34,7 +41,12 @@ export default function Edit({ fields, relationships }) {
     const canOrder = can('patient_config.order');
     const canDelete = can('patient_config.delete');
     const canViewClinicSettings = (auth.roles ?? []).includes('Super Admin') && can('clinic_settings.view');
-    const { data, setData, put, processing, errors } = useForm({ fields, relationships });
+    const resolvedSections = (initialSections && initialSections.length > 0) ? initialSections : DEFAULT_SECTIONS;
+    const { data, setData, put, processing, errors } = useForm({
+        fields,
+        relationships,
+        sections: resolvedSections,
+    });
     const [newRelationshipLabel, setNewRelationshipLabel] = useState('');
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [relationshipDeleteError, setRelationshipDeleteError] = useState('');
@@ -42,9 +54,64 @@ export default function Edit({ fields, relationships }) {
     const [editingRelationshipValue, setEditingRelationshipValue] = useState(null);
     const [editingRelationshipLabel, setEditingRelationshipLabel] = useState('');
     const [updatingRelationship, setUpdatingRelationship] = useState(false);
-    const hasOrderChanges = FIELD_DETAILS
+    const [collapsedSections, setCollapsedSections] = useState({});
+
+    const hasFieldOrderChanges = FIELD_DETAILS
         .filter((field) => (field.orderKey || field.key) === field.key)
         .some((field) => data.fields[field.key].order !== fields[field.key].order);
+    const hasSectionOrderChanges = data.sections.some(
+        (sec, idx) => sec.order !== resolvedSections[idx]?.order || sec.key !== resolvedSections[idx]?.key
+    );
+    const hasSectionConfigChanges = data.sections.some(
+        (sec, idx) => sec.visible !== resolvedSections[idx]?.visible || sec.label !== resolvedSections[idx]?.label
+    );
+    const hasOrderChanges = hasFieldOrderChanges || hasSectionOrderChanges;
+
+    const toggleCollapse = (sectionKey) => {
+        setCollapsedSections((prev) => ({
+            ...prev,
+            [sectionKey]: !prev[sectionKey],
+        }));
+    };
+
+    const updateSection = (sectionKey, property, value) => {
+        if (!canUpdate) {
+            return;
+        }
+
+        setData('sections', data.sections.map((sec) => (
+            sec.key === sectionKey ? { ...sec, [property]: value } : sec
+        )));
+    };
+
+    const moveSection = (sectionKey, direction) => {
+        if (!canOrder) {
+            return;
+        }
+
+        const sortedSections = [...data.sections].sort((a, b) => a.order - b.order);
+        const currentIndex = sortedSections.findIndex((s) => s.key === sectionKey);
+        const targetIndex = currentIndex + direction;
+
+        if (targetIndex < 0 || targetIndex >= sortedSections.length) {
+            return;
+        }
+
+        const currentSec = sortedSections[currentIndex];
+        const targetSec = sortedSections[targetIndex];
+
+        const updatedSections = data.sections.map((sec) => {
+            if (sec.key === currentSec.key) {
+                return { ...sec, order: targetSec.order };
+            }
+            if (sec.key === targetSec.key) {
+                return { ...sec, order: currentSec.order };
+            }
+            return sec;
+        });
+
+        setData('sections', updatedSections.sort((a, b) => a.order - b.order).map((s, idx) => ({ ...s, order: idx + 1 })));
+    };
 
     const updateField = (fieldKey, property, value) => {
         if (!canUpdate) {
@@ -176,7 +243,7 @@ export default function Edit({ fields, relationships }) {
 
     const submit = (event) => {
         event.preventDefault();
-        if (!canCreate && !canUpdate && (!canOrder || !hasOrderChanges)) {
+        if (!canCreate && !canUpdate && (!canOrder || !hasOrderChanges) && !hasSectionConfigChanges) {
             return;
         }
 
@@ -189,7 +256,7 @@ export default function Edit({ fields, relationships }) {
             <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
                 <PageHeader
                     title="Patient Configurable"
-                    subtitle="Set field labels, visibility, required status, and order within each section. Configure the maximum length for Old/Other ID and Reference Number. Age fields move together."
+                    subtitle="Manage patient form sections, section order, visibility, custom labels, and field order within each section. Configure maximum lengths for identifiers."
                     actions={canViewClinicSettings ? (
                         <Link href={route('admin.settings.edit')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                             Clinic Settings
@@ -307,111 +374,208 @@ export default function Edit({ fields, relationships }) {
                             </div>
                         </section>
 
-                        {['Identity', 'Medical background', 'Contact', 'Legacy migration'].map((section) => (
-                            <section key={section} className="space-y-3">
-                                <div>
-                                    <h3 className="border-b border-gray-100 pb-2 text-xs font-bold uppercase tracking-wider text-gray-700">{section}</h3>
-                                    {section === 'Legacy migration' && (
-                                        <p className="mt-1 text-xs text-amber-700 bg-amber-50 rounded p-2">
+                        {[...data.sections].sort((a, b) => a.order - b.order).map((section, sectionIndex) => {
+                            const isCollapsed = !!collapsedSections[section.key];
+                            const isCore = section.is_core || section.key === 'identity';
+                            const movableSections = [...data.sections].sort((a, b) => a.order - b.order);
+                            const sectionFields = FIELD_DETAILS
+                                .filter((field) => field.section === section.name)
+                                .sort((first, second) => data.fields[first.orderKey || first.key].order - data.fields[second.orderKey || second.key].order);
+
+                            return (
+                                <section
+                                    key={section.key}
+                                    className={`rounded-lg border transition-all ${section.visible ? 'border-gray-200 bg-white' : 'border-dashed border-gray-300 bg-gray-50/70'} p-4 shadow-sm`}
+                                >
+                                    <div className="flex flex-col gap-3 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleCollapse(section.key)}
+                                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                                                title={isCollapsed ? `Expand ${section.name}` : `Collapse ${section.name}`}
+                                                aria-label={`Toggle ${section.name} section`}
+                                            >
+                                                <svg className={`h-4 w-4 transform transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-700">
+                                                        {sectionIndex + 1}
+                                                    </span>
+                                                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">
+                                                        {section.name}
+                                                    </h3>
+                                                    {isCore ? (
+                                                        <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-200">
+                                                            Core Section
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`rounded px-2 py-0.5 text-[10px] font-semibold border ${section.visible ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>
+                                                            {section.visible ? 'Active Section' : 'Section Inactive'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="mt-1 flex items-center gap-2">
+                                                    <label htmlFor={`section-label-${section.key}`} className="sr-only">{section.name} display label</label>
+                                                    <input
+                                                        id={`section-label-${section.key}`}
+                                                        type="text"
+                                                        value={section.label}
+                                                        onChange={(e) => updateSection(section.key, 'label', e.target.value)}
+                                                        disabled={!canUpdate}
+                                                        maxLength={120}
+                                                        placeholder="Custom section title (English / বাংলা)"
+                                                        className="w-full max-w-md rounded-md border-gray-300 py-1 text-xs text-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <label className={`flex items-center gap-1.5 text-xs font-medium ${isCore ? 'cursor-not-allowed text-gray-400' : 'cursor-pointer text-gray-700'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={section.visible}
+                                                    disabled={isCore || !canUpdate}
+                                                    onChange={(e) => updateSection(section.key, 'visible', e.target.checked)}
+                                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
+                                                />
+                                                <span>{isCore ? 'Always active' : (section.visible ? 'Show section' : 'Hide section')}</span>
+                                            </label>
+
+                                            <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveSection(section.key, -1)}
+                                                    disabled={!canOrder || sectionIndex === 0}
+                                                    aria-label={`Move ${section.name} section up`}
+                                                    title={`Move ${section.name} section up`}
+                                                    className="rounded border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+                                                >
+                                                    ↑ Up
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveSection(section.key, 1)}
+                                                    disabled={!canOrder || sectionIndex >= movableSections.length - 1}
+                                                    aria-label={`Move ${section.name} section down`}
+                                                    title={`Move ${section.name} section down`}
+                                                    className="rounded border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+                                                >
+                                                    ↓ Down
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {section.key === 'legacy_migration' && (
+                                        <p className="mt-2 text-xs text-amber-800 bg-amber-50 rounded p-2.5 border border-amber-200">
                                             Enable these fields during initial clinic onboarding to record historical visit counts and last visit dates for migrated patients. Turn off once migration is complete to prevent manual overrides.
                                         </p>
                                     )}
-                                </div>
-                                <div className="space-y-3">
-                                    {FIELD_DETAILS
-                                        .filter((field) => field.section === section)
-                                        .sort((first, second) => data.fields[first.orderKey || first.key].order - data.fields[second.orderKey || second.key].order)
-                                        .map((field) => {
-                                        const config = data.fields[field.key];
-                                        const isCoreField = ['name', 'gender'].includes(field.key);
-                                        const orderKey = field.orderKey || field.key;
-                                        const isOrderControl = field.key === orderKey;
-                                        const movableFields = FIELD_DETAILS
-                                            .filter((item) => item.section === section && (item.orderKey || item.key) === item.key)
-                                            .sort((first, second) => data.fields[first.key].order - data.fields[second.key].order);
-                                        const orderIndex = movableFields.findIndex((item) => item.key === orderKey);
 
-                                        return (
-                                            <div key={field.key} className={`grid grid-cols-1 items-center gap-3 rounded-md border border-gray-100 p-3 ${['reference_number', 'old_or_other_id'].includes(field.key) ? 'sm:grid-cols-[minmax(0,1fr)_120px_120px_140px_120px]' : 'sm:grid-cols-[minmax(0,1fr)_120px_140px_120px]'}`}>
-                                                <div>
-                                                    <label htmlFor={`field-label-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">{field.name} label</label>
-                                                    <input
-                                                        id={`field-label-${field.key}`}
-                                                        type="text"
-                                                        value={config.label}
-                                                        onChange={(event) => updateField(field.key, 'label', event.target.value)}
-                                                        disabled={!canUpdate}
-                                                        maxLength={80}
-                                                        className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                                                    />
-                                                </div>
-                                                {['reference_number', 'old_or_other_id'].includes(field.key) && (
-                                                    <div>
-                                                        <label htmlFor={`field-max-length-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">Maximum length</label>
-                                                        <input
-                                                            id={`field-max-length-${field.key}`}
-                                                            type="number"
-                                                            min="1"
-                                                            max="255"
-                                                            value={config.max_length ?? (field.key === 'old_or_other_id' ? 50 : 100)}
-                                                            onChange={(event) => updateField(field.key, 'max_length', Number(event.target.value))}
-                                                            disabled={!canUpdate}
-                                                            className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                                                        />
+                                    {isCollapsed ? (
+                                        <div className="mt-3 text-xs text-gray-500 italic">
+                                            Section collapsed ({sectionFields.length} fields). Click chevron to expand and manage individual fields.
+                                        </div>
+                                    ) : (
+                                        <div className="mt-3 space-y-3">
+                                            {sectionFields.map((field) => {
+                                                const config = data.fields[field.key];
+                                                const isCoreField = ['name', 'gender'].includes(field.key);
+                                                const orderKey = field.orderKey || field.key;
+                                                const isOrderControl = field.key === orderKey;
+                                                const movableFields = FIELD_DETAILS
+                                                    .filter((item) => item.section === section.name && (item.orderKey || item.key) === item.key)
+                                                    .sort((first, second) => data.fields[first.key].order - data.fields[second.key].order);
+                                                const orderIndex = movableFields.findIndex((item) => item.key === orderKey);
+
+                                                return (
+                                                    <div key={field.key} className={`grid grid-cols-1 items-center gap-3 rounded-md border border-gray-100 p-3 ${['reference_number', 'old_or_other_id'].includes(field.key) ? 'sm:grid-cols-[minmax(0,1fr)_120px_120px_140px_120px]' : 'sm:grid-cols-[minmax(0,1fr)_120px_140px_120px]'}`}>
+                                                        <div>
+                                                            <label htmlFor={`field-label-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">{field.name} label</label>
+                                                            <input
+                                                                id={`field-label-${field.key}`}
+                                                                type="text"
+                                                                value={config.label}
+                                                                onChange={(event) => updateField(field.key, 'label', event.target.value)}
+                                                                disabled={!canUpdate}
+                                                                maxLength={80}
+                                                                className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                                            />
+                                                        </div>
+                                                        {['reference_number', 'old_or_other_id'].includes(field.key) && (
+                                                            <div>
+                                                                <label htmlFor={`field-max-length-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">Maximum length</label>
+                                                                <input
+                                                                    id={`field-max-length-${field.key}`}
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max="255"
+                                                                    value={config.max_length ?? (field.key === 'old_or_other_id' ? 50 : 100)}
+                                                                    onChange={(event) => updateField(field.key, 'max_length', Number(event.target.value))}
+                                                                    disabled={!canUpdate}
+                                                                    className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={config.visible}
+                                                                disabled={isCoreField || !canUpdate}
+                                                                onChange={(event) => updateField(field.key, 'visible', event.target.checked)}
+                                                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                            />
+                                                            Show field
+                                                        </label>
+                                                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={config.required}
+                                                                disabled={isCoreField || !canUpdate}
+                                                                onChange={(event) => updateField(field.key, 'required', event.target.checked)}
+                                                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                            />
+                                                            Required
+                                                        </label>
+                                                        <div className="flex items-center gap-2">
+                                                            {isOrderControl ? (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => moveField(field.key, section.name, -1)}
+                                                                        disabled={!canOrder || orderIndex <= 0}
+                                                                        aria-label={`Move ${field.name} up`}
+                                                                        className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                                    >
+                                                                        ↑
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => moveField(field.key, section.name, 1)}
+                                                                        disabled={!canOrder || orderIndex < 0 || orderIndex >= movableFields.length - 1}
+                                                                        aria-label={`Move ${field.name} down`}
+                                                                        className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                                    >
+                                                                        ↓
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-500">Moves with years</span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                )}
-                                                <label className="flex items-center gap-2 text-sm text-gray-700">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={config.visible}
-                                                        disabled={isCoreField || !canUpdate}
-                                                        onChange={(event) => updateField(field.key, 'visible', event.target.checked)}
-                                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                                                    />
-                                                    Show field
-                                                </label>
-                                                <label className="flex items-center gap-2 text-sm text-gray-700">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={config.required}
-                                                        disabled={isCoreField || !canUpdate}
-                                                        onChange={(event) => updateField(field.key, 'required', event.target.checked)}
-                                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                                                    />
-                                                    Required
-                                                </label>
-                                                <div className="flex items-center gap-2">
-                                                    {isOrderControl ? (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => moveField(field.key, section, -1)}
-                                                                disabled={!canOrder || orderIndex <= 0}
-                                                                aria-label={`Move ${field.name} up`}
-                                                                className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                            >
-                                                                ↑
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => moveField(field.key, section, 1)}
-                                                                disabled={!canOrder || orderIndex < 0 || orderIndex >= movableFields.length - 1}
-                                                                aria-label={`Move ${field.name} down`}
-                                                                className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                            >
-                                                                ↓
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-500">Moves with years</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </section>
-                        ))}
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </section>
+                            );
+                        })}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
@@ -420,7 +584,7 @@ export default function Edit({ fields, relationships }) {
                         </Link>
                             <button
                                 type="submit"
-                                disabled={(!canCreate && !canUpdate && (!canOrder || !hasOrderChanges)) || processing}
+                                disabled={(!canCreate && !canUpdate && (!canOrder || !hasOrderChanges) && !hasSectionConfigChanges) || processing}
                                 className="rounded-md bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {processing ? 'Saving...' : 'Save Patient Configuration'}

@@ -197,3 +197,17 @@
 - [x] **Task 13.5**: SMS Gateway & Template Settings
   - Dedicated configuration UI `Admin/Communications/Settings.jsx` to toggle SMS, choose gateway providers, configure credentials/masking, and customize message templates with dynamic placeholders (`{patient_name}`, `{doctor_name}`, `{clinic_name}`, `{date}`, `{token_code}`, `{prescription_url}`).
 - [x] **Verification**: All 9 feature tests in `AutomatedPatientCommunicationsTest` passing (77 assertions). Full regression suite (54 tests, 416 assertions) passing. Pint formatted cleanly and Vite build succeeded.
+
+### Phase 14: Section-Wise Patient Form Configuration & Storage Backup Guidance (`[x] COMPLETED`)
+- [x] **Task 14.1**: Section-Level Patient Configuration Engine
+  - Added `defaultPatientFormSections()`, `currentPatientFormSections()`, and `getPatientFormSections()` in `ClinicSetting.php`.
+  - Added validation rules for `sections` array in `UpdatePatientFormConfigRequest.php`.
+  - Section re-ordering (`↑` / `↓`), master section visibility toggling (`visible: false`), and custom title customization in `Admin/PatientConfig/Edit.jsx`.
+  - Enforced clinical core safety invariant preventing deactivation of the core `Identity` section (`is_core: true`).
+- [x] **Task 14.2**: Dynamic Section Rendering in Patient Forms
+  - Updated `Patients/Create.jsx` and `Patients/Edit.jsx` to dynamically respect section orders (`style={{ order: getSectionOrder(...) }}`) and section visibility (`isSectionVisible(...)`).
+  - Skipping non-core field validation when containing section is toggled inactive in `PatientDataRequest.php`.
+- [x] **Task 14.3**: System Health Operations & Storage Clarification
+  - Documented cPanel private storage architecture: clarified ~141 MB / ~26,000 files in private storage as in-app Git deployment checkout repository (`storage/app/private/git-repository/source`).
+  - Added cPanel guidance in `SystemHealth.jsx` for setting `SYSTEM_HEALTH_BACKUP_PATH` outside `public_html` to prevent `Check permissions` warnings.
+- [x] **Verification**: All 20 tests in `PatientFormConfigurationTest` and all 128 tests across Patient and System Health suites passing (1,181 assertions). Pint formatted and Vite build completed.

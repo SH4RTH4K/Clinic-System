@@ -7,7 +7,19 @@ import { useState } from 'react';
 import { calculateAgeFromDob, calculateDobFromAge } from './ageHelpers';
 import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
-export default function Edit({ patient, fieldConfig = {}, relationshipOptions = [], nextOldOrOtherIdPreview = '', oldOrOtherIdConfig = {} }) {
+export default function Edit({ patient, fieldConfig = {}, sectionConfig = [], relationshipOptions = [], nextOldOrOtherIdPreview = '', oldOrOtherIdConfig = {} }) {
+    const defaultSections = [
+        { key: 'identity', name: 'Identity', label: 'Identity & Demographics', visible: true, is_core: true, order: 1 },
+        { key: 'medical_background', name: 'Medical background', label: 'Medical Background (চিকিৎসা ইতিহাস)', visible: true, is_core: false, order: 2 },
+        { key: 'contact', name: 'Contact', label: 'Contact & Residential Location', visible: true, is_core: false, order: 3 },
+        { key: 'legacy_migration', name: 'Legacy migration', label: 'Historical Migration Data / পূর্ববর্তী তথ্য', visible: true, is_core: false, order: 4 },
+    ];
+    const resolvedSections = (sectionConfig && sectionConfig.length > 0 ? sectionConfig : defaultSections)
+        .slice()
+        .sort((a, b) => a.order - b.order);
+    const getSectionOrder = (key) => resolvedSections.find((s) => s.key === key)?.order ?? 10;
+    const isSectionVisible = (key) => resolvedSections.find((s) => s.key === key)?.visible ?? true;
+    const getSectionLabel = (key, fallback) => resolvedSections.find((s) => s.key === key)?.label || fallback;
     const rawDob = patient.dob ? patient.dob.split('T')[0] : '';
     const dobAge = rawDob ? calculateAgeFromDob(rawDob) : null;
     const createdAt = patient.created_at ? new Date(patient.created_at) : null;
@@ -132,9 +144,9 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                 />
 
                 <div className="bg-white p-6 shadow-xs border border-gray-200 rounded-lg">
-                    <form onSubmit={submit} className="space-y-6">
+                    <form onSubmit={submit} className="flex flex-col gap-6">
                         {/* Patient Photo & Webcam Capture */}
-                        <section className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+                        <section className="rounded-lg border border-gray-200 bg-gray-50/50 p-4" style={{ order: 0 }}>
                             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800 mb-1">Patient Photo</h3>
                             <p className="text-xs text-gray-500 mb-4">Update the patient's identification photograph used for OPD cards and clinical verification.</p>
 
@@ -213,9 +225,9 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                         </section>
 
                         {/* Basic Identity Information */}
-                        {(field('name').visible || field('old_or_other_id').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
+                        {isSectionVisible('identity') && (field('name').visible || field('old_or_other_id').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div style={{ order: getSectionOrder('identity') }}>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
-                                Identity &amp; Demographics
+                                {getSectionLabel('identity', 'Identity & Demographics')}
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 {field('name').visible && <div className="md:col-span-2" style={{ order: field('name').order }}>
@@ -428,10 +440,10 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                             </div>
                         </div>}
 
-                        {/* Medical Background (Immediately after Identity) */}
-                        {(field('blood_group').visible || field('known_allergies').visible || field('medical_history').visible) && <div>
+                        {/* Medical Background */}
+                        {isSectionVisible('medical_background') && (field('blood_group').visible || field('known_allergies').visible || field('medical_history').visible) && <div style={{ order: getSectionOrder('medical_background') }}>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
-                                Medical Background (চিকিৎসা ইতিহাস)
+                                {getSectionLabel('medical_background', 'Medical Background (চিকিৎসা ইতিহাস)')}
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {field('blood_group').visible && <FormField style={{ order: field('blood_group').order }} label={field('blood_group').label} id="blood_group" required={field('blood_group').required} error={errors.blood_group}>
@@ -485,9 +497,9 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                         </div>}
 
                         {/* Contact & Residential Address */}
-                        {(field('phone').visible || field('referred_by').visible || field('address').visible) && <div>
+                        {isSectionVisible('contact') && (field('phone').visible || field('referred_by').visible || field('address').visible) && <div style={{ order: getSectionOrder('contact') }}>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
-                                Contact &amp; Residential Location
+                                {getSectionLabel('contact', 'Contact & Residential Location')}
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {field('phone').visible && <FormField style={{ order: field('phone').order }} label={field('phone').label} id="phone" required={field('phone').required} error={errors.phone} helpText="Format: 017XXXXXXXX or +8801XXXXXXXX">
@@ -531,10 +543,10 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                         </div>}
 
                         {/* Historical Migration Data */}
-                        {(field('manual_last_visit_date').visible || field('legacy_visits_count').visible || data.manual_last_visit_date || data.legacy_visits_count > 0) && (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                        {isSectionVisible('legacy_migration') && (field('manual_last_visit_date').visible || field('legacy_visits_count').visible || data.manual_last_visit_date || data.legacy_visits_count > 0) && (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4" style={{ order: getSectionOrder('legacy_migration') }}>
                                 <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                    <span>📦 Historical Migration Data / পূর্ববর্তী তথ্য</span>
+                                    <span>📦 {getSectionLabel('legacy_migration', 'Historical Migration Data / পূর্ববর্তী তথ্য')}</span>
                                     <span className="text-[11px] font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Migration Data</span>
                                 </h3>
                                 <p className="text-xs text-amber-700 mb-4">
@@ -571,7 +583,7 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                         )}
 
                         {/* Form Submission */}
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100" style={{ order: 999 }}>
                             <Link
                                 href={route('admin.patients.show', patient.id)}
                                 className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-md shadow-xs transition"

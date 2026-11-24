@@ -112,7 +112,6 @@ class ClinicSetting extends Model
         return [
             'name' => ['name'],
             'old_or_other_id' => ['old_or_other_id'],
-            'reference_number' => ['reference_number'],
             'guardian_relationship' => ['guardian_relationship'],
             'guardian_name' => ['guardian_name'],
             'gender' => ['gender'],
@@ -124,8 +123,147 @@ class ClinicSetting extends Model
             'blood_group' => ['blood_group'],
             'known_allergies' => ['known_allergies'],
             'medical_history' => ['medical_history'],
+            'reference_number' => ['reference_number'],
             'manual_last_visit_date' => ['manual_last_visit_date'],
             'legacy_visits_count' => ['legacy_visits_count'],
+        ];
+    }
+
+    /**
+     * @return list<array{key: string, name: string, label: string, visible: bool, is_core: bool, order: int}>
+     */
+    public static function defaultPatientFormSections(): array
+    {
+        return [
+            [
+                'key' => 'identity',
+                'name' => 'Identity',
+                'label' => 'Identity & Demographics',
+                'visible' => true,
+                'is_core' => true,
+                'order' => 1,
+            ],
+            [
+                'key' => 'medical_background',
+                'name' => 'Medical background',
+                'label' => 'Medical Background (চিকিৎসা ইতিহাস)',
+                'visible' => true,
+                'is_core' => false,
+                'order' => 2,
+            ],
+            [
+                'key' => 'contact',
+                'name' => 'Contact',
+                'label' => 'Contact & Residential Location',
+                'visible' => true,
+                'is_core' => false,
+                'order' => 3,
+            ],
+            [
+                'key' => 'legacy_migration',
+                'name' => 'Legacy migration',
+                'label' => 'Legacy Migration & Historical Records',
+                'visible' => true,
+                'is_core' => false,
+                'order' => 4,
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{key: string, name: string, label: string, visible: bool, is_core: bool, order: int}>
+     */
+    public static function currentPatientFormSections(): array
+    {
+        return static::query()->first()?->getPatientFormSections() ?? self::defaultPatientFormSections();
+    }
+
+    /**
+     * @return list<array{key: string, name: string, label: string, visible: bool, is_core: bool, order: int}>
+     */
+    public function getPatientFormSections(): array
+    {
+        $defaults = self::defaultPatientFormSections();
+        $storedSections = $this->patient_form_config['sections'] ?? null;
+
+        if (! is_array($storedSections)) {
+            return $defaults;
+        }
+
+        $defaultsByKey = collect($defaults)->keyBy('key')->all();
+        $sections = [];
+
+        foreach ($storedSections as $index => $stored) {
+            if (! is_array($stored) || ! isset($stored['key']) || ! isset($defaultsByKey[$stored['key']])) {
+                continue;
+            }
+
+            $key = $stored['key'];
+            $default = $defaultsByKey[$key];
+
+            $sections[] = [
+                'key' => $key,
+                'name' => $default['name'],
+                'label' => is_string($stored['label'] ?? null) && trim($stored['label']) !== ''
+                    ? trim($stored['label'])
+                    : $default['label'],
+                'visible' => $default['is_core'] ? true : (bool) ($stored['visible'] ?? $default['visible']),
+                'is_core' => $default['is_core'],
+                'order' => isset($stored['order']) ? (int) $stored['order'] : ($index + 1),
+            ];
+            unset($defaultsByKey[$key]);
+        }
+
+        $nextOrder = count($sections) + 1;
+        foreach ($defaultsByKey as $remaining) {
+            $remaining['order'] = $nextOrder++;
+            $sections[] = $remaining;
+        }
+
+        usort($sections, fn (array $first, array $second): int => $first['order'] <=> $second['order']);
+
+        foreach ($sections as $i => &$sec) {
+            $sec['order'] = $i + 1;
+        }
+        unset($sec);
+
+        return array_values($sections);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function patientFormSections(): array
+    {
+        $sections = static::currentPatientFormSections();
+
+        return array_values(array_map(fn (array $section): string => $section['name'], $sections));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function patientFieldSections(): array
+    {
+        return [
+            'name' => 'Identity',
+            'old_or_other_id' => 'Identity',
+            'reference_number' => 'Identity',
+            'guardian_relationship' => 'Identity',
+            'guardian_name' => 'Identity',
+            'gender' => 'Identity',
+            'age_years' => 'Identity',
+            'age_months' => 'Identity',
+            'age_days' => 'Identity',
+            'dob' => 'Identity',
+            'blood_group' => 'Medical background',
+            'known_allergies' => 'Medical background',
+            'medical_history' => 'Medical background',
+            'phone' => 'Contact',
+            'referred_by' => 'Contact',
+            'address' => 'Contact',
+            'manual_last_visit_date' => 'Legacy migration',
+            'legacy_visits_count' => 'Legacy migration',
         ];
     }
 
