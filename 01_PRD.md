@@ -199,3 +199,11 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **WhatsApp Click-to-Chat Prescription Sharing**: Pre-filled bilingual WhatsApp message sharing tokenized prescription link directly to patient phone.
 - `[x] Done` **Public Digital Prescription Access**: Secure tokenized web viewer (`/rx/{token}`) and PDF stream (`/rx/{token}/pdf`) for mobile patients without login.
 - `[x] Done` **Notification Audit Ledger**: Comprehensive log tracking SMS and WhatsApp dispatches, delivery statuses, metrics, and custom direct SMS modal.
+
+---
+
+### Module 12: Mobile Camera Photo Capture & Patient Imaging
+- `[x] Done` **Native Mobile Camera Capture**: HTML5 Media Capture integration (`<input type="file" accept="image/*" capture="environment">`) launching the device's native camera app directly with auto-focus, flash, and native camera resolution without browser permission blocks across both HTTP and HTTPS.
+- `[x] Done` **Insecure Context (HTTP) Resilient WebRTC Fallback**: Graceful detection of `window.isSecureContext` in `WebcamCaptureModal.jsx` explaining HTTPS requirement cleanly instead of failing or displaying generic permission denied errors.
+- `[x] Done` **Rear / Front Facing Camera Toggle**: Multi-camera support allowing doctors to toggle between rear camera (`environment`) for patient photography and front camera (`user`) with mirror mode.
+- `[x] Done` **Multi-Tier Patient Photo Integration**: Three complementary photo options provided across `Patients/Create.jsx` and `Patients/Edit.jsx`: `Take Photo (Mobile Camera)`, `Live Webcam`, and `Upload Image File`.

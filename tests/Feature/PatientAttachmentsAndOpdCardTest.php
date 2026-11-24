@@ -234,6 +234,49 @@ class PatientAttachmentsAndOpdCardTest extends TestCase
         $this->assertNull($patient->photo_path);
     }
 
+    public function test_user_can_store_and_update_patient_with_mobile_camera_photo_upload(): void
+    {
+        // Simulate high-resolution photo captured directly by mobile device camera input (capture="environment")
+        $mobilePhoto = UploadedFile::fake()->image('camera_capture_1280x720.jpg', 1280, 720);
+
+        $response = $this->actingAs($this->doctorUser)
+            ->post(route('admin.patients.store'), [
+                'name' => 'Mobile Camera Patient',
+                'patient_numbering_profile_id' => $this->profile->id,
+                'gender' => 'male',
+                'age_years' => 28,
+                'phone' => '01799887766',
+                'photo' => $mobilePhoto,
+            ]);
+
+        $response->assertRedirect(route('admin.patients.index'));
+
+        $patient = Patient::where('name', 'Mobile Camera Patient')->firstOrFail();
+        $this->assertNotNull($patient->photo_path);
+        $this->assertTrue(Storage::disk('public')->exists($patient->photo_path));
+        $this->assertNotNull($patient->photo_url);
+
+        $oldPhotoPath = $patient->photo_path;
+
+        // Replace with new mobile camera capture
+        $newMobilePhoto = UploadedFile::fake()->image('camera_capture_new.jpg', 1280, 720);
+        $updateResponse = $this->actingAs($this->doctorUser)
+            ->put(route('admin.patients.update', $patient->id), [
+                'name' => 'Mobile Camera Patient',
+                'gender' => 'male',
+                'age_years' => 28,
+                'phone' => '01799887766',
+                'photo' => $newMobilePhoto,
+            ]);
+
+        $updateResponse->assertRedirect(route('admin.patients.index'));
+        $patient->refresh();
+        $this->assertNotNull($patient->photo_path);
+        $this->assertNotSame($oldPhotoPath, $patient->photo_path);
+        $this->assertTrue(Storage::disk('public')->exists($patient->photo_path));
+        $this->assertFalse(Storage::disk('public')->exists($oldPhotoPath));
+    }
+
     public function test_user_can_store_patient_with_webcam_base64_photo(): void
     {
         // 1x1 transparent PNG data URI

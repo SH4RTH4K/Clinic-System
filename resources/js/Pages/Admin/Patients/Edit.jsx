@@ -165,16 +165,41 @@ export default function Edit({ patient, fieldConfig = {}, sectionConfig = [], re
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowWebcam(true)}
-                                        className="inline-flex items-center px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition"
-                                    >
+                                    {/* Native Mobile Camera Trigger (Works seamlessly on HTTP and HTTPS) */}
+                                    <label className="cursor-pointer inline-flex items-center px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition">
                                         <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                        Take Photo with Webcam
+                                        Take Photo (Mobile Camera)
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setData((prev) => ({
+                                                        ...prev,
+                                                        photo: file,
+                                                        photo_webcam_data: '',
+                                                        remove_photo: false,
+                                                    }));
+                                                }
+                                            }}
+                                        />
+                                    </label>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowWebcam(true)}
+                                        className="inline-flex items-center px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-xs transition"
+                                    >
+                                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        Live Webcam
                                     </button>
 
                                     <label className="cursor-pointer inline-flex items-center px-3.5 py-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-xs transition">

@@ -234,3 +234,17 @@
   - Updated `AuthenticatedLayout.jsx` sidebar branding to dynamically display the configured clinic name and logo rather than static text.
   - Added a 1-click Language Switcher toggle (`বাং` / `EN`) in the admin topbar.
 - [x] **Verification**: Added `ClinicBrandingAndLanguageTitleTest` (3 tests, 68 assertions) covering English/Bangla titles, setting updates, and server-rendered HTML tags. All 50 related tests passing. Pint formatted and Vite build completed.
+
+### Phase 17: Mobile Camera Native Capture & Insecure Context Hardening (`[x] COMPLETED`)
+- [x] **Task 17.1**: Native HTML5 Mobile Camera Integration
+  - Added dedicated `Take Photo (Mobile Camera)` input with `capture="environment"` and `accept="image/*"` in `Patients/Create.jsx` and `Patients/Edit.jsx`.
+  - Enables direct one-tap opening of the smartphone's native camera app on Android and iOS over both plain HTTP and HTTPS without triggering browser WebRTC permission restrictions.
+- [x] **Task 17.2**: WebRTC Modal Insecure Context & Multi-Camera Hardening
+  - Updated `WebcamCaptureModal.jsx` with `window.isSecureContext` detection to identify non-SSL / HTTP origins (such as `8-119-134.cpanel.site`) cleanly.
+  - Added facing-mode selection defaulting to rear camera (`environment`) on mobile devices.
+  - Added `🔄 Flip Camera` button (`Rear Cam` / `Front Cam`) in the live viewfinder overlay.
+  - Added progressive constraint fallback from 1280x720 ideal constraints to basic video constraint.
+  - Upgraded modal fallback UI with a primary `📸 Snap with Mobile Camera` action button.
+- [x] **Task 17.3**: Automated Feature Verification & Testing
+  - Added `test_user_can_store_and_update_patient_with_mobile_camera_photo_upload()` in `PatientAttachmentsAndOpdCardTest.php` testing high-resolution mobile camera snaps (`image/jpeg`), storage persistence, URL generation, and automatic old photo cleanup upon update.
+- [x] **Verification**: All 11 tests in `PatientAttachmentsAndOpdCardTest` and related test suites passing (130 assertions). Pint formatted and Vite build completed.
