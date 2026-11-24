@@ -47,6 +47,9 @@ abstract class PatientDataRequest extends FormRequest
         ];
         $rules = [
             'old_or_other_id_mode' => ['sometimes', 'nullable', 'string', Rule::in(['auto', 'manual', 'none'])],
+            'photo' => ['sometimes', 'nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'photo_webcam_data' => ['sometimes', 'nullable', 'string'],
+            'remove_photo' => ['sometimes', 'nullable', 'boolean'],
         ];
         $canViewClinicalRecords = $this->user()?->can('clinical_records.view') === true;
 
