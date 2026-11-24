@@ -32,13 +32,14 @@ class CalendarController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        // 1. Scheduled Appointments
-        $appointments = AppointmentRequest::query()
-            ->whereNotNull('scheduled_date')
-            ->whereDate('scheduled_date', '>=', $startDate)
-            ->whereDate('scheduled_date', '<=', $endDate)
-            ->when($doctorId, fn ($q) => $q->where('doctor_id', $doctorId))
-            ->get(['id', 'name', 'phone', 'scheduled_date', 'scheduled_time', 'status', 'doctor_id']);
+        // 1. Scheduled Appointments (clinic-wide intake requests)
+        $appointments = $doctorId
+            ? collect()
+            : AppointmentRequest::query()
+                ->whereNotNull('scheduled_date')
+                ->whereDate('scheduled_date', '>=', $startDate)
+                ->whereDate('scheduled_date', '<=', $endDate)
+                ->get(['id', 'name', 'phone', 'scheduled_date', 'scheduled_time', 'status']);
 
         // 2. Clinical Visits
         $visits = Visit::query()
@@ -79,21 +80,22 @@ class CalendarController extends Controller
         $start = $request->input('start', Carbon::today()->startOfMonth()->toDateString());
         $end = $request->input('end', Carbon::today()->endOfMonth()->toDateString());
 
-        $appointments = AppointmentRequest::query()
-            ->whereNotNull('scheduled_date')
-            ->whereDate('scheduled_date', '>=', $start)
-            ->whereDate('scheduled_date', '<=', $end)
-            ->when($doctorId, fn ($q) => $q->where('doctor_id', $doctorId))
-            ->get()
-            ->map(fn ($appt) => [
-                'id' => 'appt-'.$appt->id,
-                'type' => 'appointment',
-                'title' => 'Appt: '.$appt->name,
-                'date' => $appt->scheduled_date->toDateString(),
-                'time' => $appt->scheduled_time,
-                'status' => $appt->status,
-                'url' => route('admin.appointment_requests.edit', $appt->id),
-            ]);
+        $appointments = $doctorId
+            ? collect()
+            : AppointmentRequest::query()
+                ->whereNotNull('scheduled_date')
+                ->whereDate('scheduled_date', '>=', $start)
+                ->whereDate('scheduled_date', '<=', $end)
+                ->get()
+                ->map(fn ($appt) => [
+                    'id' => 'appt-'.$appt->id,
+                    'type' => 'appointment',
+                    'title' => 'Appt: '.$appt->name,
+                    'date' => $appt->scheduled_date->toDateString(),
+                    'time' => $appt->scheduled_time,
+                    'status' => $appt->status,
+                    'url' => route('admin.appointment_requests.edit', $appt->id),
+                ]);
 
         $visits = Visit::query()
             ->with(['patient:id,name'])

@@ -343,7 +343,6 @@ class QueueManagementAndCalendarTest extends TestCase
             'scheduled_date' => Carbon::today(),
             'scheduled_time' => '10:00:00',
             'status' => 'scheduled',
-            'doctor_id' => $this->doctor->id,
         ]);
 
         Visit::factory()->create([
@@ -366,6 +365,15 @@ class QueueManagementAndCalendarTest extends TestCase
 
         $events = $eventsResponse->json('events');
         $this->assertCount(3, $events);
+
+        // Filtered by specific doctor
+        $doctorCalendarResponse = $this->actingAs($this->staff)->get(route('admin.calendar.index', ['doctor_id' => $this->doctor->id]));
+        $doctorCalendarResponse->assertOk();
+
+        $filteredEventsResponse = $this->actingAs($this->staff)->getJson(route('admin.calendar.events', ['doctor_id' => $this->doctor->id]));
+        $filteredEventsResponse->assertOk();
+        $filteredEvents = $filteredEventsResponse->json('events');
+        $this->assertCount(2, $filteredEvents); // Visit + Leave (appointment is clinic-wide)
     }
 
     public function test_can_render_queue_token_create_page(): void
