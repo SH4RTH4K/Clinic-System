@@ -17,6 +17,7 @@ use App\Services\Admin\AppointmentRequestPatientMatcher;
 use App\Services\Admin\ClinicalAccessAuditService;
 use App\Services\BarcodeService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -69,7 +70,7 @@ class PatientController extends Controller
 
         $patients = Patient::select([
             'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
-            'old_or_other_id', 'name', 'phone', 'guardian_name', 'guardian_relationship',
+            'old_or_other_id', 'name', 'guardian_name', 'guardian_relationship',
             'guardian_relationship_custom', 'age_years', 'age_months', 'age_days', 'gender',
         ])
             ->search($term)
@@ -466,10 +467,11 @@ class PatientController extends Controller
     public function opdCard(Request $request, Patient $patient, BarcodeService $barcodeService)
     {
         $user = $request->user();
-        abort_unless($user instanceof User && ($user->can('patients.view') || $user->can('clinical_records.view')), 403);
+        abort_unless($user instanceof User && ($user->hasRole('Super Admin') || $user->can('patients.view') || $user->can('clinical_records.view')), 403);
 
         $settings = ClinicSetting::query()->first();
-        $barcodeSvg = $barcodeService->generateCode128Svg($patient->patient_identifier, 48, 2, 8);
+        $barcodeText = $patient->patient_identifier ?: ('P-'.str_pad((string) $patient->id, 5, '0', STR_PAD_LEFT));
+        $barcodeSvg = $barcodeService->generateCode128Svg($barcodeText, 48, 2, 8);
 
         $logoBase64 = null;
         if ($settings?->logo_path && Storage::disk('public')->exists($settings->logo_path)) {
@@ -485,16 +487,23 @@ class PatientController extends Controller
             $photoBase64 = 'data:'.$mime.';base64,'.base64_encode($photoContent);
         }
 
+        $dobFormatted = null;
+        if ($patient->dob) {
+            $dobFormatted = $patient->dob instanceof CarbonInterface
+                ? $patient->dob->toDateString()
+                : (string) $patient->dob;
+        }
+
         $cardData = [
             'patient' => [
                 'id' => $patient->id,
-                'patient_identifier' => $patient->patient_identifier,
+                'patient_identifier' => $patient->patient_identifier ?: $barcodeText,
                 'patient_code' => $patient->patient_code,
                 'name' => $patient->name,
                 'gender' => $patient->gender,
                 'age_years' => $patient->age_years,
                 'age_months' => $patient->age_months,
-                'dob' => $patient->dob?->toDateString(),
+                'dob' => $dobFormatted,
                 'phone' => $patient->phone,
                 'blood_group' => $patient->blood_group,
                 'guardian_name' => $patient->guardian_name,
@@ -504,11 +513,11 @@ class PatientController extends Controller
                 'created_at' => $patient->created_at?->format('d M Y'),
             ],
             'clinic' => [
-                'name' => $settings?->clinic_name ?? config('app.name', 'RemediQ'),
+                'name' => $settings?->clinic_name_en ?? $settings?->clinic_name_bn ?? config('app.name', 'RemediQ'),
                 'address' => $settings?->address ?? '',
                 'phone' => $settings?->phone ?? '',
                 'email' => $settings?->email ?? '',
-                'logo_url' => $settings?->logo_url ?? null,
+                'logo_url' => $settings?->logo_path ? route('clinic.logo') : null,
             ],
             'barcodeSvg' => $barcodeSvg,
             'issuedAt' => now()->format('d M Y'),

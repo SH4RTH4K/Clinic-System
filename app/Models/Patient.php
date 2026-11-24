@@ -18,6 +18,13 @@ class Patient extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'dob' => 'date',
+        'age_years' => 'integer',
+        'age_months' => 'integer',
+        'age_days' => 'integer',
+    ];
+
     protected $appends = ['patient_identifier', 'patient_number', 'photo_url'];
 
     public function numberingProfile(): BelongsTo
@@ -108,7 +115,11 @@ class Patient extends Model
             return $this->patient_code;
         }
 
-        return (string) $this->patient_no.(string) $this->patient_series;
+        if ($this->patient_no || $this->patient_series) {
+            return (string) $this->patient_no.(string) $this->patient_series;
+        }
+
+        return 'P-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 
     public function getPatientNumberAttribute(): string

@@ -56,17 +56,17 @@ Route::middleware(['auth', 'role:Super Admin', 'permission:roles.update'])
     ->put('permissions/{role}', [PermissionController::class, 'update'])->name('permissions.update');
 
 // Patients
-Route::middleware(['auth', 'permission:patients.create'])
+Route::middleware(['auth', 'role_or_permission:Super Admin|patients.create'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['create', 'store']));
-Route::middleware(['auth', 'permission:patients.view'])->group(function () {
+Route::middleware(['auth', 'role_or_permission:Super Admin|patients.view'])->group(function () {
     Route::get('patients/search', [PatientController::class, 'search'])->name('patients.search');
     Route::get('patients/{patient}/opd-card', [PatientController::class, 'opdCard'])->name('patients.opd_card');
     Route::get('patients/{patient}/photo', [PatientController::class, 'photo'])->name('patients.photo');
     Route::resource('patients', PatientController::class)->only(['index', 'show']);
 });
-Route::middleware(['auth', 'permission:patients.update'])
+Route::middleware(['auth', 'role_or_permission:Super Admin|patients.update'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['edit', 'update']));
-Route::middleware(['auth', 'permission:patients.delete'])
+Route::middleware(['auth', 'role_or_permission:Super Admin|patients.delete'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['destroy']));
 
 // Patient Attachments & Diagnostic Reports

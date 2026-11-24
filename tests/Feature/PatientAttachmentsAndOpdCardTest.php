@@ -268,6 +268,7 @@ class PatientAttachmentsAndOpdCardTest extends TestCase
             'age_years' => 50,
             'blood_group' => 'B+',
             'phone' => '01911223344',
+            'dob' => '1976-05-15',
         ]);
 
         // HTML / Inertia Preview
@@ -281,7 +282,29 @@ class PatientAttachmentsAndOpdCardTest extends TestCase
             ->has('clinic')
             ->has('barcodeSvg')
             ->where('patient.patient_identifier', $patient->patient_identifier)
+            ->where('patient.dob', '1976-05-15')
         );
+
+        // Super Admin access
+        $superAdmin = User::factory()->create(['email' => 'admin-opd@remediq.test']);
+        $superAdmin->assignRole('Super Admin');
+
+        $adminResponse = $this->actingAs($superAdmin)
+            ->get(route('admin.patients.opd_card', $patient->id));
+        $adminResponse->assertOk();
+
+        // Patient with no custom code falls back gracefully to patient_no
+        $barePatient = Patient::factory()->create([
+            'name' => 'Bare Patient',
+            'gender' => 'female',
+            'patient_code' => null,
+            'patient_no' => 999,
+            'patient_series' => 'B',
+        ]);
+        $bareResponse = $this->actingAs($superAdmin)
+            ->get(route('admin.patients.opd_card', $barePatient->id));
+        $bareResponse->assertOk();
+        $this->assertSame('999B', $barePatient->patient_identifier);
 
         // PDF Stream Export
         $pdfResponse = $this->actingAs($this->doctorUser)
