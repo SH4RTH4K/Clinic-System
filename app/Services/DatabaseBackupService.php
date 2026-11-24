@@ -105,13 +105,18 @@ class DatabaseBackupService
     public function backupStorageStatus(): string
     {
         try {
-            $backupRoot = $this->backupRoot(false);
+            $backupRoot = $this->backupRoot(true);
 
             if ($backupRoot !== null) {
                 return is_writable($backupRoot) ? 'Writable' : 'Check permissions';
             }
 
-            return is_writable(dirname($this->configuredBackupPath()))
+            $parent = $this->configuredBackupPath();
+            while (! file_exists($parent) && dirname($parent) !== $parent) {
+                $parent = dirname($parent);
+            }
+
+            return file_exists($parent) && is_writable($parent)
                 ? 'Ready to create'
                 : 'Check permissions';
         } catch (RuntimeException) {
