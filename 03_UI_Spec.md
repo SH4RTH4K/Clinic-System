@@ -145,10 +145,28 @@ The Doctor Workbench (`resources/js/Pages/Visits/Create.jsx` and `Edit.jsx`) inc
   }
   ```
 
-### 5.2 OPD Card / Registration Slip (`[ ] Planned`)
+### 5.2 OPD Card / Registration Slip (`[x] Implemented`)
 - **Dimensions**: A6 (`105mm x 148mm`) or standard 85.6mm x 53.98mm plastic ID card cardstock.
-- **Content**: Clinic Logo, Patient Full Name, Age, Gender, Blood Group, Patient Number + Barcode / QR Code.
+- **Content**: Clinic Logo, Patient Full Name, Age, Gender, Blood Group, Patient Number + Zero-dependency pure PHP SVG Code-128 Barcode.
+- **Components**: `resources/js/Pages/Admin/Patients/OpdCard.jsx` and PDF template `resources/views/pdf/opd_card.blade.php`.
 
-### 5.3 Thermal POS Money Receipt (`[ ] Planned`)
+### 5.3 Thermal POS Money Receipt & Token Slips (`[x] Implemented`)
 - **Dimensions**: Continuous 80mm roll width (`72mm` printable area).
-- **Structure**: Clinic Header, Receipt #, Date/Time, Line items (Consultation Fee + Medicine total + Lab tests), Net Amount, Tendered Amount, Change Due.
+- **Structure**: Clinic Header, Receipt/Token #, Date/Time, Line items (Consultation Fee + Medicine total + Lab tests), Net Amount, Tendered Amount, Change Due.
+- **Components**:
+  - Billing Receipts: `resources/js/Pages/Admin/Billing/Print.jsx` (Dual 80mm POS slip and A5 medical invoice).
+  - Queue Tokens: `resources/js/Pages/Admin/Queue/PrintToken.jsx` (80mm instant thermal slip with sequential code `T-001`).
+
+### 5.4 Waiting Room Live Queue TV Signage (`[x] Implemented`)
+- **Viewport**: 16:9 full-screen digital signage (`1920x1080` / `1366x768`) optimized for wall-mounted reception TV displays (`/queue/display`).
+- **Layout**:
+  - Real-time "NOW CALLING" hero panel pulsing emerald green with current token code and chamber number.
+  - Patient privacy masking (e.g. `Md. R****l I***m`).
+  - Upcoming queue list ("Next In Line / অপেক্ষমাণ").
+  - Digital wall clock and clinic brand header.
+  - Offline hospital chime sound generated via Web Audio API oscillators and speech synthesis calling announcement.
+
+### 5.5 Tokenized Mobile Digital Prescription Viewer (`[x] Implemented`)
+- **Viewport**: Mobile-first responsive view (`/rx/{share_token}`) for smartphone screens.
+- **Security**: 32-character high-entropy cryptographic token; zero authentication required for patients.
+- **Features**: Live clinic contact toolbar, WhatsApp quick action, responsive clinical summary cards, and 1-tap authentic PDF download stream (`/rx/{share_token}/pdf`).

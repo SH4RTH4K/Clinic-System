@@ -269,3 +269,38 @@ flowchart TD
     
     FinishRx([Prescription Finalized]) --> AutoComplete[Token Status = completed]
 ```
+
+---
+
+## 10. Automated Patient Communications Flow (`[x] Done`)
+
+Multi-channel notification dispatches and public digital prescription access:
+
+```mermaid
+flowchart TD
+    TriggerEvent(["Clinical / Front Desk Event"]) --> CheckTrigger{"Event Type"}
+    
+    CheckTrigger -->|"Appointment Scheduled"| T1["Appointment Confirmation"]
+    CheckTrigger -->|"Queue Token Issued"| T2["Token Serial Alert"]
+    CheckTrigger -->|"Prescription Finalized"| T3["Prescription Ready & Public Link"]
+    CheckTrigger -->|"Custom Direct Message"| T4["Ad-hoc Notification"]
+    
+    T1 --> FormatMsg["Render Template with Placeholders"]
+    T2 --> FormatMsg
+    T3 --> FormatMsg
+    T4 --> DirectMsg["Custom Body"]
+    
+    FormatMsg --> SanitizePhone["Sanitize Phone (8801XXXXXXXXX)"]
+    DirectMsg --> SanitizePhone
+    
+    SanitizePhone --> ChannelSelect{"Gateway Channel"}
+    ChannelSelect -->|"SMS"| DispatchSMS["CommunicationService Driver (Log / GreenWeb / MimSMS)"]
+    ChannelSelect -->|"WhatsApp"| GenerateURL["Generate Click-to-Chat WhatsApp URL"]
+    
+    DispatchSMS --> LogAudit["Audit Log in patient_notifications"]
+    GenerateURL --> LogAudit
+    
+    LogAudit --> PatientReceives["Patient Receives Alert with Secure Share URL"]
+    PatientReceives --> ViewPrescription["Public Patient View: /rx/{share_token}"]
+    ViewPrescription --> DownloadPDF["Download Authentic Signed Prescription PDF: /rx/{share_token}/pdf"]
+```
