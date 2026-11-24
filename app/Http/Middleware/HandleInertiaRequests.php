@@ -32,6 +32,7 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            'locale' => app()->getLocale(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -45,10 +46,15 @@ class HandleInertiaRequests extends Middleware
             ],
             'clinic' => function () {
                 $settings = ClinicSetting::query()->first();
+                $locale = app()->getLocale();
+                $nameEn = $settings->clinic_name_en ?? config('app.name', 'RemediQ Clinic');
+                $nameBn = $settings->clinic_name_bn ?? null;
+                $activeName = ($locale === 'bn' && ! empty($nameBn)) ? $nameBn : $nameEn;
 
                 return [
-                    'name_en' => $settings->clinic_name_en ?? 'RemediQ Clinic',
-                    'name_bn' => $settings->clinic_name_bn ?? null,
+                    'name' => $activeName,
+                    'name_en' => $nameEn,
+                    'name_bn' => $nameBn,
                     'practice_type' => $settings->practice_type ?? 'homeopathy',
                     'logo_url' => $settings?->logo_path ? route('clinic.logo') : null,
                     'favicon_url' => $settings?->favicon_path ? route('clinic.favicon') : null,

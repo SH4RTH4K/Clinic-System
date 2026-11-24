@@ -1,13 +1,17 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 const AUTH_SESSION_CHANNEL = 'hcs-auth-session';
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { user, permissions = [], roles = [] } = usePage().props.auth;
-    const { success } = usePage().props.flash ?? {};
+    const pageProps = usePage().props;
+    const { user, permissions = [], roles = [] } = pageProps.auth || {};
+    const { success } = pageProps.flash ?? {};
+    const clinic = pageProps.clinic || {};
+    const locale = pageProps.locale || 'en';
+    const clinicDisplayName = (locale === 'bn' && clinic.name_bn) ? clinic.name_bn : (clinic.name_en || clinic.name || 'RemediQ Clinic');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const menuButtonRef = useRef(null);
     const closeButtonRef = useRef(null);
@@ -534,10 +538,14 @@ export default function AuthenticatedLayout({ header, children }) {
             {/* Brand / Logo (Sticky Top) */}
             <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <Link href={safeRoute('dashboard')} onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg">
-                    <ApplicationLogo className="h-8 w-8 text-primary-500 shrink-0" />
-                    <div className="flex flex-col">
-                        <span className="text-base font-bold text-gray-900 tracking-tight leading-tight">
-                            JB Homeo Hall
+                    {clinic.logo_url ? (
+                        <img src={clinic.logo_url} alt={clinicDisplayName} className="h-8 w-8 object-contain rounded-md shrink-0" />
+                    ) : (
+                        <ApplicationLogo className="h-8 w-8 text-primary-500 shrink-0" />
+                    )}
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-base font-bold text-gray-900 tracking-tight leading-tight truncate max-w-[170px]" title={clinicDisplayName}>
+                            {clinicDisplayName}
                         </span>
                         <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
                             Clinic Management
@@ -701,6 +709,17 @@ export default function AuthenticatedLayout({ header, children }) {
 
                     {/* Right User Actions Dropdown */}
                     <div className="flex items-center gap-3">
+                        {/* Language Switcher */}
+                        <button
+                            type="button"
+                            onClick={() => router.post(route('language.switch'), { locale: locale === 'en' ? 'bn' : 'en' }, { preserveScroll: true })}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition shadow-2xs cursor-pointer"
+                            title={locale === 'en' ? 'বাংলা ভাষায় পরিবর্তন করুন' : 'Switch to English'}
+                        >
+                            <span className="text-sm">🌐</span>
+                            <span>{locale === 'en' ? 'বাং' : 'EN'}</span>
+                        </button>
+
                         <a
                             href="/"
                             target="_blank"

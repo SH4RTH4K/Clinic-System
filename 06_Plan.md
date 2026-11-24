@@ -223,3 +223,14 @@
 - [x] **Task 15.3**: Medical Background Field Grid Ordering Fix
   - Unified `blood_group`, `known_allergies`, and `medical_history` into a shared CSS grid container in `Patients/Create.jsx` and `Patients/Edit.jsx` so that individual field ordering (`style={{ order: field(...).order }}`) strictly takes effect when `medical_history` is moved ahead of blood group or allergies.
 - [x] **Verification**: All 5 feature tests in `VisitConsultationWorkflowTest` and all 64 related visit integrity, authorization, case taking, and configuration tests passing (431 assertions). Pint formatted and Vite build completed.
+
+### Phase 16: Dynamic Clinic Branding & Language-Wise Page Title (`[x] COMPLETED`)
+- [x] **Task 16.1**: Backend Clinic Branding & Language Provider
+  - Updated `HandleInertiaRequests.php` to share `locale` and dynamic `clinic.name` based on active locale (`clinic_name_bn` for Bengali, `clinic_name_en` for English).
+  - Updated `resources/views/app.blade.php` to dynamically generate server-rendered `<title inertia>` using `ClinicSetting` according to active locale.
+  - Updated `config/app.php` fallback app name from `Laravel` to `RemediQ Clinic`.
+- [x] **Task 16.2**: Dynamic Frontend Page Title Resolution
+  - Updated `resources/js/app.jsx` title callback to resolve clinic branding language-wise (`resolveClinicName(title)`), eliminating the `- Laravel` fallback across all pages.
+  - Updated `AuthenticatedLayout.jsx` sidebar branding to dynamically display the configured clinic name and logo rather than static text.
+  - Added a 1-click Language Switcher toggle (`বাং` / `EN`) in the admin topbar.
+- [x] **Verification**: Added `ClinicBrandingAndLanguageTitleTest` (3 tests, 68 assertions) covering English/Bangla titles, setting updates, and server-rendered HTML tags. All 50 related tests passing. Pint formatted and Vite build completed.

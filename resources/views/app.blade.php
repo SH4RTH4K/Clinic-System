@@ -5,7 +5,15 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" href="{{ route('clinic.favicon') }}">
 
-        <title inertia>{{ config('app.name', 'Homeopathy Clinic') }}</title>
+        @php
+            $settings = \App\Models\ClinicSetting::query()->first();
+            $locale = app()->getLocale();
+            $clinicName = ($locale === 'bn' && !empty($settings?->clinic_name_bn))
+                ? $settings->clinic_name_bn
+                : ($settings?->clinic_name_en ?? config('app.name', 'RemediQ Clinic'));
+        @endphp
+
+        <title inertia>{{ $clinicName }}</title>
 
         <!-- Scripts -->
         @routes
