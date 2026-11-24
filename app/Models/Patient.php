@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -17,7 +18,7 @@ class Patient extends Model
 
     protected $guarded = [];
 
-    protected $appends = ['patient_identifier'];
+    protected $appends = ['patient_identifier', 'photo_url'];
 
     public function numberingProfile(): BelongsTo
     {
@@ -27,6 +28,25 @@ class Patient extends Model
     public function visits(): HasMany
     {
         return $this->hasMany(Visit::class);
+    }
+
+    public function vitals(): HasMany
+    {
+        return $this->hasMany(PatientVital::class)->latest();
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(PatientAttachment::class)->latest();
+    }
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if (empty($this->photo_path)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->photo_path);
     }
 
     /**

@@ -165,6 +165,32 @@ export default function AuthenticatedLayout({ header, children }) {
                     ),
                 },
                 {
+                    label: 'Waiting Room Queue',
+                    route: 'admin.queue.index',
+                    active: 'admin.queue.*',
+                    permission: 'queue.view',
+                    superAdminAccess: true,
+                    role: null,
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                        </svg>
+                    ),
+                },
+                {
+                    label: 'Doctor Calendar',
+                    route: 'admin.calendar.index',
+                    active: 'admin.calendar.*',
+                    permission: 'calendar.view',
+                    superAdminAccess: true,
+                    role: null,
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                    ),
+                },
+                {
                     label: 'Appointments',
                     route: 'admin.appointment_requests.index',
                     active: 'admin.appointment_requests.*',
@@ -174,6 +200,32 @@ export default function AuthenticatedLayout({ header, children }) {
                     icon: (
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                    ),
+                },
+                {
+                    label: 'Billing & Invoices',
+                    route: 'admin.invoices.index',
+                    active: 'admin.invoices.*',
+                    permission: 'billing.view',
+                    superAdminAccess: true,
+                    role: null,
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                        </svg>
+                    ),
+                },
+                {
+                    label: 'Communications',
+                    route: 'admin.communications.index',
+                    active: 'admin.communications.*',
+                    permission: 'communications.view',
+                    superAdminAccess: true,
+                    role: null,
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-1.074-.865 5.25 5.25 0 001.07-2.673C3.905 16.038 3 14.126 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                         </svg>
                     ),
                 },
@@ -200,6 +252,44 @@ export default function AuthenticatedLayout({ header, children }) {
                     route: 'admin.medicines.index',
                     active: 'admin.medicines.*',
                     permission: 'medicines.view',
+                    role: null,
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.942a4.5 4.5 0 01-4.66 0L12 15.3l-1.57.942a4.5 4.5 0 01-4.66 0L4.2 15.3m15.6 0A2.25 2.25 0 0121 17.25v.75a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-.75a2.25 2.25 0 011.2-1.95" />
+                        </svg>
+                    ),
+                },
+                {
+                    label: 'Pharmaceuticals',
+                    route: 'admin.pharmaceuticals.index',
+                    active: 'admin.pharmaceuticals.*',
+                    permission: 'pharmaceuticals.view',
+                    role: null,
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+                        </svg>
+                    ),
+                },
+                {
+                    label: 'Pharmacy Inventory',
+                    route: 'admin.inventory.index',
+                    active: 'admin.inventory.*',
+                    permission: 'inventory.view',
+                    superAdminAccess: true,
+                    role: null,
+                    icon: (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                        </svg>
+                    ),
+                },
+                {
+                    label: 'Lab Investigations',
+                    route: 'admin.lab_investigations.index',
+                    active: 'admin.lab_investigations.*',
+                    permission: 'lab_investigations.view',
                     role: null,
                     icon: (
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">

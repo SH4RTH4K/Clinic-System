@@ -10,6 +10,7 @@ use App\Models\Patient;
 use App\Models\PrescriptionItem;
 use App\Models\User;
 use App\Models\Visit;
+use App\Services\InventoryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -110,6 +111,18 @@ class DashboardController extends Controller
         if ($access['medicines']) {
             $props['metrics']['total_medicines'] = Medicine::count();
             $props['metrics']['active_medicines'] = Medicine::where('is_active', true)->count();
+        }
+
+        $access['inventory'] = $this->canView($user, 'inventory.view');
+        if ($access['inventory']) {
+            $inventoryService = app(InventoryService::class);
+            $invMetrics = $inventoryService->getDashboardMetrics();
+            $props['inventory_metrics'] = [
+                'low_stock_count' => $invMetrics['low_stock_count'] ?? 0,
+                'expiring_soon_count' => $invMetrics['expiring_count'] ?? 0,
+                'expired_count' => $invMetrics['expired_count'] ?? 0,
+                'total_batches' => $invMetrics['total_batches'] ?? 0,
+            ];
         }
 
         return Inertia::render('Admin/Dashboard', $props);

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -27,9 +28,19 @@ class Visit extends Model
         'prescriber_snapshot' => 'array',
         'prescription_authorizer_snapshot' => 'array',
         'patient_snapshot' => 'array',
+        'physical_generals' => 'array',
     ];
 
-    protected $appends = ['age_summary'];
+    protected $appends = ['age_summary', 'share_url'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Visit $visit): void {
+            if (empty($visit->share_token)) {
+                $visit->share_token = bin2hex(random_bytes(16));
+            }
+        });
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -105,6 +116,21 @@ class Visit extends Model
         return $this->hasMany(PrescriptionItem::class)->orderBy('sort_order');
     }
 
+    public function labInvestigations(): HasMany
+    {
+        return $this->hasMany(VisitLabInvestigation::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(PatientAttachment::class)->latest();
+    }
+
+    public function vital(): HasOne
+    {
+        return $this->hasOne(PatientVital::class);
+    }
+
     public function adviceItems()
     {
         return $this->belongsToMany(AdviceItem::class, 'visit_advice');
@@ -113,5 +139,20 @@ class Visit extends Model
     public function foodRestrictions()
     {
         return $this->belongsToMany(FoodRestriction::class, 'visit_food_restriction');
+    }
+
+    public function ensureShareToken(): string
+    {
+        if (empty($this->share_token)) {
+            $this->share_token = bin2hex(random_bytes(16));
+            $this->saveQuietly();
+        }
+
+        return $this->share_token;
+    }
+
+    public function getShareUrlAttribute(): string
+    {
+        return url('/rx/'.$this->ensureShareToken());
     }
 }

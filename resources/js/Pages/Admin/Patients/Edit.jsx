@@ -1,7 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import FormField from '@/Components/FormField';
+import WebcamCaptureModal from '@/Components/WebcamCaptureModal';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import { calculateAgeFromDob, calculateDobFromAge } from './ageHelpers';
 import { getGuardianRelationshipLabel } from './relationshipHelpers';
 
@@ -18,7 +20,8 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
     const initialDays = dobAge ? dobAge.days : (patient.age_days !== null && patient.age_days !== undefined ? String(patient.age_days) : '');
     const initialDob = rawDob || calculateDobFromAge(initialYears, initialMonths, initialDays);
 
-    const { data, setData, put, errors, processing } = useForm({
+    const { data, setData, post, errors, processing } = useForm({
+        _method: 'put',
         name: patient.name || '',
         old_or_other_id: patient.old_or_other_id || '',
         reference_number: patient.reference_number || '',
@@ -34,7 +37,11 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
         blood_group: patient.blood_group || '',
         known_allergies: patient.known_allergies || '',
         referred_by: patient.referred_by || '',
+        photo: null,
+        photo_webcam_data: '',
+        remove_photo: false,
     });
+    const [showWebcam, setShowWebcam] = useState(false);
     const field = (key) => fieldConfig[key] || { label: key, visible: true, required: false };
     const relationshipLabel = getGuardianRelationshipLabel(data.guardian_relationship, patient.guardian_relationship_custom || '', relationshipOptions);
     const availableRelationshipOptions = [...relationshipOptions];
@@ -87,8 +94,14 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
 
     const submit = (e) => {
         e.preventDefault();
-        put(route('admin.patients.update', patient.id));
+        post(route('admin.patients.update', patient.id), { forceFormData: true });
     };
+
+    const photoPreviewUrl = data.remove_photo
+        ? null
+        : (data.photo
+            ? URL.createObjectURL(data.photo)
+            : (data.photo_webcam_data || patient.photo_url || null));
 
     return (
         <AuthenticatedLayout>
@@ -117,6 +130,85 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
 
                 <div className="bg-white p-6 shadow-xs border border-gray-200 rounded-lg">
                     <form onSubmit={submit} className="space-y-6">
+                        {/* Patient Photo & Webcam Capture */}
+                        <section className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800 mb-1">Patient Photo</h3>
+                            <p className="text-xs text-gray-500 mb-4">Update the patient's identification photograph used for OPD cards and clinical verification.</p>
+
+                            <div className="flex flex-col sm:flex-row items-center gap-5">
+                                <div className="w-24 h-28 rounded-lg border-2 border-gray-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-xs">
+                                    {photoPreviewUrl ? (
+                                        <img src={photoPreviewUrl} alt="Patient Preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="text-center p-2 text-gray-400">
+                                            <svg className="w-8 h-8 mx-auto mb-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            <span className="text-[10px] uppercase font-semibold">No Photo</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowWebcam(true)}
+                                        className="inline-flex items-center px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition"
+                                    >
+                                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        Take Photo with Webcam
+                                    </button>
+
+                                    <label className="cursor-pointer inline-flex items-center px-3.5 py-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-xs transition">
+                                        <svg className="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Upload Image File
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setData((prev) => ({
+                                                        ...prev,
+                                                        photo: file,
+                                                        photo_webcam_data: '',
+                                                        remove_photo: false,
+                                                    }));
+                                                }
+                                            }}
+                                        />
+                                    </label>
+
+                                    {photoPreviewUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    photo: null,
+                                                    photo_webcam_data: '',
+                                                    remove_photo: true,
+                                                }));
+                                            }}
+                                            className="inline-flex items-center px-3 py-2 text-xs font-medium text-red-600 hover:text-red-800 transition"
+                                        >
+                                            <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            Remove Photo
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            {errors.photo && <p className="mt-2 text-xs text-red-600">{errors.photo}</p>}
+                        </section>
+
                         {/* Basic Identity Information */}
                         {(field('name').visible || field('old_or_other_id').visible || field('reference_number').visible || field('guardian_relationship').visible || field('guardian_name').visible || field('gender').visible || field('age_years').visible || field('age_months').visible || field('age_days').visible || field('dob').visible) && <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
@@ -438,6 +530,19 @@ export default function Edit({ patient, fieldConfig = {}, relationshipOptions = 
                     </form>
                 </div>
             </div>
+
+            <WebcamCaptureModal
+                isOpen={showWebcam}
+                onClose={() => setShowWebcam(false)}
+                onCapture={(base64) => {
+                    setData((prev) => ({
+                        ...prev,
+                        photo_webcam_data: base64,
+                        photo: null,
+                        remove_photo: false,
+                    }));
+                }}
+            />
         </AuthenticatedLayout>
     );
 }

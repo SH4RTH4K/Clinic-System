@@ -12,8 +12,12 @@ use App\Models\AdviceItem;
 use App\Models\ClinicSetting;
 use App\Models\Doctor;
 use App\Models\FoodRestriction;
+use App\Models\LabInvestigation;
 use App\Models\Medicine;
 use App\Models\Patient;
+use App\Models\PatientQueueToken;
+use App\Models\PatientVital;
+use App\Models\Pharmaceutical;
 use App\Models\PrescriptionItem;
 use App\Models\Symptom;
 use App\Models\User;
@@ -22,6 +26,8 @@ use App\Models\VisitAmendment;
 use App\Models\VisitDraft;
 use App\Services\Admin\ClinicalAccessAuditService;
 use App\Services\Admin\VisitAuthorizationService;
+use App\Services\CommunicationService;
+use App\Services\InventoryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -64,6 +70,7 @@ class VisitController extends Controller
 
         $settings = ClinicSetting::first();
         $prescriptionConfig = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
+        $practiceType = $settings->practice_type ?? 'homeopathy';
 
         return Inertia::render('Admin/Visits/Create', [
             'patient' => $patient,
@@ -73,6 +80,9 @@ class VisitController extends Controller
             'canFinalize' => $user->can('visits.finalize') && $responsibleDoctor !== null,
             'symptoms' => Symptom::where('is_active', true)->get(),
             'medicines' => Medicine::where('is_active', true)->get(),
+            'pharmaceuticals' => Pharmaceutical::where('is_active', true)->limit(50)->get(),
+            'labInvestigations' => LabInvestigation::where('is_active', true)->get(),
+            'practiceType' => $practiceType,
             'defaultAdvice' => AdviceItem::where('is_default', true)->get(),
             'defaultFood' => FoodRestriction::where('is_default', true)->get(),
             'prescriptionConfig' => $prescriptionConfig,
@@ -96,6 +106,9 @@ class VisitController extends Controller
                 'chief_complaint' => $validated['chief_complaint'],
                 'bp_symptoms_notes' => $validated['bp_symptoms_notes'] ?? null,
                 'diagnosis_notes' => $validated['diagnosis_notes'] ?? null,
+                'provisional_diagnosis' => $validated['provisional_diagnosis'] ?? null,
+                'final_diagnosis' => $validated['final_diagnosis'] ?? null,
+                'physical_generals' => $validated['physical_generals'] ?? null,
                 'follow_up_date' => $validated['follow_up_date'] ?? null,
                 'status' => 'draft',
                 'created_by' => $user->id,
@@ -114,7 +127,7 @@ class VisitController extends Controller
     {
         $validated = $request->validated();
         $user = $request->user();
-        $visit = DB::transaction(function () use ($validated, $user, $visit): Visit {
+        $visit = DB::transaction(function () use ($validated, $user, $visit, $request): Visit {
             $doctor = $this->visitAuthorization->activeDoctor($user, true);
             abort_unless($doctor !== null, 403, 'Finalization requires an active linked Doctor profile.');
 
@@ -130,6 +143,9 @@ class VisitController extends Controller
                     'chief_complaint' => $validated['chief_complaint'],
                     'bp_symptoms_notes' => $validated['bp_symptoms_notes'] ?? null,
                     'diagnosis_notes' => $validated['diagnosis_notes'] ?? null,
+                    'provisional_diagnosis' => $validated['provisional_diagnosis'] ?? null,
+                    'final_diagnosis' => $validated['final_diagnosis'] ?? null,
+                    'physical_generals' => $validated['physical_generals'] ?? null,
                     'follow_up_date' => $validated['follow_up_date'] ?? null,
                     'status' => 'finalized',
                     'prescription_status' => 'finalized',
@@ -166,6 +182,43 @@ class VisitController extends Controller
             $this->syncVisitRelations($visit, $validated);
             $this->snapshotActivePrescriptionItems($visit);
 
+            $settings = ClinicSetting::query()->first();
+            if ($settings?->auto_deduct_inventory) {
+                app(InventoryService::class)->deductForPrescription($visit, $user);
+            }
+
+            if ($request->has('token_id')) {
+                $token = PatientQueueToken::find($request->input('token_id'));
+                if ($token) {
+                    $token->update([
+                        'visit_id' => $visit->id,
+                        'status' => 'completed',
+                        'completed_at' => now(),
+                    ]);
+                }
+            }
+
+            $smsConfig = $settings?->getSmsConfig() ?? ClinicSetting::defaultSmsConfig();
+            if (! empty($smsConfig['sms_enabled']) && ! empty($smsConfig['auto_sms_prescriptions']) && $visit->patient?->phone) {
+                try {
+                    $template = $smsConfig['templates']['prescription_ready'] ?? 'Dear {patient_name}, your digital prescription is ready: {prescription_url}';
+                    $msg = str_replace(
+                        ['{patient_name}', '{doctor_name}', '{clinic_name}', '{prescription_url}'],
+                        [$visit->patient->name, $doctor?->name ?? 'Doctor', $settings?->clinic_name_en ?? 'RemediQ Clinic', $visit->share_url],
+                        $template
+                    );
+                    app(CommunicationService::class)->sendSms(
+                        $visit->patient->phone,
+                        $msg,
+                        'prescription_ready',
+                        $visit->patient_id,
+                        $user
+                    );
+                } catch (\Throwable $e) {
+                    // Fail-safe
+                }
+            }
+
             return $visit;
         });
 
@@ -178,6 +231,8 @@ class VisitController extends Controller
 
     public function show(Request $request, Visit $visit)
     {
+        $visit->ensureShareToken();
+
         $visit->load([
             'patient',
             'doctor',
@@ -186,13 +241,16 @@ class VisitController extends Controller
             'amendments.amendedByDoctor:id,name',
             'symptoms',
             'prescriptionItems.medicine',
+            'prescriptionItems.pharmaceutical',
             'adviceItems',
             'foodRestrictions',
+            'labInvestigations',
+            'vital',
         ]);
 
         $prescriptionHistory = $visit->prescriptionItems()
             ->withTrashed()
-            ->with('medicine')
+            ->with(['medicine', 'pharmaceutical'])
             ->orderBy('prescription_version')
             ->orderBy('sort_order')
             ->get();
@@ -211,10 +269,21 @@ class VisitController extends Controller
         $user = request()->user();
         abort_unless($user !== null && $this->visitAuthorization->canEdit($user, $visit), 403);
 
-        $visit->load(['patient', 'doctor', 'symptoms', 'prescriptionItems', 'adviceItems', 'foodRestrictions']);
+        $visit->load([
+            'patient',
+            'doctor',
+            'symptoms',
+            'prescriptionItems.medicine',
+            'prescriptionItems.pharmaceutical',
+            'adviceItems',
+            'foodRestrictions',
+            'labInvestigations',
+            'vital',
+        ]);
 
         $settings = ClinicSetting::first();
         $prescriptionConfig = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
+        $practiceType = $settings->practice_type ?? 'homeopathy';
 
         return Inertia::render('Admin/Visits/Edit', [
             'visit' => $visit,
@@ -222,6 +291,9 @@ class VisitController extends Controller
                 && request()->user()->doctorProfile()->where('is_active', true)->exists(),
             'symptoms' => Symptom::where('is_active', true)->get(),
             'medicines' => Medicine::where('is_active', true)->get(),
+            'pharmaceuticals' => Pharmaceutical::where('is_active', true)->limit(50)->get(),
+            'labInvestigations' => LabInvestigation::where('is_active', true)->get(),
+            'practiceType' => $practiceType,
             'allAdvice' => AdviceItem::all(),
             'allFood' => FoodRestriction::all(),
             'prescriptionConfig' => $prescriptionConfig,
@@ -358,6 +430,9 @@ class VisitController extends Controller
             'chief_complaint' => $validated['chief_complaint'],
             'bp_symptoms_notes' => $validated['bp_symptoms_notes'] ?? null,
             'diagnosis_notes' => $validated['diagnosis_notes'] ?? null,
+            'provisional_diagnosis' => $validated['provisional_diagnosis'] ?? null,
+            'final_diagnosis' => $validated['final_diagnosis'] ?? null,
+            'physical_generals' => $validated['physical_generals'] ?? null,
             'follow_up_date' => $validated['follow_up_date'] ?? null,
         ];
     }
@@ -405,23 +480,94 @@ class VisitController extends Controller
             }
         }
 
+        if (array_key_exists('lab_investigations', $validated)) {
+            $visit->labInvestigations()->delete();
+            foreach ($validated['lab_investigations'] as $lab) {
+                if (! empty($lab['test_name'])) {
+                    $visit->labInvestigations()->create([
+                        'lab_investigation_id' => $lab['lab_investigation_id'] ?? null,
+                        'test_name' => $lab['test_name'],
+                        'instructions' => $lab['instructions'] ?? null,
+                        'status' => $lab['status'] ?? 'ordered',
+                    ]);
+                }
+            }
+        }
+
+        if (array_key_exists('vitals', $validated) && is_array($validated['vitals'])) {
+            $vitalsData = $validated['vitals'];
+            $hasAnyVital = collect($vitalsData)->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty();
+            if ($hasAnyVital) {
+                $height = isset($vitalsData['height_cm']) && is_numeric($vitalsData['height_cm']) ? (float) $vitalsData['height_cm'] : null;
+                $weight = isset($vitalsData['weight_kg']) && is_numeric($vitalsData['weight_kg']) ? (float) $vitalsData['weight_kg'] : null;
+                $bmi = isset($vitalsData['bmi']) && is_numeric($vitalsData['bmi'])
+                    ? (float) $vitalsData['bmi']
+                    : PatientVital::calculateBmi($weight, $height);
+
+                PatientVital::updateOrCreate(
+                    ['visit_id' => $visit->id],
+                    [
+                        'patient_id' => $visit->patient_id,
+                        'bp_systolic' => ! empty($vitalsData['bp_systolic']) ? (int) $vitalsData['bp_systolic'] : null,
+                        'bp_diastolic' => ! empty($vitalsData['bp_diastolic']) ? (int) $vitalsData['bp_diastolic'] : null,
+                        'pulse_rate' => ! empty($vitalsData['pulse_rate']) ? (int) $vitalsData['pulse_rate'] : null,
+                        'temperature_f' => isset($vitalsData['temperature_f']) && is_numeric($vitalsData['temperature_f']) ? (float) $vitalsData['temperature_f'] : null,
+                        'respiratory_rate' => ! empty($vitalsData['respiratory_rate']) ? (int) $vitalsData['respiratory_rate'] : null,
+                        'spo2' => ! empty($vitalsData['spo2']) ? (int) $vitalsData['spo2'] : null,
+                        'weight_kg' => $weight,
+                        'height_cm' => $height,
+                        'bmi' => $bmi,
+                        'blood_sugar_rbs' => isset($vitalsData['blood_sugar_rbs']) && is_numeric($vitalsData['blood_sugar_rbs']) ? (float) $vitalsData['blood_sugar_rbs'] : null,
+                        'blood_sugar_fbs' => isset($vitalsData['blood_sugar_fbs']) && is_numeric($vitalsData['blood_sugar_fbs']) ? (float) $vitalsData['blood_sugar_fbs'] : null,
+                        'notes' => $vitalsData['notes'] ?? null,
+                        'recorded_by' => auth()->id() ?? $visit->created_by,
+                    ]
+                );
+            }
+        }
+
         if (! isset($validated['prescription_items'])) {
             return;
         }
 
         $visit->prescriptionItems()->each(fn (PrescriptionItem $item) => $item->delete());
 
+        $medicineIds = collect($validated['prescription_items'])
+            ->pluck('medicine_id')
+            ->filter();
         $medicines = Medicine::query()
-            ->whereIn('id', collect($validated['prescription_items'])->pluck('medicine_id'))
+            ->whereIn('id', $medicineIds)
+            ->get()
+            ->keyBy('id');
+
+        $pharmaceuticalIds = collect($validated['prescription_items'])
+            ->pluck('pharmaceutical_id')
+            ->filter();
+        $pharmaceuticals = Pharmaceutical::query()
+            ->whereIn('id', $pharmaceuticalIds)
             ->get()
             ->keyBy('id');
 
         foreach ($validated['prescription_items'] as $index => $item) {
-            $medicine = $medicines->get($item['medicine_id']);
+            $isPharma = ($item['item_type'] ?? '') === 'pharmaceutical' || ! empty($item['pharmaceutical_id']) || ! empty($item['brand_name']);
+            $medicine = ! empty($item['medicine_id']) ? $medicines->get($item['medicine_id']) : null;
+            $pharma = ! empty($item['pharmaceutical_id']) ? $pharmaceuticals->get($item['pharmaceutical_id']) : null;
+
+            $brandName = $item['brand_name'] ?? $pharma?->brand_name;
+            $genericName = $item['generic_name'] ?? $pharma?->generic_name;
+            $strength = $item['strength'] ?? $pharma?->strength;
+            $dosageForm = $item['dosage_form'] ?? $pharma?->dosage_form;
+
             PrescriptionItem::create([
                 'visit_id' => $visit->id,
                 'prescription_version' => $prescriptionVersion,
-                'medicine_id' => $item['medicine_id'],
+                'item_type' => $isPharma ? 'pharmaceutical' : 'remedy',
+                'medicine_id' => $isPharma ? null : ($item['medicine_id'] ?? null),
+                'pharmaceutical_id' => $pharma?->id ?? ($item['pharmaceutical_id'] ?? null),
+                'brand_name' => $brandName,
+                'generic_name' => $genericName,
+                'strength' => $strength,
+                'dosage_form' => $dosageForm,
                 'sort_order' => $index,
                 'timing' => $item['timing'],
                 'before_after' => $item['before_after'],
@@ -431,9 +577,14 @@ class VisitController extends Controller
                 'duration_days' => $item['duration_days'] ?? null,
                 'prescription_snapshot' => $this->buildPrescriptionSnapshot($medicine, [
                     ...$item,
+                    'item_type' => $isPharma ? 'pharmaceutical' : 'remedy',
+                    'brand_name' => $brandName,
+                    'generic_name' => $genericName,
+                    'strength' => $strength,
+                    'dosage_form' => $dosageForm,
                     'dilution_note' => $item['dilution_note'] ?? 'with half a cup of water',
                     'duration_days' => $item['duration_days'] ?? null,
-                ], $authorizerSnapshot),
+                ], $authorizerSnapshot, $pharma),
             ]);
         }
     }
@@ -442,14 +593,26 @@ class VisitController extends Controller
      * @param  array<string, mixed>  $directions
      * @return array<string, mixed>
      */
-    private function buildPrescriptionSnapshot(?Medicine $medicine, array $directions, ?array $authorizerSnapshot = null): array
-    {
+    private function buildPrescriptionSnapshot(
+        ?Medicine $medicine,
+        array $directions,
+        ?array $authorizerSnapshot = null,
+        ?Pharmaceutical $pharma = null
+    ): array {
+        $isPharma = ($directions['item_type'] ?? '') === 'pharmaceutical' || $pharma !== null || ! empty($directions['brand_name']);
+
         return [
+            'item_type' => $isPharma ? 'pharmaceutical' : 'remedy',
             'medicine_id' => $medicine?->id,
             'medicine_name' => $medicine?->name,
             'potency' => $medicine?->potency,
             'formulation' => $medicine?->form,
             'catalog_instruction' => $medicine?->default_instruction,
+            'pharmaceutical_id' => $pharma?->id ?? ($directions['pharmaceutical_id'] ?? null),
+            'brand_name' => $directions['brand_name'] ?? $pharma?->brand_name,
+            'generic_name' => $directions['generic_name'] ?? $pharma?->generic_name,
+            'strength' => $directions['strength'] ?? $pharma?->strength,
+            'dosage_form' => $directions['dosage_form'] ?? $pharma?->dosage_form,
             'authorizer' => $authorizerSnapshot,
             'provenance' => [
                 'kind' => 'prescriber_authorized_capture',
@@ -469,16 +632,21 @@ class VisitController extends Controller
 
     private function snapshotActivePrescriptionItems(Visit $visit): void
     {
-        $visit->prescriptionItems()->with('medicine')->get()->each(function (PrescriptionItem $item) use ($visit): void {
+        $visit->prescriptionItems()->with(['medicine', 'pharmaceutical'])->get()->each(function (PrescriptionItem $item) use ($visit): void {
             $item->update([
                 'prescription_snapshot' => $this->buildPrescriptionSnapshot($item->medicine, [
+                    'item_type' => $item->item_type,
+                    'brand_name' => $item->brand_name,
+                    'generic_name' => $item->generic_name,
+                    'strength' => $item->strength,
+                    'dosage_form' => $item->dosage_form,
                     'timing' => $item->timing,
                     'before_after' => $item->before_after,
                     'dose_qty' => $item->dose_qty,
                     'dose_unit' => $item->dose_unit,
                     'dilution_note' => $item->dilution_note,
                     'duration_days' => $item->duration_days,
-                ], $visit->prescription_authorizer_snapshot ?? $visit->prescriber_snapshot),
+                ], $visit->prescription_authorizer_snapshot ?? $visit->prescriber_snapshot, $item->pharmaceutical),
             ]);
         });
     }
@@ -526,7 +694,7 @@ class VisitController extends Controller
 
         foreach ([
             'patient_id', 'visit_date', 'age_at_visit', 'age_months', 'age_days',
-            'chief_complaint', 'bp_symptoms_notes', 'diagnosis_notes', 'follow_up_date',
+            'chief_complaint', 'bp_symptoms_notes', 'diagnosis_notes', 'provisional_diagnosis', 'final_diagnosis', 'physical_generals', 'follow_up_date',
         ] as $field) {
             $before = $visit->{$field};
             $after = $validated[$field] ?? null;
@@ -652,7 +820,7 @@ class VisitController extends Controller
             abort(403, 'Only active, finalized prescriptions can be issued.');
         }
 
-        $prescriptionItems = $visit->prescriptionItems()->with('medicine')->get();
+        $prescriptionItems = $visit->prescriptionItems()->with(['medicine', 'pharmaceutical'])->get();
 
         if (! $prescriptionItems->every(fn (PrescriptionItem $item): bool => $this->hasAuthorizedSnapshot($item))) {
             $this->clinicalAccessAudit->clinicalAccessDenied(
@@ -667,15 +835,45 @@ class VisitController extends Controller
             abort(403, 'Prescription history without verified capture provenance requires clinical review before issuing.');
         }
 
-        $visit->load(['patient', 'doctor', 'symptoms', 'adviceItems', 'foodRestrictions']);
+        $visit->load(['patient', 'doctor', 'symptoms', 'adviceItems', 'foodRestrictions', 'labInvestigations', 'vital']);
         $visit->setRelation('prescriptionItems', $prescriptionItems);
         $settings = ClinicSetting::first();
+        $practiceType = $settings->practice_type ?? 'homeopathy';
         $prescriptionConfig = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
+
+        $isPrePrinted = request()->boolean('pre_printed');
+
+        $logoBase64 = null;
+        if (! empty($settings?->logo_path) && Storage::disk('public')->exists($settings->logo_path)) {
+            $logoContent = Storage::disk('public')->get($settings->logo_path);
+            $mime = Storage::disk('public')->mimeType($settings->logo_path);
+            $logoBase64 = 'data:'.$mime.';base64,'.base64_encode($logoContent);
+        }
+
+        $signatureBase64 = null;
+        if (! empty($visit->doctor?->signature_path) && Storage::disk('public')->exists($visit->doctor->signature_path)) {
+            $sigContent = Storage::disk('public')->get($visit->doctor->signature_path);
+            $mime = Storage::disk('public')->mimeType($visit->doctor->signature_path);
+            $signatureBase64 = 'data:'.$mime.';base64,'.base64_encode($sigContent);
+        }
+
+        $sealBase64 = null;
+        if (! empty($visit->doctor?->seal_path) && Storage::disk('public')->exists($visit->doctor->seal_path)) {
+            $sealContent = Storage::disk('public')->get($visit->doctor->seal_path);
+            $mime = Storage::disk('public')->mimeType($visit->doctor->seal_path);
+            $sealBase64 = 'data:'.$mime.';base64,'.base64_encode($sealContent);
+        }
 
         $pdf = Pdf::loadView('pdf.prescription', [
             'visit' => $visit,
+            'vital' => $visit->vital,
             'settings' => $settings,
+            'practiceType' => $practiceType,
             'prescriptionConfig' => $prescriptionConfig,
+            'isPrePrinted' => $isPrePrinted,
+            'logoBase64' => $logoBase64,
+            'signatureBase64' => $signatureBase64,
+            'sealBase64' => $sealBase64,
         ]);
 
         $response = $pdf->stream('prescription-'.$visit->id.'.pdf');

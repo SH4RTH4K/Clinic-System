@@ -2,6 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import PrescriptionConfigModal from '@/Components/PrescriptionConfigModal';
 import RepertoryReferenceReview from '@/Components/RepertoryReferenceReview';
+import VitalsTrackerCard from '@/Components/VitalsTrackerCard';
+import PhysicalGeneralsCard from '@/Components/PhysicalGeneralsCard';
 import usePermission from '@/Components/usePermission';
 import { calculateAgeFromDob, calculateDobFromAge, formatAgeSummary } from '@/Utils/ageHelpers';
 import { Head, useForm, Link } from '@inertiajs/react';
@@ -12,6 +14,9 @@ export default function Edit({
     visit,
     symptoms = [],
     medicines = [],
+    pharmaceuticals = [],
+    labInvestigations = [],
+    practiceType = 'homeopathy',
     allAdvice = [],
     allFood = [],
     prescriptionConfig = {},
@@ -43,10 +48,52 @@ export default function Edit({
         chief_complaint: visit.chief_complaint || '',
         bp_symptoms_notes: visit.bp_symptoms_notes || '',
         diagnosis_notes: visit.diagnosis_notes || '',
+        provisional_diagnosis: visit.provisional_diagnosis || '',
+        final_diagnosis: visit.final_diagnosis || '',
+        physical_generals: visit.physical_generals || {
+            thermal_state: null,
+            thirst: '',
+            food_cravings: [],
+            food_aversions: [],
+            tongue: '',
+            sweat: '',
+            sleep_dreams: '',
+            modalities_aggravation: '',
+            modalities_amelioration: '',
+            mind_disposition: '',
+        },
+        vitals: visit.vital ? {
+            bp_systolic: visit.vital.bp_systolic || '',
+            bp_diastolic: visit.vital.bp_diastolic || '',
+            pulse_rate: visit.vital.pulse_rate || '',
+            temperature_f: visit.vital.temperature_f || '',
+            respiratory_rate: visit.vital.respiratory_rate || '',
+            spo2: visit.vital.spo2 || '',
+            weight_kg: visit.vital.weight_kg || '',
+            height_cm: visit.vital.height_cm || '',
+            bmi: visit.vital.bmi || '',
+            blood_sugar_rbs: visit.vital.blood_sugar_rbs || '',
+            blood_sugar_fbs: visit.vital.blood_sugar_fbs || '',
+            notes: visit.vital.notes || '',
+        } : {
+            bp_systolic: '',
+            bp_diastolic: '',
+            pulse_rate: '',
+            temperature_f: '',
+            respiratory_rate: '',
+            spo2: '',
+            weight_kg: '',
+            height_cm: '',
+            bmi: '',
+            blood_sugar_rbs: '',
+            blood_sugar_fbs: '',
+            notes: '',
+        },
         follow_up_date: visit.follow_up_date || '',
         status: visit.status || 'draft',
         amendment_reason: '',
         symptoms: visit.symptoms ? visit.symptoms.map((s) => s.id) : [],
+        lab_investigations: visit.lab_investigations || [],
         prescription_items: visit.prescription_items || [],
         advice_items: visit.advice_items ? visit.advice_items.map((a) => a.id) : [],
         food_restrictions: visit.food_restrictions ? visit.food_restrictions.map((f) => f.id) : [],
@@ -254,6 +301,7 @@ export default function Edit({
         setData('prescription_items', [
             ...data.prescription_items,
             {
+                item_type: 'remedy',
                 medicine_id,
                 timing: reviewedDetails?.timing ?? defaultTiming,
                 before_after: reviewedDetails?.before_after ?? 'after',
@@ -263,6 +311,55 @@ export default function Edit({
                 duration_days: reviewedDetails?.duration_days ?? defaultDuration,
             },
         ]);
+    };
+
+    const addPharmaceuticalRow = (pharma = null) => {
+        const defaultTiming = (config?.timing_options && config.timing_options.length > 0)
+            ? [config.timing_options[0].key, config.timing_options[config.timing_options.length - 1].key]
+            : ['morning', 'night'];
+
+        setData('prescription_items', [
+            ...data.prescription_items,
+            {
+                item_type: 'pharmaceutical',
+                pharmaceutical_id: pharma?.id || '',
+                brand_name: pharma?.brand_name || '',
+                generic_name: pharma?.generic_name || '',
+                strength: pharma?.strength || '',
+                dosage_form: pharma?.dosage_form || 'Tablet',
+                timing: defaultTiming,
+                before_after: 'after',
+                dose_qty: 1,
+                dose_unit: 'piece',
+                dilution_note: '',
+                duration_days: 5,
+            },
+        ]);
+    };
+
+    const addLabInvestigationRow = (test = null) => {
+        setData('lab_investigations', [
+            ...data.lab_investigations,
+            {
+                lab_investigation_id: test?.id || '',
+                test_name: test?.name || '',
+                instructions: test?.default_instructions || '',
+                status: 'ordered',
+            },
+        ]);
+    };
+
+    const updateLabInvestigationRow = (idx, field, value) => {
+        const items = [...data.lab_investigations];
+        items[idx][field] = value;
+        setData('lab_investigations', items);
+    };
+
+    const removeLabInvestigationRow = (idx) => {
+        setData(
+            'lab_investigations',
+            data.lab_investigations.filter((_, i) => i !== idx)
+        );
     };
 
     const updatePrescriptionRow = (idx, field, value) => {
@@ -460,9 +557,17 @@ export default function Edit({
                                     {selectedPatient ? (
                                         <div className="bg-emerald-50/80 border border-emerald-300 rounded-xl p-3.5 flex items-center justify-between shadow-xs">
                                             <div className="flex items-center gap-3.5">
-                                                <div className="w-11 h-11 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-base shadow-xs">
-                                                    {(selectedPatient.name || 'P').charAt(0).toUpperCase()}
-                                                </div>
+                                                {selectedPatient.photo_url ? (
+                                                    <img
+                                                        src={selectedPatient.photo_url}
+                                                        alt={selectedPatient.name}
+                                                        className="w-11 h-11 rounded-full object-cover border-2 border-emerald-400 shadow-xs flex-shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-11 h-11 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-base shadow-xs flex-shrink-0">
+                                                        {(selectedPatient.name || 'P').charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
                                                 <div>
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <h4 className="font-bold text-gray-900 text-sm">
@@ -773,21 +878,129 @@ export default function Edit({
                             <div className="bg-gray-50/50 rounded-xl border border-gray-200 p-4 space-y-2">
                                 <div className="flex items-center justify-between">
                                     <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5 uppercase tracking-wider">
-                                        <span>📋</span> Diagnosis &amp; Miasm
+                                        <span>📋</span> Clinical Diagnosis &amp; Miasm
                                     </label>
-                                    <span className="text-[11px] text-gray-500">রোগ নির্ণয় ও মায়াজম</span>
+                                    <span className="text-[11px] text-gray-500">রোগ নির্ণয়</span>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <input
+                                        type="text"
+                                        placeholder="Final Diagnosis (চূড়ান্ত রোগ নির্ণয়)"
+                                        value={data.final_diagnosis}
+                                        onChange={(e) => setData('final_diagnosis', e.target.value)}
+                                        className="w-full rounded-lg border-gray-300 shadow-xs text-xs font-bold focus:border-primary-500 focus:ring-primary-500 bg-white"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Provisional / Differential Diagnosis"
+                                        value={data.provisional_diagnosis}
+                                        onChange={(e) => setData('provisional_diagnosis', e.target.value)}
+                                        className="w-full rounded-lg border-gray-300 shadow-xs text-xs focus:border-primary-500 focus:ring-primary-500 bg-white"
+                                    />
                                 </div>
                                 <textarea
                                     value={data.diagnosis_notes}
                                     onChange={(e) => setData('diagnosis_notes', e.target.value)}
                                     className="w-full rounded-lg border-gray-300 shadow-xs text-xs focus:border-primary-500 focus:ring-primary-500 bg-white"
-                                    rows={4}
-                                    placeholder="Clinical assessment, homeopathic miasm, constitutional notes..."
+                                    rows={2}
+                                    placeholder="Clinical assessment, homeopathic miasm, constitutional assessment notes..."
                                 />
                                 {errors.diagnosis_notes && (
                                     <p className="text-xs text-red-600 font-semibold">{errors.diagnosis_notes}</p>
                                 )}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Universal Clinical Vitals & Biometrics */}
+                    <VitalsTrackerCard
+                        vitals={data.vitals}
+                        onChange={(val) => setData('vitals', val)}
+                        errors={errors}
+                    />
+
+                    {/* Classical Homeopathy Physical Generals */}
+                    {practiceType !== 'general_practice' && (
+                        <PhysicalGeneralsCard
+                            physicalGenerals={data.physical_generals}
+                            onChange={(val) => setData('physical_generals', val)}
+                        />
+                    )}
+
+                    {/* ════════════════════════════════════════════════════════════════
+                        STEP 2.5: Advised Lab Investigations
+                    ════════════════════════════════════════════════════════════════ */}
+                    <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
+                        <div className="bg-gray-50/80 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                                    🧪
+                                </span>
+                                <h3 className="text-sm font-bold text-gray-900">Advised Diagnostic Investigations</h3>
+                                <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2 py-0.5 rounded-full border border-emerald-200">
+                                    {data.lab_investigations.length} tests ordered
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => addLabInvestigationRow()}
+                                className="inline-flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
+                            >
+                                <span>+</span> Add Test
+                            </button>
+                        </div>
+
+                        <div className="p-4 space-y-3">
+                            {labInvestigations.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 items-center pb-2 border-b border-gray-100">
+                                    <span className="text-[11px] font-bold text-gray-500 uppercase mr-1">Quick Select:</span>
+                                    {labInvestigations.slice(0, 8).map((test) => (
+                                        <button
+                                            key={test.id}
+                                            type="button"
+                                            onClick={() => addLabInvestigationRow(test)}
+                                            className="px-2 py-1 text-xs rounded-md bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-gray-200 text-gray-700 transition cursor-pointer"
+                                        >
+                                            + {test.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {data.lab_investigations.length === 0 ? (
+                                <p className="text-xs text-gray-400 italic text-center py-2">No diagnostic lab investigations ordered for this visit.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {data.lab_investigations.map((lab, idx) => (
+                                        <div key={idx} className="flex flex-col sm:flex-row items-center gap-2 bg-gray-50/60 p-2.5 rounded-lg border border-gray-200">
+                                            <span className="text-xs font-mono font-bold text-gray-400 w-6">#{idx + 1}</span>
+                                            <input
+                                                type="text"
+                                                placeholder="Investigation name (e.g. CBC, RBS, USG)"
+                                                value={lab.test_name}
+                                                onChange={(e) => updateLabInvestigationRow(idx, 'test_name', e.target.value)}
+                                                className="flex-1 rounded-lg border-gray-300 text-xs font-semibold py-1.5"
+                                                required
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Preparation instructions (e.g. 10hr fasting, full bladder)"
+                                                value={lab.instructions || ''}
+                                                onChange={(e) => updateLabInvestigationRow(idx, 'instructions', e.target.value)}
+                                                className="flex-1 rounded-lg border-gray-300 text-xs py-1.5"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeLabInvestigationRow(idx)}
+                                                className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 cursor-pointer"
+                                                title="Remove test"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -933,13 +1146,24 @@ export default function Edit({
                                 >
                                     <span>⚙️</span> Presets &amp; Options
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => addPrescriptionRow()}
-                                    className="inline-flex items-center gap-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition cursor-pointer"
-                                >
-                                    <span className="text-sm">+</span> Add Medicine
-                                </button>
+                                {practiceType !== 'general_practice' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => addPrescriptionRow()}
+                                        className="inline-flex items-center gap-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer"
+                                    >
+                                        <span className="text-sm">+</span> Add Homeo Remedy
+                                    </button>
+                                )}
+                                {practiceType !== 'homeopathy' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => addPharmaceuticalRow()}
+                                        className="inline-flex items-center gap-1.5 text-xs bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer"
+                                    >
+                                        <span className="text-sm">+</span> Add Allopathic Drug
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -949,24 +1173,217 @@ export default function Edit({
                                     <div className="w-12 h-12 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center mx-auto text-xl font-bold">
                                         Rx
                                     </div>
-                                    <div className="text-sm font-bold text-gray-700">No medicines added yet</div>
+                                    <div className="text-sm font-bold text-gray-700">No medications added yet</div>
                                     <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                                        Add a medicine manually or review an approved repertory reference above. Any prescription remains the prescriber's independent decision.
+                                        Add medications or review repertory references above. Prescriptions remain the practitioner's independent decision.
                                     </p>
-                                    <button
-                                        type="button"
-                                        onClick={() => addPrescriptionRow()}
-                                        className="inline-flex items-center gap-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white font-bold px-4 py-2 rounded-lg shadow-xs transition cursor-pointer"
-                                    >
-                                        + Add First Medicine
-                                    </button>
+                                    <div className="flex items-center justify-center gap-3">
+                                        {practiceType !== 'general_practice' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => addPrescriptionRow()}
+                                                className="inline-flex items-center gap-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white font-bold px-4 py-2 rounded-lg shadow-xs transition cursor-pointer"
+                                            >
+                                                + Add Homeopathic Remedy
+                                            </button>
+                                        )}
+                                        {practiceType !== 'homeopathy' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => addPharmaceuticalRow()}
+                                                className="inline-flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg shadow-xs transition cursor-pointer"
+                                            >
+                                                + Add Allopathic Drug
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             ) : (
-                                data.prescription_items.map((item, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden hover:border-primary-300 transition"
-                                    >
+                                data.prescription_items.map((item, idx) => {
+                                    if (item.item_type === 'pharmaceutical') {
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className="bg-white border border-emerald-300 rounded-xl shadow-xs overflow-hidden hover:border-emerald-400 transition"
+                                            >
+                                                {/* Pharma Row Header */}
+                                                <div className="bg-emerald-50/90 px-4 py-2.5 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+                                                        <span className="bg-emerald-700 text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-2xs">
+                                                            Rx #{idx + 1} (Pharma)
+                                                        </span>
+                                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                                                            <div>
+                                                                <select
+                                                                    value={item.dosage_form || 'Tablet'}
+                                                                    onChange={(e) => updatePrescriptionRow(idx, 'dosage_form', e.target.value)}
+                                                                    className="w-full rounded-lg border-gray-300 text-xs font-semibold py-1.5"
+                                                                >
+                                                                    {['Tablet', 'Capsule', 'Syrup', 'Suspension', 'Injection', 'Drops', 'Inhaler', 'Ointment'].map((f) => (
+                                                                        <option key={f} value={f}>{f}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                            <div className="sm:col-span-2">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Brand Name (e.g. Napa, Seclo)"
+                                                                    value={item.brand_name || ''}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        const matched = pharmaceuticals.find((p) => p.brand_name.toLowerCase() === val.toLowerCase());
+                                                                        if (matched) {
+                                                                            const items = [...data.prescription_items];
+                                                                            items[idx] = {
+                                                                                ...items[idx],
+                                                                                pharmaceutical_id: matched.id,
+                                                                                brand_name: matched.brand_name,
+                                                                                generic_name: matched.generic_name,
+                                                                                strength: matched.strength,
+                                                                                dosage_form: matched.dosage_form,
+                                                                            };
+                                                                            setData('prescription_items', items);
+                                                                        } else {
+                                                                            updatePrescriptionRow(idx, 'brand_name', val);
+                                                                        }
+                                                                    }}
+                                                                    list={`pharma-list-${idx}`}
+                                                                    className="w-full rounded-lg border-gray-300 text-xs font-bold py-1.5"
+                                                                    required
+                                                                />
+                                                                <datalist id={`pharma-list-${idx}`}>
+                                                                    {pharmaceuticals.map((p) => (
+                                                                        <option key={p.id} value={p.brand_name}>
+                                                                            {p.brand_name} ({p.generic_name}) - {p.strength}
+                                                                        </option>
+                                                                    ))}
+                                                                </datalist>
+                                                            </div>
+                                                            <div>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Strength (e.g. 500mg)"
+                                                                    value={item.strength || ''}
+                                                                    onChange={(e) => updatePrescriptionRow(idx, 'strength', e.target.value)}
+                                                                    className="w-full rounded-lg border-gray-300 text-xs py-1.5"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePrescriptionRow(idx)}
+                                                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                                                        title="Remove medication"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                        <span className="hidden sm:inline">Delete</span>
+                                                    </button>
+                                                </div>
+
+                                                <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4 text-xs items-start">
+                                                    {/* Column 1: Timing */}
+                                                    <div className="space-y-1.5">
+                                                        <span className="block font-bold text-gray-800 uppercase tracking-wider text-[11px]">
+                                                            Timing (খাওয়ার সময়) <span className="text-red-500">*</span>
+                                                        </span>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {timingOptions.map((t) => {
+                                                                const isSelected = (item.timing || []).includes(t.key);
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        key={t.key}
+                                                                        onClick={() => toggleTiming(idx, t.key)}
+                                                                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                                                                            isSelected
+                                                                                ? 'bg-emerald-700 text-white shadow-xs font-bold'
+                                                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-transparent'
+                                                                        }`}
+                                                                    >
+                                                                        <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] ${
+                                                                            isSelected ? 'bg-white text-emerald-800 font-extrabold' : 'bg-gray-300 text-transparent'
+                                                                        }`}>
+                                                                            ✓
+                                                                        </span>
+                                                                        <span>{t.label_bn || t.label_en}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Column 2: Meal Relation */}
+                                                    <div className="space-y-1.5">
+                                                        <span className="block font-bold text-gray-800 uppercase tracking-wider text-[11px]">
+                                                            Meal Relation
+                                                        </span>
+                                                        <div className="grid grid-cols-2 gap-1">
+                                                            {mealRelations.map((rel) => {
+                                                                const isSelected = item.before_after === rel.key;
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        key={rel.key}
+                                                                        onClick={() => updatePrescriptionRow(idx, 'before_after', rel.key)}
+                                                                        className={`py-1.5 px-2 rounded-lg text-xs text-center transition cursor-pointer font-medium ${
+                                                                            isSelected
+                                                                                ? 'bg-emerald-700 text-white font-bold shadow-xs'
+                                                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                                                                        }`}
+                                                                    >
+                                                                        {rel.label_bn || rel.label_en}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Column 3: Generic / Note */}
+                                                    <div className="space-y-1.5">
+                                                        <span className="block font-bold text-gray-800 uppercase tracking-wider text-[11px]">
+                                                            Generic Name / Notes
+                                                        </span>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Generic name (e.g. Paracetamol)..."
+                                                            value={item.generic_name || ''}
+                                                            onChange={(e) => updatePrescriptionRow(idx, 'generic_name', e.target.value)}
+                                                            className="w-full rounded-lg border-gray-300 text-xs py-1.5"
+                                                        />
+                                                    </div>
+
+                                                    {/* Column 4: Duration */}
+                                                    <div className="space-y-1.5">
+                                                        <span className="block font-bold text-gray-800 uppercase tracking-wider text-[11px]">
+                                                            Duration (দিন)
+                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                max="365"
+                                                                value={item.duration_days ?? 5}
+                                                                onChange={(e) => updatePrescriptionRow(idx, 'duration_days', e.target.value)}
+                                                                className="w-20 rounded-lg border-gray-300 text-xs font-bold text-center py-1.5 bg-white"
+                                                                placeholder="5"
+                                                            />
+                                                            <span className="text-gray-600 font-semibold text-xs">days (দিন)</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden hover:border-primary-300 transition"
+                                        >
                                         {/* Medicine Row Header */}
                                         <div className="bg-gray-50/90 px-4 py-2.5 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
                                             <div className="flex items-center gap-3 flex-1 min-w-[280px]">
@@ -1222,19 +1639,32 @@ export default function Edit({
                                             </div>
                                         </div>
                                     </div>
-                                ))
+                                );
+                            })
                             )}
 
                             {data.prescription_items.length > 0 && (
-                                <div className="pt-2 flex justify-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => addPrescriptionRow()}
-                                        className="inline-flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 hover:border-primary-500 hover:bg-primary-50/50 rounded-xl text-xs font-bold text-gray-700 hover:text-primary-700 transition cursor-pointer shadow-2xs"
-                                    >
-                                        <span className="text-base text-primary-600">+</span>
-                                        Add Another Medicine (আরেকটি ঔষধ যোগ করুন)
-                                    </button>
+                                <div className="pt-2 flex flex-wrap justify-center gap-3">
+                                    {practiceType !== 'general_practice' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => addPrescriptionRow()}
+                                            className="inline-flex items-center gap-2 px-4 py-2 border-2 border-dashed border-primary-300 hover:border-primary-500 hover:bg-primary-50/50 rounded-xl text-xs font-bold text-primary-700 transition cursor-pointer shadow-2xs"
+                                        >
+                                            <span className="text-base text-primary-600">+</span>
+                                            Add Homeopathic Remedy (হোমিওপ্যাথিক ঔষধ)
+                                        </button>
+                                    )}
+                                    {practiceType !== 'homeopathy' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => addPharmaceuticalRow()}
+                                            className="inline-flex items-center gap-2 px-4 py-2 border-2 border-dashed border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/50 rounded-xl text-xs font-bold text-emerald-700 transition cursor-pointer shadow-2xs"
+                                        >
+                                            <span className="text-base text-emerald-600">+</span>
+                                            Add Allopathic Drug (এলোপ্যাথিক ঔষধ)
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>

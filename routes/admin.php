@@ -3,16 +3,25 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AdviceItemController;
 use App\Http\Controllers\Admin\AppointmentRequestController as AdminApptController;
+use App\Http\Controllers\Admin\CalendarController;
 use App\Http\Controllers\Admin\ClinicSettingController;
+use App\Http\Controllers\Admin\CommunicationController;
 use App\Http\Controllers\Admin\DoctorController;
+use App\Http\Controllers\Admin\DoctorScheduleController;
 use App\Http\Controllers\Admin\FoodRestrictionController;
 use App\Http\Controllers\Admin\GitRepositoryController;
+use App\Http\Controllers\Admin\InventoryController;
+use App\Http\Controllers\Admin\InvoiceController;
+use App\Http\Controllers\Admin\LabInvestigationController;
 use App\Http\Controllers\Admin\MedicineController;
+use App\Http\Controllers\Admin\PatientAttachmentController;
 use App\Http\Controllers\Admin\PatientConfigController;
 use App\Http\Controllers\Admin\PatientController;
 use App\Http\Controllers\Admin\PatientNumberingProfileController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\PharmaceuticalController;
 use App\Http\Controllers\Admin\PrescriptionOptionController;
+use App\Http\Controllers\Admin\QueueController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SymptomController;
@@ -51,12 +60,26 @@ Route::middleware(['auth', 'permission:patients.create'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['create', 'store']));
 Route::middleware(['auth', 'permission:patients.view'])->group(function () {
     Route::get('patients/search', [PatientController::class, 'search'])->name('patients.search');
+    Route::get('patients/{patient}/opd-card', [PatientController::class, 'opdCard'])->name('patients.opd_card');
+    Route::get('patients/{patient}/photo', [PatientController::class, 'photo'])->name('patients.photo');
     Route::resource('patients', PatientController::class)->only(['index', 'show']);
 });
 Route::middleware(['auth', 'permission:patients.update'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['edit', 'update']));
 Route::middleware(['auth', 'permission:patients.delete'])
     ->group(fn () => Route::resource('patients', PatientController::class)->only(['destroy']));
+
+// Patient Attachments & Diagnostic Reports
+Route::middleware(['auth', 'permission:attachments.create'])
+    ->post('patients/{patient}/attachments', [PatientAttachmentController::class, 'store'])
+    ->name('patients.attachments.store');
+Route::middleware(['auth', 'permission:attachments.view'])->group(function () {
+    Route::get('attachments/{attachment}/view', [PatientAttachmentController::class, 'show'])->name('attachments.show');
+    Route::get('attachments/{attachment}/download', [PatientAttachmentController::class, 'download'])->name('attachments.download');
+});
+Route::middleware(['auth', 'permission:attachments.delete'])
+    ->delete('attachments/{attachment}', [PatientAttachmentController::class, 'destroy'])
+    ->name('attachments.destroy');
 
 // Patient form configuration
 Route::middleware(['auth', 'role_or_permission:Super Admin|patient_config.view'])
@@ -76,6 +99,48 @@ Route::middleware(['auth', 'permission:medicines.update'])
     ->group(fn () => Route::resource('medicines', MedicineController::class)->only(['edit', 'update']));
 Route::middleware(['auth', 'permission:medicines.delete'])
     ->group(fn () => Route::resource('medicines', MedicineController::class)->only(['destroy']));
+
+// Pharmaceuticals (General Practice & Dual Mode Catalog)
+Route::middleware(['auth', 'permission:pharmaceuticals.create'])
+    ->group(fn () => Route::resource('pharmaceuticals', PharmaceuticalController::class)->only(['create', 'store']));
+Route::middleware(['auth', 'permission:pharmaceuticals.view'])->group(function () {
+    Route::get('pharmaceuticals/search', [PharmaceuticalController::class, 'search'])->name('pharmaceuticals.search');
+    Route::resource('pharmaceuticals', PharmaceuticalController::class)->only(['index', 'show']);
+});
+Route::middleware(['auth', 'permission:pharmaceuticals.update'])
+    ->group(fn () => Route::resource('pharmaceuticals', PharmaceuticalController::class)->only(['edit', 'update']));
+Route::middleware(['auth', 'permission:pharmaceuticals.delete'])
+    ->group(fn () => Route::resource('pharmaceuticals', PharmaceuticalController::class)->only(['destroy']));
+
+// Diagnostic Lab Investigations
+Route::middleware(['auth', 'permission:lab_investigations.create'])
+    ->group(fn () => Route::resource('lab-investigations', LabInvestigationController::class)->only(['create', 'store'])->names('lab_investigations'));
+Route::middleware(['auth', 'permission:lab_investigations.view'])->group(function () {
+    Route::get('lab-investigations/search', [LabInvestigationController::class, 'search'])->name('lab_investigations.search');
+    Route::resource('lab-investigations', LabInvestigationController::class)->only(['index', 'show'])->names('lab_investigations');
+});
+Route::middleware(['auth', 'permission:lab_investigations.update'])
+    ->group(fn () => Route::resource('lab-investigations', LabInvestigationController::class)->only(['edit', 'update'])->names('lab_investigations'));
+Route::middleware(['auth', 'permission:lab_investigations.delete'])
+    ->group(fn () => Route::resource('lab-investigations', LabInvestigationController::class)->only(['destroy'])->names('lab_investigations'));
+
+// Pharmacy Inventory & Stock Control
+Route::middleware(['auth', 'permission:inventory.view'])->group(function () {
+    Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('inventory/transactions', [InventoryController::class, 'transactions'])->name('inventory.transactions');
+});
+Route::middleware(['auth', 'permission:inventory.create'])->group(function () {
+    Route::get('inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
+    Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
+});
+Route::middleware(['auth', 'permission:inventory.update'])->group(function () {
+    Route::get('inventory/{batch}/edit', [InventoryController::class, 'edit'])->name('inventory.edit');
+    Route::put('inventory/{batch}', [InventoryController::class, 'update'])->name('inventory.update');
+    Route::post('inventory/{batch}/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
+});
+Route::middleware(['auth', 'permission:inventory.delete'])
+    ->delete('inventory/{batch}', [InventoryController::class, 'destroy'])
+    ->name('inventory.destroy');
 
 // Symptoms
 Route::middleware(['auth', 'permission:symptoms.create'])
@@ -153,7 +218,7 @@ Route::middleware(['auth', 'permission:symptom_medicine_map.delete'])
 Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.view'])
     ->get('settings', [ClinicSettingController::class, 'edit'])->name('settings.edit');
 Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.update'])
-    ->put('settings', [ClinicSettingController::class, 'update'])->name('settings.update');
+    ->match(['put', 'post'], 'settings', [ClinicSettingController::class, 'update'])->name('settings.update');
 
 // General settings
 Route::middleware(['auth', 'role_or_permission:Super Admin|general_settings.view'])
@@ -281,3 +346,72 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|appointments.update']
 Route::delete('/appointment-requests/{appointmentRequest}', [AdminApptController::class, 'destroy'])
     ->middleware(['auth', 'role_or_permission:Super Admin|appointments.delete'])
     ->name('appointment_requests.destroy');
+
+// Billing, Invoicing & Cash Register
+Route::middleware(['auth', 'role_or_permission:Super Admin|billing.create'])->group(function () {
+    Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
+    Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+    Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'recordPayment'])->name('invoices.payments.store');
+});
+Route::middleware(['auth', 'role_or_permission:Super Admin|billing.view'])->group(function () {
+    Route::get('/billing/cash-register', [InvoiceController::class, 'cashRegister'])->name('billing.cash_register');
+    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
+    Route::get('/invoices/{invoice}/pos-receipt', [InvoiceController::class, 'posReceipt'])->name('invoices.pos_receipt');
+});
+Route::middleware(['auth', 'role_or_permission:Super Admin|billing.update'])->group(function () {
+    Route::get('/invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('invoices.edit');
+    Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+});
+Route::middleware(['auth', 'role_or_permission:Super Admin|billing.delete'])->group(function () {
+    Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+});
+
+// Waiting Room Queue Management
+Route::middleware(['auth', 'role_or_permission:Super Admin|queue.view'])->group(function () {
+    Route::get('/queue', [QueueController::class, 'index'])->name('queue.index');
+    Route::get('/queue/display', [QueueController::class, 'display'])->name('queue.display');
+    Route::get('/queue/workbench', [QueueController::class, 'workbench'])->name('queue.workbench');
+    Route::get('/queue/live-state', [QueueController::class, 'liveData'])->name('queue.live_state');
+    Route::get('/queue/tokens/{token}/print', [QueueController::class, 'printToken'])->name('queue.tokens.print');
+});
+
+Route::middleware(['auth', 'role_or_permission:Super Admin|queue.manage'])->group(function () {
+    Route::get('/queue/tokens/create', [QueueController::class, 'create'])->name('queue.tokens.create');
+    Route::post('/queue/tokens', [QueueController::class, 'store'])->name('queue.tokens.store');
+    Route::post('/queue/tokens/{token}/call', [QueueController::class, 'call'])->name('queue.tokens.call');
+    Route::post('/queue/tokens/{token}/recall', [QueueController::class, 'recall'])->name('queue.tokens.recall');
+    Route::post('/queue/tokens/{token}/start-consultation', [QueueController::class, 'startConsultation'])->name('queue.tokens.start_consultation');
+    Route::post('/queue/tokens/{token}/complete', [QueueController::class, 'complete'])->name('queue.tokens.complete');
+    Route::post('/queue/tokens/{token}/skip', [QueueController::class, 'skip'])->name('queue.tokens.skip');
+    Route::delete('/queue/tokens/{token}', [QueueController::class, 'destroy'])->name('queue.tokens.destroy');
+});
+
+// Doctor Schedules & Visual Calendar
+Route::middleware(['auth', 'role_or_permission:Super Admin|calendar.view'])->group(function () {
+    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events');
+    Route::get('/doctor-schedules', [DoctorScheduleController::class, 'index'])->name('doctor_schedules.index');
+});
+
+Route::middleware(['auth', 'role_or_permission:Super Admin|calendar.manage'])->group(function () {
+    Route::put('/doctor-schedules/{doctor}', [DoctorScheduleController::class, 'update'])->name('doctor_schedules.update');
+    Route::post('/doctor-schedules/{doctor}/leaves', [DoctorScheduleController::class, 'storeLeave'])->name('doctor_schedules.leaves.store');
+    Route::delete('/doctor-schedules/leaves/{leave}', [DoctorScheduleController::class, 'destroyLeave'])->name('doctor_schedules.leaves.destroy');
+});
+
+// Patient Communications (SMS & WhatsApp logs)
+Route::middleware(['auth', 'role_or_permission:Super Admin|communications.view'])->group(function () {
+    Route::get('/communications', [CommunicationController::class, 'index'])->name('communications.index');
+    Route::get('/visits/{visit}/whatsapp-url', [CommunicationController::class, 'whatsappUrl'])->name('visits.whatsapp_url');
+});
+
+Route::middleware(['auth', 'role_or_permission:Super Admin|communications.send'])->group(function () {
+    Route::post('/communications/send-custom', [CommunicationController::class, 'sendCustom'])->name('communications.send_custom');
+});
+
+Route::middleware(['auth', 'role_or_permission:Super Admin|communications.manage'])->group(function () {
+    Route::get('/communications/settings', [CommunicationController::class, 'settings'])->name('communications.settings');
+    Route::put('/communications/settings', [CommunicationController::class, 'updateSettings'])->name('communications.settings.update');
+});

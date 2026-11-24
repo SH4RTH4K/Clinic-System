@@ -37,4 +37,9 @@ class PrescriptionItem extends Model
     {
         return $this->belongsTo(Medicine::class);
     }
+
+    public function pharmaceutical()
+    {
+        return $this->belongsTo(Pharmaceutical::class);
+    }
 }

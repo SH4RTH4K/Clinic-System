@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UpdateAppointmentRequest;
 use App\Models\AppointmentRequest;
 use App\Models\AppointmentRequestEvent;
 use App\Services\Admin\AppointmentRequestPatientMatcher;
+use App\Services\CommunicationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -182,6 +183,14 @@ class AppointmentRequestController extends Controller
                     'new_scheduled_time' => $nextTime,
                     'reason' => $validated['reason'] ?? null,
                 ]);
+
+                if ($validated['status'] === 'scheduled') {
+                    try {
+                        app(CommunicationService::class)->sendAppointmentConfirmation($lockedRequest, $actor);
+                    } catch (\Throwable $e) {
+                        // Fail-safe: SMS delivery failure must never break status update
+                    }
+                }
             }
         });
 

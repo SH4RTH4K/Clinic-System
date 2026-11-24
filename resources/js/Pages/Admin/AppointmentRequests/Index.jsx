@@ -129,6 +129,17 @@ export default function Index({ requests, filters = {} }) {
                             {request.status === 'scheduled' ? 'Manage / Reschedule' : 'Manage / Schedule'}
                         </Link>
                     )}
+                    <Link
+                        href={route('admin.queue.tokens.create', {
+                            appointment_request_id: request.id,
+                            patient_id: request.converted_patient_id || request.existing_patient_match_id || '',
+                            patient_name: request.name,
+                            patient_phone: request.phone,
+                        })}
+                        className="whitespace-nowrap rounded bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800 transition hover:bg-emerald-100"
+                    >
+                        Issue Token
+                    </Link>
                     {canUpdate && request.converted_patient_id ? (
                         <span className="whitespace-nowrap rounded bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800">
                             Patient registered

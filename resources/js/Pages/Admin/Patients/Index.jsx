@@ -67,11 +67,26 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
             key: 'name',
             label: 'Name',
             render: (p) => (
-                <div>
-                    <span className="font-semibold text-gray-900">{p.name}</span>
-                    {p.guardian_name && (
-                        <span className="block text-xs text-gray-500">{getGuardianRelationshipLabel(p.guardian_relationship, p.guardian_relationship_custom, relationshipOptions) || 'C/O'} {p.guardian_name}</span>
+                <div className="flex items-center space-x-3">
+                    {p.photo_url ? (
+                        <img
+                            src={p.photo_url}
+                            alt={p.name}
+                            className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                        />
+                    ) : (
+                        <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-700 border border-teal-200 flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+                            {p.name ? p.name.charAt(0) : 'P'}
+                        </div>
                     )}
+                    <div>
+                        <span className="font-semibold text-gray-900 block">{p.name}</span>
+                        {p.guardian_name && (
+                            <span className="block text-xs text-gray-500">
+                                {getGuardianRelationshipLabel(p.guardian_relationship, p.guardian_relationship_custom, relationshipOptions) || 'C/O'} {p.guardian_name}
+                            </span>
+                        )}
+                    </div>
                 </div>
             ),
         },
@@ -98,6 +113,13 @@ export default function Index({ patients, filters = {}, relationshipOptions = []
             className: 'text-right',
             render: (p) => (
                 <div className="flex items-center justify-end gap-2">
+                    <Link
+                        href={route('admin.patients.opd_card', p.id)}
+                        className="rounded-md border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100 transition"
+                        title="Print OPD Card"
+                    >
+                        OPD Card
+                    </Link>
                     <Link
                         href={route('admin.patients.show', p.id)}
                         className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition"

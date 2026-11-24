@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ClinicSetting;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,6 +43,17 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name') : [],
                 'roles' => $request->user() ? $request->user()->getRoleNames() : [],
             ],
+            'clinic' => function () {
+                $settings = ClinicSetting::query()->first();
+
+                return [
+                    'name_en' => $settings->clinic_name_en ?? 'RemediQ Clinic',
+                    'name_bn' => $settings->clinic_name_bn ?? null,
+                    'practice_type' => $settings->practice_type ?? 'homeopathy',
+                    'logo_url' => $settings?->logo_path ? route('clinic.logo') : null,
+                    'favicon_url' => $settings?->favicon_path ? route('clinic.favicon') : null,
+                ];
+            },
         ];
     }
 }

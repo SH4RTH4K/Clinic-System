@@ -17,11 +17,29 @@ class ClinicSetting extends Model
         'visiting_hours_schedule' => 'array',
         'prescription_config' => 'array',
         'patient_form_config' => 'array',
+        'auto_deduct_inventory' => 'boolean',
+        'default_consultation_fee' => 'decimal:2',
+        'sms_config' => 'array',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()->logAll()->logOnlyDirty()->dontSubmitEmptyLogs();
+    }
+
+    public function isHomeopathyOnly(): bool
+    {
+        return ($this->practice_type ?? 'homeopathy') === 'homeopathy';
+    }
+
+    public function isGeneralPracticeOnly(): bool
+    {
+        return ($this->practice_type ?? 'homeopathy') === 'general_practice';
+    }
+
+    public function isDualPractice(): bool
+    {
+        return ($this->practice_type ?? 'homeopathy') === 'integrative_dual';
     }
 
     /**
@@ -277,5 +295,46 @@ class ClinicSetting extends Model
             'default_dose_qty' => $stored['default_dose_qty'] ?? $defaults['default_dose_qty'],
             'default_dose_unit' => $stored['default_dose_unit'] ?? $defaults['default_dose_unit'],
         ];
+    }
+
+    /**
+     * Default SMS and communication gateway configuration.
+     *
+     * @return array<string, mixed>
+     */
+    public static function defaultSmsConfig(): array
+    {
+        return [
+            'sms_enabled' => false,
+            'sms_provider' => 'log',
+            'api_url' => '',
+            'api_key' => '',
+            'sender_id' => 'RemediQ',
+            'auto_sms_appointments' => true,
+            'auto_sms_queue' => true,
+            'auto_sms_prescriptions' => false,
+            'templates' => [
+                'appointment_confirmed' => 'Dear {patient_name}, your appointment with {doctor_name} at {clinic_name} is confirmed for {date} at {time}. Helpline: {phone}',
+                'queue_token_issued' => 'Token {token_code} issued for {patient_name} at {clinic_name}. Assigned to {doctor_name} ({service_room}). Please watch waiting room display.',
+                'prescription_ready' => 'Dear {patient_name}, your digital prescription from {clinic_name} by {doctor_name} is ready. View online: {prescription_url}',
+            ],
+        ];
+    }
+
+    /**
+     * Get SMS configuration with defaults merged.
+     *
+     * @return array<string, mixed>
+     */
+    public function getSmsConfig(): array
+    {
+        $defaults = self::defaultSmsConfig();
+        $stored = $this->sms_config;
+
+        if (empty($stored) || ! is_array($stored)) {
+            return $defaults;
+        }
+
+        return array_replace_recursive($defaults, $stored);
     }
 }
