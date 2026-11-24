@@ -208,3 +208,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Insecure Context (HTTP) Resilient WebRTC Fallback**: Graceful detection of `window.isSecureContext` in `WebcamCaptureModal.jsx` explaining HTTPS requirement cleanly instead of failing or displaying generic permission denied errors.
 - `[x] Done` **Rear / Front Facing Camera Toggle**: Multi-camera support allowing doctors to toggle between rear camera (`environment`) for patient photography and front camera (`user`) with mirror mode.
 - `[x] Done` **Multi-Tier Patient Photo Integration**: Three complementary photo options provided across `Patients/Create.jsx` and `Patients/Edit.jsx`: `Take Photo (Mobile Camera)`, `Live Webcam`, and `Upload Image File`.
+
+---
+
+### Module 13: Responsive Multi-Screen Patient Directory & Mobile Layout Optimization
+- `[x] Done` **Dual-Mode Patient Presentation**: Responsive transformation across viewports where mobile screens (< 768px / 320px-480px) render high-density, touch-friendly patient cards (`block md:hidden`), while desktop and tablet screens (>= 768px) render the structured data table (`hidden md:block`).
+- `[x] Done` **High-Density Mobile Patient Cards**: Dedicated touch cards displaying patient avatar (photo or initials circle), blood group badge, name, guardian relationship & name, calculated age & gender, primary ID badge, and Old/Other ID badge.
+- `[x] Done` **Mobile 1-Tap Quick Dial & WhatsApp Integration**: Formatted phone number with 1-tap `tel:` call link and dedicated WhatsApp click-to-chat button with country code prefixing (`88`).
+- `[x] Done` **Compact KPI & Topbar Layout**: Refined KPI summary statistics card grid (`grid-cols-2 lg:grid-cols-4`) with compact mobile padding (`p-2.5 sm:p-3.5`), optimized typography, and decluttered topbar (`View Website` hidden on mobile with `hidden lg:flex`).
+- `[x] Done` **Universal DataTable Minimum Width Safeguard**: Upgraded `DataTable.jsx` with customizable `tableClassName` and default `min-w-[650px]` minimum width to prevent column crushing and unreadable vertical wrapping across all system tables.

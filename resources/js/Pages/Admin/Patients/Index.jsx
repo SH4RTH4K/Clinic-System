@@ -291,49 +291,49 @@ export default function Index({
             <div className="mx-auto max-w-7xl">
                 {/* KPI Summary Cards */}
                 {kpis && (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-                        <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-xs flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mb-4 sm:mb-5">
+                        <div className="rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3.5 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                             </div>
                             <div>
-                                <div className="text-xl font-bold text-gray-900">{kpis.total_patients ?? 0}</div>
-                                <div className="text-xs text-gray-500 font-medium">Total Registered</div>
+                                <div className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{kpis.total_patients ?? 0}</div>
+                                <div className="text-[11px] sm:text-xs text-gray-500 font-medium leading-tight">Total Registered</div>
                             </div>
                         </div>
-                        <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-xs flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3.5 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                 </svg>
                             </div>
                             <div>
-                                <div className="text-xl font-bold text-gray-900">{kpis.registered_today ?? 0}</div>
-                                <div className="text-xs text-gray-500 font-medium">New Today</div>
+                                <div className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{kpis.registered_today ?? 0}</div>
+                                <div className="text-[11px] sm:text-xs text-gray-500 font-medium leading-tight">New Today</div>
                             </div>
                         </div>
-                        <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-xs flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3.5 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
                             <div>
-                                <div className="text-xl font-bold text-gray-900">{kpis.in_queue_today ?? 0}</div>
-                                <div className="text-xs text-gray-500 font-medium">In Queue Today</div>
+                                <div className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{kpis.in_queue_today ?? 0}</div>
+                                <div className="text-[11px] sm:text-xs text-gray-500 font-medium leading-tight">In Queue Today</div>
                             </div>
                         </div>
-                        <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-xs flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3.5 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                                 </svg>
                             </div>
                             <div>
-                                <div className="text-xl font-bold text-gray-900">{kpis.total_visits ?? 0}</div>
-                                <div className="text-xs text-gray-500 font-medium">Total Consultations</div>
+                                <div className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{kpis.total_visits ?? 0}</div>
+                                <div className="text-[11px] sm:text-xs text-gray-500 font-medium leading-tight">Total Consultations</div>
                             </div>
                         </div>
                     </div>
@@ -343,7 +343,7 @@ export default function Index({
                     title="Patients"
                     subtitle="Register and manage patient health records"
                     actions={
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
                             <a
                                 href={route('admin.patients.export', {
                                     search: data.search,
@@ -352,7 +352,7 @@ export default function Index({
                                     blood_group: data.blood_group,
                                     date_filter: data.date_filter,
                                 })}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 transition"
+                                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 transition"
                                 title="Export filtered patient list to CSV"
                             >
                                 <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -361,8 +361,8 @@ export default function Index({
                                 <span>Export CSV</span>
                             </a>
                             {canCreate ? (
-                                <Link href={route('admin.patients.create')}>
-                                    <PrimaryButton className="gap-1.5">
+                                <Link href={route('admin.patients.create')} className="flex-1 sm:flex-initial">
+                                    <PrimaryButton className="w-full justify-center gap-1.5 text-xs sm:text-sm py-2">
                                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.5v15m7.5-7.5h-15" />
                                         </svg>
@@ -377,7 +377,7 @@ export default function Index({
                 {/* Search & Filters */}
                 <div className="mb-4 space-y-3">
                     <form onSubmit={onSearch} className="flex flex-wrap items-center gap-2">
-                        <div className="w-full sm:w-80 md:w-96">
+                        <div className="flex-1 min-w-[200px] sm:w-80 md:w-96">
                             <TextInput
                                 type="text"
                                 aria-label="Search patients by name, guardian, phone, or patient ID"
@@ -390,7 +390,7 @@ export default function Index({
                         <button
                             type="submit"
                             disabled={processing}
-                            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                            className="rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
                         >
                             Search
                         </button>
@@ -416,7 +416,7 @@ export default function Index({
                         {hasActiveFilters ? (
                             <Link
                                 href={route('admin.patients.index')}
-                                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition"
+                                className="rounded-lg px-2.5 py-2 text-xs sm:text-sm font-medium text-gray-500 hover:text-gray-700 transition"
                             >
                                 Reset
                             </Link>
@@ -523,12 +523,241 @@ export default function Index({
                     )}
                 </div>
 
-                <DataTable
-                    columns={columns}
-                    data={patients.data || []}
-                    isLoading={processing}
-                    emptyMessage="No patients found matching the criteria."
-                />
+                {/* Desktop and Tablet Table View (>= 768px) */}
+                <div className="hidden md:block">
+                    <DataTable
+                        columns={columns}
+                        data={patients.data || []}
+                        isLoading={processing}
+                        tableClassName="min-w-[850px]"
+                        emptyMessage="No patients found matching the criteria."
+                    />
+                </div>
+
+                {/* Mobile View (< 768px): Touch-Friendly High-Density Patient Cards */}
+                <div className="block md:hidden space-y-3 mb-4">
+                    {processing ? (
+                        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+                            Loading patient records...
+                        </div>
+                    ) : patients.data && patients.data.length > 0 ? (
+                        patients.data.map((p) => {
+                            const totalVisits = p.effective_visits_count ?? (p.visits_count || 0);
+                            const lastVisit = p.effective_last_visit_date;
+                            const cleanPhone = p.phone ? p.phone.replace(/[^0-9]/g, '') : '';
+                            const guardianLabel = getGuardianRelationshipLabel(
+                                p.guardian_relationship,
+                                p.guardian_relationship_custom,
+                                relationshipOptions
+                            ) || 'C/O';
+
+                            return (
+                                <div
+                                    key={p.id}
+                                    className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-2xs hover:shadow-xs transition space-y-3"
+                                >
+                                    {/* Top Row: Avatar, Name, Blood Group, Age/Gender, Patient IDs */}
+                                    <div className="flex items-start justify-between gap-2.5">
+                                        <div className="flex items-start gap-2.5 min-w-0">
+                                            {p.photo_url ? (
+                                                <img
+                                                    src={p.photo_url}
+                                                    alt={p.name}
+                                                    className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
+                                                />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-teal-50 text-teal-700 border border-teal-200 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                                    {p.name ? p.name.charAt(0) : 'P'}
+                                                </div>
+                                            )}
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <Link
+                                                        href={route('admin.patients.show', p.id)}
+                                                        className="font-bold text-gray-900 text-sm hover:text-primary-600 transition"
+                                                    >
+                                                        {p.name}
+                                                    </Link>
+                                                    {p.blood_group && (
+                                                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                                                            {p.blood_group}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {p.guardian_name && (
+                                                    <div className="text-xs text-gray-500 truncate">
+                                                        {guardianLabel} {p.guardian_name}
+                                                    </div>
+                                                )}
+                                                <div className="text-xs text-gray-600 mt-0.5 font-medium">
+                                                    {formatAgeSummary(p.age_years, p.age_months, p.age_days) || p.dob || '—'}
+                                                    {p.gender ? ` (${ucFirst(p.gender)})` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* ID Badges */}
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                            <span className="font-mono font-bold text-[11px] bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200">
+                                                {p.patient_identifier || `${p.patient_no}${p.patient_series || ''}`}
+                                            </span>
+                                            {p.old_or_other_id && (
+                                                <span className="font-mono text-[10px] text-gray-600 bg-gray-50 border border-gray-200 px-1.5 py-0.2 rounded">
+                                                    Old: {p.old_or_other_id}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Info Strip: Phone, Visits, Queue */}
+                                    <div className="rounded-lg bg-gray-50/90 border border-gray-100 p-2.5 text-xs grid grid-cols-2 gap-2">
+                                        {/* Contact */}
+                                        <div>
+                                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Contact</span>
+                                            {p.phone ? (
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <a
+                                                        href={`tel:${p.phone}`}
+                                                        className="font-semibold text-primary-700 hover:underline"
+                                                        title="Call phone"
+                                                    >
+                                                        📞 {p.phone}
+                                                    </a>
+                                                    {cleanPhone.length >= 10 && (
+                                                        <a
+                                                            href={`https://wa.me/${cleanPhone.startsWith('88') ? cleanPhone : '88' + cleanPhone}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-emerald-600 hover:text-emerald-700"
+                                                            title="Chat on WhatsApp"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.074-2.127-.521-1.625-.676-2.656-2.34-2.736-2.449-.079-.11-1.002-1.334-1.002-2.544 0-1.21.636-1.805.862-2.052.226-.247.493-.309.658-.309.165 0 .329.002.473.009.153.008.358-.058.559.426.208.502.71 1.732.772 1.859.062.127.103.275.02.439-.082.164-.124.267-.246.411-.123.144-.26.321-.371.431-.124.123-.253.257-.109.505.144.247.641 1.058 1.378 1.716.949.847 1.751 1.11 2.001 1.233.249.123.395.109.541-.059.146-.168.625-.728.791-.977.166-.249.332-.207.559-.123.228.084 1.442.68 1.69 1.139.248.459.248.868.104 1.273z" />
+                                                            </svg>
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-400 mt-0.5 block">—</span>
+                                            )}
+                                        </div>
+
+                                        {/* Attendance / Visits */}
+                                        <div>
+                                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">History</span>
+                                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                                {totalVisits <= 0 ? (
+                                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                                                        New (0 visits)
+                                                    </span>
+                                                ) : totalVisits === 1 ? (
+                                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                                        1st visit
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                        {totalVisits} visits
+                                                    </span>
+                                                )}
+                                                <span className="text-[11px] text-gray-500">
+                                                    {lastVisit ? `📅 ${lastVisit}` : '📅 Never'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Queue Token Status */}
+                                        <div className="col-span-2 pt-1.5 border-t border-gray-200/60 flex items-center justify-between">
+                                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Today's Queue</span>
+                                            {p.today_queue_token ? (
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                                                    p.today_queue_token.status === 'waiting'
+                                                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                                        : p.today_queue_token.status === 'in_consultation' || p.today_queue_token.status === 'calling'
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse'
+                                                        : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                                }`}>
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                                                    Token #{p.today_queue_token.token_number} ({p.today_queue_token.status})
+                                                </span>
+                                            ) : (
+                                                <Link
+                                                    href={route('admin.queue.tokens.create', { patient_id: p.id })}
+                                                    className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 hover:text-primary-800"
+                                                >
+                                                    <span>+</span> Issue Token
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons: 2 rows of touch-friendly buttons */}
+                                    <div className="space-y-1.5 pt-1">
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {canManageQueue && (
+                                                <Link
+                                                    href={route('admin.queue.tokens.create', { patient_id: p.id })}
+                                                    className="rounded-lg border border-amber-300 bg-amber-50 py-1.5 px-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition flex items-center justify-center gap-1"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span>+ Queue</span>
+                                                </Link>
+                                            )}
+                                            {canCreateVisit && (
+                                                <Link
+                                                    href={route('admin.visits.create', { patient_id: p.id })}
+                                                    className="rounded-lg border border-blue-300 bg-blue-50 py-1.5 px-2 text-xs font-bold text-blue-800 hover:bg-blue-100 transition flex items-center justify-center gap-1"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    <span>+ Visit</span>
+                                                </Link>
+                                            )}
+                                            <Link
+                                                href={route('admin.patients.opd_card', p.id)}
+                                                className="rounded-lg border border-teal-200 bg-teal-50 py-1.5 px-2 text-xs font-bold text-teal-700 hover:bg-teal-100 transition flex items-center justify-center"
+                                            >
+                                                OPD Card
+                                            </Link>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            <Link
+                                                href={route('admin.patients.show', p.id)}
+                                                className="rounded-lg border border-gray-200 bg-white py-1.5 px-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition text-center"
+                                            >
+                                                View
+                                            </Link>
+                                            {canUpdate ? (
+                                                <Link
+                                                    href={route('admin.patients.edit', p.id)}
+                                                    className="rounded-lg border border-gray-200 bg-white py-1.5 px-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition text-center"
+                                                >
+                                                    Edit
+                                                </Link>
+                                            ) : <div />}
+                                            {canDelete ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDeleteId(p.id)}
+                                                    className="rounded-lg border border-rose-200 bg-rose-50 py-1.5 px-2 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition text-center"
+                                                >
+                                                    Delete
+                                                </button>
+                                            ) : <div />}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+                            No patients found matching the criteria.
+                        </div>
+                    )}
+                </div>
 
                 <Pagination links={patients.links} />
 

@@ -260,3 +260,17 @@
   - Added inline `[x] Run database migrations with this update` toggle in Step 03 of `GitRepository.jsx` when migrations are disabled in settings.
   - Enhanced deployment confirmation alert dialog to specify migration status.
 - [x] **Verification**: Added `test_pull_is_rejected_in_automated_tests_with_or_without_migration_flag` in `GitRepositoryTest.php`. All 30 tests in `GitRepositoryTest` and `DatabaseMigrationManagementTest` passing (199 assertions). Pint formatted and Vite build completed.
+
+### Phase 19: Mobile Responsive Patient Directory & Multi-Screen Card Transformation (`[x] COMPLETED`)
+- [x] **Task 19.1**: Responsive Multi-Screen Patient Architecture
+  - Transformed `/admin/patients` to support dual-mode presentation: high-density touch cards on mobile screens (< 768px / 320px-480px width) and full data table on desktop/tablet screens (>= 768px).
+  - Upgraded `DataTable.jsx` with `tableClassName` prop and default `min-w-[650px]` horizontal scrolling container to prevent column crushing on narrow screens across all system tables.
+- [x] **Task 19.2**: High-Density Mobile Patient Cards
+  - Created touch-optimized patient card rendering avatar (photo or initial), name, blood group badge, guardian relationship & name, age & gender, patient ID badge, and old/other ID badge.
+  - Built compact info strip displaying 1-tap call & WhatsApp chat, visit count badge, last attendance date, and today's live queue token status badge.
+  - Built two-row thumb-friendly quick action button grid: Row 1 (`+ Queue`, `+ Visit`, `OPD Card`), Row 2 (`View`, `Edit`, `Delete`).
+- [x] **Task 19.3**: Responsive Topbar, KPI Grid & Action Controls
+  - Refined KPI summary card grid to `grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5` with compact mobile padding (`p-2.5 sm:p-3.5`) and icons.
+  - Refined PageHeader actions (`Export CSV` and `+ New Patient`) with full-width responsive flex stacking on mobile.
+  - Cleaned up topbar navigation in `AuthenticatedLayout.jsx` by hiding `View Website` link on mobile/tablets (`hidden lg:flex`).
+- [x] **Verification**: Tested against Patient test suites (`PatientFeatureTest`, `PatientAttachmentsAndOpdCardTest`), Vite asset compilation (`npm run build`) succeeded in 1.81s, Pint formatting confirmed clean. All 38 tests passing (261 assertions).

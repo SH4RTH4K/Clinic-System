@@ -8,6 +8,7 @@ export default function DataTable({
     hasError = false,
     emptyMessage = 'No records found.',
     className = '',
+    tableClassName = '',
 }) {
     // Normalize data: support raw arrays, Laravel paginators ({ data: [...] }), or fallback to []
     const rows = Array.isArray(data)
@@ -77,7 +78,7 @@ export default function DataTable({
                 aria-busy={isLoading}
                 tabIndex={0}
             >
-                <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
+                <table className={`min-w-full divide-y divide-gray-200 text-left text-sm ${tableClassName || 'min-w-[650px]'}`}>
                     <thead className="bg-gray-50/75">
                         <tr>
                             {columns.map((col, index) => (
