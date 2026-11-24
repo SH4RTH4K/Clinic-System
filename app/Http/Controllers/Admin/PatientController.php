@@ -69,7 +69,7 @@ class PatientController extends Controller
 
         $patients = Patient::select([
             'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
-            'old_or_other_id', 'name', 'guardian_name', 'guardian_relationship',
+            'old_or_other_id', 'name', 'phone', 'guardian_name', 'guardian_relationship',
             'guardian_relationship_custom', 'age_years', 'age_months', 'age_days', 'gender',
         ])
             ->search($term)

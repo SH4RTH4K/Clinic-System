@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Http\Requests\Admin\StoreInvoiceRequest;
 use App\Http\Requests\Admin\UpdateInvoiceRequest;
 use App\Models\ClinicSetting;
+use App\Models\Doctor;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\MedicineBatch;
@@ -14,6 +15,7 @@ use App\Models\Patient;
 use App\Models\Visit;
 use App\Services\BillingService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -113,15 +115,57 @@ class InvoiceController extends Controller
             ]);
 
         $settings = ClinicSetting::first();
+        $doctors = Doctor::query()->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'name_bn', 'specialty', 'credentials']);
+
+        $patientRecentVisits = [];
+        if ($selectedPatient) {
+            $patientRecentVisits = Visit::query()
+                ->with('doctor:id,name,specialty')
+                ->where('patient_id', $selectedPatient->id)
+                ->where('status', 'finalized')
+                ->latest('id')
+                ->limit(5)
+                ->get()
+                ->map(fn ($v) => [
+                    'id' => $v->id,
+                    'visit_date' => $v->visit_date?->format('d M Y') ?? 'N/A',
+                    'doctor_name' => $v->doctor?->name ?? 'Attending Doctor',
+                    'chief_complaint' => $v->chief_complaint,
+                ]);
+        }
 
         return Inertia::render('Admin/Billing/Create', [
             'initialData' => $initialData,
             'selectedPatient' => $selectedPatient,
-            'patients' => Patient::query()->select(['id', 'name', 'phone', 'patient_code'])->latest('id')->limit(30)->get(),
+            'patientRecentVisits' => $patientRecentVisits,
+            'patients' => Patient::query()->select(['id', 'name', 'phone', 'patient_no', 'patient_series', 'patient_code'])->latest('id')->limit(50)->get(),
+            'doctors' => $doctors,
             'batches' => $batches,
             'defaultFee' => (float) ($settings?->default_consultation_fee ?? 500.00),
             'generatedInvoiceNumber' => $billingService->generateInvoiceNumber(),
         ]);
+    }
+
+    /**
+     * Retrieve recent finalized visits for a patient for billing import.
+     */
+    public function patientVisits(Patient $patient): JsonResponse
+    {
+        $visits = Visit::query()
+            ->with('doctor:id,name,specialty')
+            ->where('patient_id', $patient->id)
+            ->where('status', 'finalized')
+            ->latest('id')
+            ->limit(5)
+            ->get()
+            ->map(fn ($v) => [
+                'id' => $v->id,
+                'visit_date' => $v->visit_date?->format('d M Y') ?? 'N/A',
+                'doctor_name' => $v->doctor?->name ?? 'Attending Doctor',
+                'chief_complaint' => $v->chief_complaint,
+            ]);
+
+        return response()->json($visits);
     }
 
     public function store(StoreInvoiceRequest $request, BillingService $billingService)

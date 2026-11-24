@@ -350,6 +350,7 @@ Route::delete('/appointment-requests/{appointmentRequest}', [AdminApptController
 // Billing, Invoicing & Cash Register
 Route::middleware(['auth', 'role_or_permission:Super Admin|billing.create'])->group(function () {
     Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
+    Route::get('/invoices/patient-visits/{patient}', [InvoiceController::class, 'patientVisits'])->name('invoices.patient_visits');
     Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'recordPayment'])->name('invoices.payments.store');
 });

@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 const ITEM_TYPES = [
@@ -23,7 +23,9 @@ const PAYMENT_METHODS = [
 export default function Create({
     initialData = {},
     selectedPatient = null,
+    patientRecentVisits = [],
     patients = [],
+    doctors = [],
     batches = [],
     defaultFee = 500.00,
     generatedInvoiceNumber = '',
@@ -31,6 +33,9 @@ export default function Create({
     const [patientSearch, setPatientSearch] = useState(selectedPatient?.name || '');
     const [filteredPatients, setFilteredPatients] = useState([]);
     const [activePatient, setActivePatient] = useState(selectedPatient);
+    const [recentVisits, setRecentVisits] = useState(patientRecentVisits);
+    const [selectedDoctor, setSelectedDoctor] = useState(null);
+    const [isSearching, setIsSearching] = useState(false);
 
     const defaultItems = initialData.items?.length > 0
         ? initialData.items
@@ -86,29 +91,94 @@ export default function Create({
         }
     }, [totalAmount, data.collect_payment]);
 
-    const handlePatientSearch = (term) => {
-        setPatientSearch(term);
-        if (!term.trim()) {
+    // Live search for patients (both local memory + backend search)
+    useEffect(() => {
+        if (!patientSearch.trim()) {
             setFilteredPatients([]);
             return;
         }
-        const matches = patients.filter(
-            (p) =>
-                p.name.toLowerCase().includes(term.toLowerCase()) ||
-                (p.phone && p.phone.includes(term)) ||
-                (p.patient_code && p.patient_code.toLowerCase().includes(term.toLowerCase()))
-        );
-        setFilteredPatients(matches.slice(0, 8));
-    };
 
-    const handleSelectPatient = (patient) => {
+        // Instant local match
+        const term = patientSearch.toLowerCase();
+        const localMatches = patients.filter(
+            (p) =>
+                p.name?.toLowerCase().includes(term) ||
+                (p.phone && p.phone.includes(term)) ||
+                (p.patient_code && p.patient_code.toLowerCase().includes(term)) ||
+                (p.patient_no && String(p.patient_no).includes(term)) ||
+                (p.patient_identifier && p.patient_identifier.toLowerCase().includes(term))
+        );
+        setFilteredPatients(localMatches.slice(0, 8));
+
+        // Server search if 2+ characters typed
+        if (patientSearch.length >= 2) {
+            const timer = setTimeout(async () => {
+                setIsSearching(true);
+                try {
+                    const res = await fetch(`/admin/patients/search?q=${encodeURIComponent(patientSearch)}`, {
+                        headers: { Accept: 'application/json' },
+                    });
+                    if (res.ok) {
+                        const results = await res.json();
+                        if (Array.isArray(results) && results.length > 0) {
+                            setFilteredPatients(results.slice(0, 8));
+                        }
+                    }
+                } catch {
+                    // Keep local matches on network error
+                } finally {
+                    setIsSearching(false);
+                }
+            }, 200);
+
+            return () => clearTimeout(timer);
+        }
+    }, [patientSearch]);
+
+    const handleSelectPatient = async (patient) => {
         setActivePatient(patient);
         setPatientSearch(patient.name);
         setData('patient_id', patient.id);
         setFilteredPatients([]);
+
+        // Load recent visits for this patient
+        try {
+            const res = await fetch(`/admin/invoices/patient-visits/${patient.id}`, {
+                headers: { Accept: 'application/json' },
+            });
+            if (res.ok) {
+                const visits = await res.json();
+                setRecentVisits(visits);
+            }
+        } catch {
+            setRecentVisits([]);
+        }
     };
 
-    const handleAddItem = (type = 'other', name = '', price = 0, batchId = null) => {
+    const handleDoctorChange = (doctorId) => {
+        const doc = doctors.find((d) => String(d.id) === String(doctorId)) || null;
+        setSelectedDoctor(doc);
+
+        const docTitle = doc ? ` (${doc.name})` : '';
+        const docNote = doc ? `Doctor: ${doc.name}` : '';
+
+        // Update consultation items with doctor name
+        setData((prev) => ({
+            ...prev,
+            items: prev.items.map((item) => {
+                if (item.item_type === 'consultation') {
+                    return {
+                        ...item,
+                        item_name: `Doctor Consultation Fee${docTitle}`,
+                        notes: docNote,
+                    };
+                }
+                return item;
+            }),
+        }));
+    };
+
+    const handleAddItem = (type = 'other', name = '', price = 0, batchId = null, notes = '') => {
         const newItem = {
             item_type: type,
             item_name: name,
@@ -116,7 +186,7 @@ export default function Create({
             unit_price: price,
             total_price: price,
             medicine_batch_id: batchId,
-            notes: '',
+            notes: notes,
         };
         setData('items', [...data.items, newItem]);
     };
@@ -188,7 +258,7 @@ export default function Create({
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {/* Patient Search / Selection */}
                             <div className="md:col-span-2 relative">
                                 <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -199,7 +269,7 @@ export default function Create({
                                         <div>
                                             <p className="text-sm font-bold text-gray-900">{activePatient.name}</p>
                                             <p className="text-xs text-gray-500">
-                                                Phone: {activePatient.phone || 'N/A'} · ID: {activePatient.patient_code || activePatient.id}
+                                                Phone: {activePatient.phone || 'N/A'} · ID: #{activePatient.patient_number || activePatient.patient_identifier || activePatient.patient_code || activePatient.id}
                                             </p>
                                         </div>
                                         <button
@@ -208,6 +278,7 @@ export default function Create({
                                                 setActivePatient(null);
                                                 setData('patient_id', '');
                                                 setPatientSearch('');
+                                                setRecentVisits([]);
                                             }}
                                             className="text-xs font-semibold text-rose-600 hover:text-rose-800 hover:underline"
                                         >
@@ -216,15 +287,25 @@ export default function Create({
                                     </div>
                                 ) : (
                                     <div>
-                                        <input
-                                            type="text"
-                                            placeholder="Type patient name, phone number, or ID..."
-                                            value={patientSearch}
-                                            onChange={(e) => handlePatientSearch(e.target.value)}
-                                            className="w-full rounded-lg border-gray-300 text-xs shadow-2xs focus:border-emerald-500 focus:ring-emerald-500"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Type patient name, phone number, or patient ID..."
+                                                value={patientSearch}
+                                                onChange={(e) => setPatientSearch(e.target.value)}
+                                                className="w-full rounded-lg border-gray-300 text-xs shadow-2xs focus:border-emerald-500 focus:ring-emerald-500 pr-8"
+                                            />
+                                            {isSearching && (
+                                                <div className="absolute right-2.5 top-2 text-gray-400">
+                                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </div>
                                         {filteredPatients.length > 0 && (
-                                            <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+                                            <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden max-h-56 overflow-y-auto">
                                                 {filteredPatients.map((p) => (
                                                     <button
                                                         key={p.id}
@@ -236,8 +317,8 @@ export default function Create({
                                                             <span className="font-semibold text-gray-900">{p.name}</span>
                                                             <span className="text-gray-400 ml-2">({p.phone || 'No phone'})</span>
                                                         </div>
-                                                        <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                                                            {p.patient_code || p.id}
+                                                        <span className="font-mono text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                            #{p.patient_number || p.patient_identifier || p.patient_code || p.id}
                                                         </span>
                                                     </button>
                                                 ))}
@@ -246,6 +327,28 @@ export default function Create({
                                     </div>
                                 )}
                                 {errors.patient_id && <p className="text-xs text-rose-600 mt-1">{errors.patient_id}</p>}
+                            </div>
+
+                            {/* Attending Doctor */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                    Attending Doctor (চিকিৎসক)
+                                </label>
+                                <select
+                                    value={selectedDoctor?.id || ''}
+                                    onChange={(e) => handleDoctorChange(e.target.value)}
+                                    className="w-full rounded-lg border-gray-300 text-xs shadow-2xs focus:border-emerald-500 focus:ring-emerald-500"
+                                >
+                                    <option value="">-- General / Clinic Desk --</option>
+                                    {doctors.map((doc) => (
+                                        <option key={doc.id} value={doc.id}>
+                                            {doc.name} {doc.specialty ? `(${doc.specialty})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                <span className="text-[10px] text-gray-400 mt-0.5 block">
+                                    Sets consultation fee doctor attribution
+                                </span>
                             </div>
 
                             {/* Invoice Date */}
@@ -262,6 +365,28 @@ export default function Create({
                                 {errors.invoice_date && <p className="text-xs text-rose-600 mt-1">{errors.invoice_date}</p>}
                             </div>
                         </div>
+
+                        {/* Recent Visits for this patient (1-click auto fill) */}
+                        {recentVisits.length > 0 && !data.visit_id && (
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 space-y-2 text-xs">
+                                <p className="font-bold text-emerald-950 flex items-center gap-1.5">
+                                    <span>🩺</span> Recent Clinical Visits for this Patient (প্রেসক্রিপশন থেকে দ্রুত বিল তৈরি):
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {recentVisits.map((v) => (
+                                        <button
+                                            key={v.id}
+                                            type="button"
+                                            onClick={() => router.visit(route('admin.invoices.create', { visit_id: v.id }))}
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-emerald-300 rounded-lg text-emerald-800 font-semibold hover:bg-emerald-100 transition shadow-2xs"
+                                        >
+                                            <span>Visit #{v.id} ({v.visit_date}) — Dr. {v.doctor_name}</span>
+                                            <span className="text-emerald-700 underline font-bold">Auto-fill Bill →</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Middle Panel: Invoice Line Items */}
@@ -273,7 +398,11 @@ export default function Create({
                             <div className="flex flex-wrap items-center gap-1.5">
                                 <button
                                     type="button"
-                                    onClick={() => handleAddItem('consultation', 'Doctor Consultation Fee', defaultFee)}
+                                    onClick={() => {
+                                        const docName = selectedDoctor ? ` (${selectedDoctor.name})` : '';
+                                        const docNote = selectedDoctor ? `Doctor: ${selectedDoctor.name}` : '';
+                                        handleAddItem('consultation', `Doctor Consultation Fee${docName}`, defaultFee, null, docNote);
+                                    }}
                                     className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 transition"
                                 >
                                     + Consultation

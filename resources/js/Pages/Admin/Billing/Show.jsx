@@ -23,6 +23,12 @@ const PAYMENT_METHODS = [
 export default function Show({ invoice, clinic = {} }) {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
+    const consultationItem = invoice.items?.find((i) => i.item_type === 'consultation');
+    const consultationDoctor = consultationItem?.notes?.startsWith('Doctor:')
+        ? consultationItem.notes.replace('Doctor: ', '')
+        : (consultationItem?.item_name?.includes('(') ? consultationItem.item_name.match(/\((.*?)\)/)?.[1] : null);
+    const doctorDisplayName = invoice.visit?.doctor?.name || consultationDoctor || 'General Clinic Desk';
+
     const { data, setData, post, processing, reset, errors } = useForm({
         amount: Number(invoice.due_amount) > 0 ? Number(invoice.due_amount) : '',
         payment_method: 'cash',
@@ -184,7 +190,7 @@ export default function Show({ invoice, clinic = {} }) {
                             <p className="text-xs text-gray-600">Location: {clinic.address}</p>
                         </div>
                         <div className="pt-2 border-t text-xs text-gray-700">
-                            Attending Doctor: <span className="font-bold text-gray-900">{invoice.visit?.doctor?.name || 'General Clinic Desk'}</span>
+                            Attending Doctor: <span className="font-bold text-gray-900">{doctorDisplayName}</span>
                         </div>
                     </div>
                 </div>

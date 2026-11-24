@@ -4,6 +4,12 @@ import { useState } from 'react';
 export default function Print({ invoice, clinic = {}, mode: initialMode = 'standard' }) {
     const [mode, setMode] = useState(initialMode);
 
+    const consultationItem = invoice.items?.find((i) => i.item_type === 'consultation');
+    const consultationDoctor = consultationItem?.notes?.startsWith('Doctor:')
+        ? consultationItem.notes.replace('Doctor: ', '')
+        : (consultationItem?.item_name?.includes('(') ? consultationItem.item_name.match(/\((.*?)\)/)?.[1] : null);
+    const doctorDisplayName = invoice.visit?.doctor?.name || consultationDoctor || 'Clinic Desk';
+
     return (
         <div className="min-h-screen bg-slate-100 py-6 text-gray-900 print:bg-white print:py-0 print:text-black">
             <Head title={`Print Invoice #${invoice.invoice_number}`} />
@@ -93,7 +99,7 @@ export default function Print({ invoice, clinic = {}, mode: initialMode = 'stand
                         <div className="text-right">
                             <span className="text-[10px] font-bold uppercase text-gray-400 block mb-0.5">Clinical Reference</span>
                             <p className="text-sm font-bold text-gray-900">
-                                Doctor: {invoice.visit?.doctor?.name || 'Clinic Desk'}
+                                Doctor: {doctorDisplayName}
                             </p>
                             {invoice.visit_id && <p>Visit ID: #{invoice.visit_id}</p>}
                             <p>Cashier: {invoice.created_by?.name || 'Staff'}</p>
@@ -218,10 +224,10 @@ export default function Print({ invoice, clinic = {}, mode: initialMode = 'stand
                             <span>Patient ID:</span>
                             <span>{invoice.patient?.patient_code || invoice.patient?.id}</span>
                         </div>
-                        {invoice.visit?.doctor?.name && (
+                        {doctorDisplayName && doctorDisplayName !== 'Clinic Desk' && (
                             <div className="flex justify-between">
                                 <span>Doctor:</span>
-                                <span>{invoice.visit.doctor.name}</span>
+                                <span className="font-bold">{doctorDisplayName}</span>
                             </div>
                         )}
                         <p className="tracking-wider">--------------------------------</p>
