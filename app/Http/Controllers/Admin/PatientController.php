@@ -10,6 +10,7 @@ use App\Models\ClinicSetting;
 use App\Models\Patient;
 use App\Models\PatientAttachment;
 use App\Models\PatientNumberingProfile;
+use App\Models\PatientQueueToken;
 use App\Models\PrescriptionItem;
 use App\Models\User;
 use App\Models\Visit;
@@ -40,20 +41,164 @@ class PatientController extends Controller
             $query->where('guardian_name', 'like', '%'.trim($request->guardian_name).'%');
         }
 
+        if ($request->filled('gender') && in_array($request->gender, ['male', 'female', 'other'], true)) {
+            $query->where('gender', $request->gender);
+        }
+
+        if ($request->filled('blood_group')) {
+            $query->where('blood_group', $request->blood_group);
+        }
+
+        if ($request->filled('date_filter')) {
+            match ($request->date_filter) {
+                'today' => $query->whereDate('created_at', now()->toDateString()),
+                'this_week' => $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]),
+                'this_month' => $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year),
+                default => null,
+            };
+        }
+
+        $today = now()->toDateString();
+        $canViewClinicalRecords = $request->user()?->can('clinical_records.view') === true;
+
+        $kpis = [
+            'total_patients' => Patient::count(),
+            'registered_today' => Patient::whereDate('created_at', $today)->count(),
+            'in_queue_today' => PatientQueueToken::whereDate('token_date', $today)
+                ->whereIn('status', ['waiting', 'calling', 'in_consultation'])
+                ->count(),
+            'total_visits' => Visit::count(),
+        ];
+
+        $selectColumns = [
+            'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
+            'old_or_other_id',
+            'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
+            'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'photo_path', 'created_at',
+        ];
+
+        if ($canViewClinicalRecords) {
+            $selectColumns[] = 'blood_group';
+        }
+
+        $paginated = $query
+            ->select($selectColumns)
+            ->withCount('visits')
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $patientIds = $paginated->pluck('id');
+        if ($patientIds->isNotEmpty()) {
+            $todayTokens = PatientQueueToken::query()
+                ->whereDate('token_date', $today)
+                ->whereIn('patient_id', $patientIds)
+                ->latest('id')
+                ->get()
+                ->keyBy('patient_id');
+
+            $paginated->getCollection()->transform(function ($patient) use ($todayTokens) {
+                $patient->today_queue_token = $todayTokens->get($patient->id);
+
+                return $patient;
+            });
+        }
+
         return Inertia::render('Admin/Patients/Index', [
-            'patients' => $query
-                ->select([
-                    'id', 'patient_no', 'patient_series', 'patient_code', 'patient_category',
-                    'old_or_other_id',
-                    'name', 'reference_number', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
-                    'gender', 'age_years', 'age_months', 'age_days', 'dob', 'phone', 'photo_path',
-                ])
-                ->latest()
-                ->paginate(10)
-                ->withQueryString(),
-            'filters' => $request->only(['search', 'guardian_name']),
+            'patients' => $paginated,
+            'filters' => $request->only(['search', 'guardian_name', 'gender', 'blood_group', 'date_filter']),
             'relationshipOptions' => ClinicSetting::currentPatientRelationshipOptions(),
+            'kpis' => $kpis,
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user && ($user->hasRole('Super Admin') || $user->can('patients.view')), 403);
+
+        $query = Patient::query();
+
+        if ($request->filled('search')) {
+            $query->search($request->search);
+        }
+
+        if ($request->filled('guardian_name')) {
+            $query->where('guardian_name', 'like', '%'.trim($request->guardian_name).'%');
+        }
+
+        if ($request->filled('gender') && in_array($request->gender, ['male', 'female', 'other'], true)) {
+            $query->where('gender', $request->gender);
+        }
+
+        if ($request->filled('blood_group')) {
+            $query->where('blood_group', $request->blood_group);
+        }
+
+        if ($request->filled('date_filter')) {
+            match ($request->date_filter) {
+                'today' => $query->whereDate('created_at', now()->toDateString()),
+                'this_week' => $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]),
+                'this_month' => $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year),
+                default => null,
+            };
+        }
+
+        $patients = $query
+            ->select([
+                'id', 'patient_no', 'patient_series', 'patient_code', 'old_or_other_id',
+                'name', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
+                'gender', 'age_years', 'dob', 'phone', 'blood_group', 'address', 'created_at',
+            ])
+            ->latest()
+            ->get();
+
+        $filename = 'patients-export-'.now()->format('Y-m-d-His').'.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($patients): void {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, [
+                'Patient ID',
+                'Old/Other ID',
+                'Name',
+                'Guardian (C/O)',
+                'Gender',
+                'Age (Years)',
+                'Date of Birth',
+                'Phone',
+                'Blood Group',
+                'Address',
+                'Registered Date',
+            ]);
+
+            foreach ($patients as $p) {
+                fputcsv($file, [
+                    $p->patient_identifier ?? $p->patient_code ?? "{$p->patient_no}{$p->patient_series}",
+                    $p->old_or_other_id ?? '',
+                    $p->name,
+                    $p->guardian_name ? "{$p->guardian_name} ({$p->guardian_relationship})" : '',
+                    ucfirst((string) $p->gender),
+                    $p->age_years ?? '',
+                    $p->dob ? $p->dob->format('Y-m-d') : '',
+                    $p->phone ?? '',
+                    $p->blood_group ?? '',
+                    $p->address ?? '',
+                    $p->created_at ? $p->created_at->format('Y-m-d H:i') : '',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**

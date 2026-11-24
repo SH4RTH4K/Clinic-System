@@ -44,6 +44,7 @@
 - [x] **Demographic Profiles**: Age in years, months, and days with calendar calculation.
 - [x] **Guardian Relationship Mapping**: Linked parent/guardian names with configurable relation catalog.
 - [x] **Unified Multi-Factor Search**: Instant search matching Name, Phone, ID, Old ID, and Guardian Name.
+- [x] **Patient Management Dashboard & 1-Click Actions**: Top KPI metrics (Total Patients, Registered Today, In Queue Today, Total Consultations), row-level 1-click Quick Actions (`+ Queue`, `+ Visit`, `OPD Card`), longitudinal visit counts and live queue indicators, role-guarded blood group display (`clinical_records.view`), and streaming CSV export.
 - [x] **Verification**: `PatientGuardianRelationshipTest` and patient sequence tests verified.
 
 ### Phase 3: Clinical Consultations & Bilingual Prescription Engine (`[x] COMPLETED`)

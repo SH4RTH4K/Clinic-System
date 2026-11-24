@@ -47,6 +47,11 @@ class Patient extends Model
         return $this->hasMany(PatientAttachment::class)->latest();
     }
 
+    public function queueTokens(): HasMany
+    {
+        return $this->hasMany(PatientQueueToken::class);
+    }
+
     public function getPhotoUrlAttribute(): ?string
     {
         if (empty($this->photo_path)) {

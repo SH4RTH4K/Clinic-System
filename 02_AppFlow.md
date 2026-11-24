@@ -57,8 +57,20 @@ sequenceDiagram
     PatientCtrl-->>UI: Display matching patient results
 
     alt Patient Exists
-        Receptionist->>UI: Clicks "View / New Visit"
-        UI->>Receptionist: Redirects to Patient Profile or Visit Creation
+        Receptionist->>UI: Reviews Patient row with longitudinal stats (visits count, today queue token)
+        alt 1-Click Queue Token
+            Receptionist->>UI: Clicks "+ Queue"
+            UI->>Receptionist: Navigates to Queue Token creation prefilled with patient_id
+        else 1-Click Visit Consultation
+            Receptionist->>UI: Clicks "+ Visit"
+            UI->>Receptionist: Navigates to Visit Consultation prefilled with patient_id
+        else OPD Card / Print Pass
+            Receptionist->>UI: Clicks "OPD Card"
+            UI->>Receptionist: Opens printable OPD Card with Code-128 barcode
+        else Quick Communication
+            Receptionist->>UI: Clicks WhatsApp or Phone icon
+            UI->>Receptionist: Opens direct WhatsApp chat or tel dialer
+        end
     else Patient New
         Receptionist->>UI: Clicks "Register New Patient"
         UI->>Receptionist: Displays Patient Registration Form
