@@ -187,6 +187,7 @@ Route::middleware(['auth', 'permission:clinical_records.view', 'permission:visit
     ->name('visits.cancel_prescription');
 Route::middleware(['auth', 'clinical_record_access:visits.view'])->group(function () {
     Route::get('visits/suggestions', [VisitController::class, 'suggestions'])->name('visits.suggestions');
+    Route::get('visits/export', [VisitController::class, 'export'])->name('visits.export');
     Route::resource('visits', VisitController::class)->only(['index', 'show']);
 });
 Route::middleware(['auth', 'clinical_record_access:visits.export'])

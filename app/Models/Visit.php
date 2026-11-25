@@ -131,6 +131,11 @@ class Visit extends Model
         return $this->hasOne(PatientVital::class);
     }
 
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class)->latestOfMany();
+    }
+
     public function adviceItems()
     {
         return $this->belongsToMany(AdviceItem::class, 'visit_advice');

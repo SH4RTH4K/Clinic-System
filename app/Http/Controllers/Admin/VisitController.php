@@ -43,11 +43,203 @@ class VisitController extends Controller
 
     public function index(Request $request)
     {
-        $query = Visit::with(['patient', 'doctor'])->latest();
+        $user = $request->user();
+        $responsibleDoctor = $this->visitAuthorization->activeDoctor($user);
+
+        $query = Visit::query()
+            ->with([
+                'patient:id,patient_no,patient_series,patient_code,old_or_other_id,name,gender,age_years,age_months,age_days,dob,phone,photo_path',
+                'doctor:id,name,credentials',
+                'vital:id,visit_id,bp_systolic,bp_diastolic,pulse,weight,bmi',
+                'invoice',
+            ])
+            ->withCount(['prescriptionItems', 'labInvestigations'])
+            ->latest('visit_date')
+            ->latest('id');
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('patient', function ($pq) use ($search) {
+                    $pq->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('patient_no', 'like', "%{$search}%")
+                        ->orWhere('patient_code', 'like', "%{$search}%")
+                        ->orWhere('old_or_other_id', 'like', "%{$search}%");
+                })
+                    ->orWhereHas('doctor', function ($dq) use ($search) {
+                        $dq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhere('final_diagnosis', 'like', "%{$search}%")
+                    ->orWhere('provisional_diagnosis', 'like', "%{$search}%")
+                    ->orWhere('chief_complaint', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('doctor_id')) {
+            $query->where('doctor_id', $request->doctor_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_filter')) {
+            match ($request->date_filter) {
+                'today' => $query->whereDate('visit_date', now()->toDateString()),
+                'yesterday' => $query->whereDate('visit_date', now()->subDay()->toDateString()),
+                'this_week' => $query->whereBetween('visit_date', [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()]),
+                'this_month' => $query->whereMonth('visit_date', now()->month)->whereYear('visit_date', now()->year),
+                default => null,
+            };
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('visit_date', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('visit_date', '<=', $request->to_date);
+        }
+
+        $kpis = [
+            'total_visits' => Visit::count(),
+            'visits_today' => Visit::whereDate('visit_date', now()->toDateString())->count(),
+            'finalized_visits' => Visit::where('status', 'finalized')->count(),
+            'draft_visits' => Visit::where('status', 'draft')->count(),
+        ];
+
+        $doctors = Doctor::query()
+            ->where('is_active', true)
+            ->select(['id', 'name', 'credentials'])
+            ->orderBy('name')
+            ->get();
+
+        $settings = ClinicSetting::first();
 
         return Inertia::render('Admin/Visits/Index', [
-            'visits' => $query->paginate(10),
+            'visits' => $query->paginate(15)->withQueryString(),
+            'filters' => $request->only(['search', 'doctor_id', 'status', 'date_filter', 'from_date', 'to_date']),
+            'doctors' => $doctors,
+            'kpis' => $kpis,
+            'currentDoctorId' => $responsibleDoctor?->id,
+            'defaultDoctorName' => $settings?->doctor_name ?? 'Doctor',
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $query = Visit::query()
+            ->with([
+                'patient:id,patient_no,patient_series,patient_code,old_or_other_id,name,gender,age_years,dob,phone',
+                'doctor:id,name',
+                'invoice',
+            ])
+            ->withCount(['prescriptionItems', 'labInvestigations'])
+            ->latest('visit_date')
+            ->latest('id');
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('patient', function ($pq) use ($search) {
+                    $pq->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('patient_no', 'like', "%{$search}%")
+                        ->orWhere('patient_code', 'like', "%{$search}%")
+                        ->orWhere('old_or_other_id', 'like', "%{$search}%");
+                })
+                    ->orWhereHas('doctor', function ($dq) use ($search) {
+                        $dq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhere('final_diagnosis', 'like', "%{$search}%")
+                    ->orWhere('provisional_diagnosis', 'like', "%{$search}%")
+                    ->orWhere('chief_complaint', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('doctor_id')) {
+            $query->where('doctor_id', $request->doctor_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_filter')) {
+            match ($request->date_filter) {
+                'today' => $query->whereDate('visit_date', now()->toDateString()),
+                'yesterday' => $query->whereDate('visit_date', now()->subDay()->toDateString()),
+                'this_week' => $query->whereBetween('visit_date', [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()]),
+                'this_month' => $query->whereMonth('visit_date', now()->month)->whereYear('visit_date', now()->year),
+                default => null,
+            };
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('visit_date', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('visit_date', '<=', $request->to_date);
+        }
+
+        $visits = $query->get();
+        $filename = 'visits-export-'.now()->format('Y-m-d-His').'.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($visits): void {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, [
+                'Visit Date',
+                'Patient ID',
+                'Patient Name',
+                'Gender',
+                'Age',
+                'Phone',
+                'Doctor',
+                'Chief Complaint',
+                'Diagnosis',
+                'Status',
+                'Prescription Items',
+                'Lab Investigations',
+                'Follow-up Date',
+                'Invoice Number',
+                'Invoice Status',
+                'Invoice Total',
+            ]);
+
+            foreach ($visits as $v) {
+                $p = $v->patient;
+                fputcsv($file, [
+                    $v->visit_date ? $v->visit_date->format('Y-m-d') : '',
+                    $p?->patient_identifier ?? $p?->patient_code ?? "{$p?->patient_no}{$p?->patient_series}",
+                    $p?->name ?? 'N/A',
+                    ucfirst((string) ($p?->gender ?? '')),
+                    $v->age_summary ?? ($p?->age_years ? "{$p->age_years} Y" : ''),
+                    $p?->phone ?? '',
+                    $v->doctor?->name ?? 'Unassigned',
+                    $v->chief_complaint ?? '',
+                    $v->final_diagnosis ?: ($v->provisional_diagnosis ?: ''),
+                    ucfirst((string) $v->status),
+                    $v->prescription_items_count ?? 0,
+                    $v->lab_investigations_count ?? 0,
+                    $v->follow_up_date ? $v->follow_up_date->format('Y-m-d') : '',
+                    $v->invoice?->invoice_number ?? 'Unbilled',
+                    $v->invoice?->status ? ucfirst((string) $v->invoice->status) : 'Unbilled',
+                    $v->invoice?->total_amount ? number_format((float) $v->invoice->total_amount, 2) : '0.00',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     public function create(Request $request)

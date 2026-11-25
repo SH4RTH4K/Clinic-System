@@ -106,6 +106,7 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Diagnosis to Medical History Sync**: Optional 1-click sync of final diagnosis to patient permanent medical history upon finalization.
 - `[x] Done` **Post-Finalization Direct Redirection**: Redirects directly to digitized prescription display (`admin.visits.show`) upon completion.
 - `[x] Done` **Flexible Medical Background Field Grid Ordering**: Unified grid styling ensuring individual field ordering (`order`) is respected across `blood_group`, `known_allergies`, and `medical_history`.
+- `[x] Done` **Visits Directory & Clinical Log Overhaul (`/admin/visits`)**: Comprehensive search & filtering (patient name, phone, IDs, doctor, diagnosis, complaints, date range, status), executive KPI summary cards (Today's Consultations, Total Consultations, Finalized Prescriptions, Pending Drafts), 1-click POS billing bridge (`+ Create Invoice` & invoice status badge), 1-click WhatsApp prescription sharing, N+1 query optimization, streaming CSV export (`/admin/visits/export`), and high-density mobile touch cards (`block md:hidden`).
 
 ---
 

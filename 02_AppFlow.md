@@ -128,6 +128,20 @@ flowchart TD
     LockRecord --> AuditTrail[Log activity in activity_log]
     AuditTrail --> PDFGen[Render Bilingual PDF with NotoSansBengali]
     PDFGen --> PDFOutput([Official Printed Prescription])
+    PDFOutput --> PostConsultRegistry[Visits Directory & Clinical Log /admin/visits]
+```
+
+### 3.1 Post-Consultation Workflow & Visits Directory (`/admin/visits`)
+
+Once finalized, the clinical encounter enters the central consultation directory:
+
+```mermaid
+flowchart LR
+    VisitRow["Visit Encounter Row (/admin/visits)"] --> RxActions["Prescription Actions: PDF Download | WhatsApp Share | Digital Rx Link"]
+    VisitRow --> ClinicalReview["Clinical Review: Final Diagnosis | Chief Complaints | Vitals | Remedy/Drug Count"]
+    VisitRow --> POSBilling["POS Billing Bridge: 1-Click Invoice Generation (/admin/billing/invoices/create?visit_id=X)"]
+    VisitRow --> PatientNav["Patient Context: OPD Card | Master Profile | Next Follow-up Date"]
+    VisitRow --> AuditLog["Clinical Audit Trail: Amendment History | Prescriber Snapshot"]
 ```
 
 ---

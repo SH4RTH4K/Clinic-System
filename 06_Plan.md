@@ -274,3 +274,20 @@
   - Refined PageHeader actions (`Export CSV` and `+ New Patient`) with full-width responsive flex stacking on mobile.
   - Cleaned up topbar navigation in `AuthenticatedLayout.jsx` by hiding `View Website` link on mobile/tablets (`hidden lg:flex`).
 - [x] **Verification**: Tested against Patient test suites (`PatientFeatureTest`, `PatientAttachmentsAndOpdCardTest`), Vite asset compilation (`npm run build`) succeeded in 1.81s, Pint formatting confirmed clean. All 38 tests passing (261 assertions).
+
+### Phase 20: Clinical Visits Directory & Consultation Log Overhaul (`[x] COMPLETED`)
+- [x] **Task 20.1**: Backend Scopes, Relationships & Optimized Eager Loading
+  - Added `invoice(): HasOne` relationship in `Visit.php`.
+  - Overhauled `VisitController::index` with unified multi-field search (patient name, phone, patient number, series, old ID, diagnosis, complaints), date filters (Today, Yesterday, This Week, This Month, custom date range), doctor filters (with "My Consultations" toggle), and status filters.
+  - Implemented executive KPI metrics calculation (`total_visits`, `visits_today`, `finalized_visits`, `draft_visits`).
+  - Implemented streaming CSV export endpoint `admin.visits.export` respecting all active search/date/doctor filters.
+- [x] **Task 20.2**: Desktop Data Table & Clinical Diagnosis Presentation
+  - Redesigned `resources/js/Pages/Admin/Visits/Index.jsx` with 4 KPI summary cards.
+  - Added Search & Filter form with single unified search bar, date presets (`Today`, `This Week`, `This Month`), collapsible filters tray, and reset toggle.
+  - Added Clinical Diagnosis & Chief Complaints column, Prescribed Remedy/Drug counts, Vitals preview, and dynamic Billing Status badge (`✓ Paid`, `⚠ Due`, `+ Create Bill`).
+  - Replaced hardcoded doctor name fallback (`v.doctor?.name ?? 'Dr. Fazlul Karim'`) with dynamic settings fallback.
+  - Added 1-click WhatsApp share action, direct PDF view/print, and 1-click POS invoice generation bridge (`/admin/billing/invoices/create?visit_id=X`).
+- [x] **Task 20.3**: Mobile Responsive Touch Card Architecture
+  - Implemented dual-mode presentation: high-density mobile consultation cards (`block md:hidden`) and structured table (`hidden md:block`).
+  - Mobile cards display patient avatar, age, gender, diagnosis, vitals, prescribed items count, 1-tap call & WhatsApp links, billing badge, and touch action buttons.
+- [x] **Verification**: Added 5 comprehensive feature tests in `VisitsDirectoryFeatureTest.php` covering search, date/doctor/status filters, CSV export, and clinical authorization boundaries (111 assertions). Pint formatted and Vite build verified (all 87 visit tests passing).
