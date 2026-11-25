@@ -19,7 +19,7 @@ class InventoryController extends Controller
     public function index(Request $request, InventoryService $inventoryService)
     {
         $query = MedicineBatch::query()->with([
-            'medicine:id,name,potencies',
+            'medicine:id,name',
             'pharmaceutical:id,brand_name,generic_name,strength,dosage_form',
         ]);
 
@@ -63,7 +63,7 @@ class InventoryController extends Controller
     public function create()
     {
         return Inertia::render('Admin/Inventory/Create', [
-            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name', 'potencies'])->orderBy('name')->get(),
+            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name'])->orderBy('name')->get(),
             'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form'])->orderBy('brand_name')->get(),
         ]);
     }
@@ -77,11 +77,11 @@ class InventoryController extends Controller
 
     public function edit(MedicineBatch $batch)
     {
-        $batch->load(['medicine:id,name,potencies', 'pharmaceutical:id,brand_name,generic_name,strength,dosage_form']);
+        $batch->load(['medicine:id,name', 'pharmaceutical:id,brand_name,generic_name,strength,dosage_form']);
 
         return Inertia::render('Admin/Inventory/Edit', [
             'batch' => $batch,
-            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name', 'potencies'])->orderBy('name')->get(),
+            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name'])->orderBy('name')->get(),
             'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form'])->orderBy('brand_name')->get(),
         ]);
     }
