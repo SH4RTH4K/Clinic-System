@@ -344,6 +344,59 @@ flowchart TD
     StoreAndConsult --> VisitWorkbench["Clinical Consultation & Prescription EHR Workbench"]
 ```
 
+### 9.3 Doctor Schedules, Visual Calendar & Appointment Roster Flow (`/admin/calendar`)
+
+```mermaid
+flowchart TD
+    CalHome["Doctor Visual Calendar (/admin/calendar)"] --> Controls["Top Bar: Month Navigation (Prev/Today/Next) | Doctor Filter | Event Type Filter | Smart Search"]
+    
+    Controls --> SearchEngine["Multi-Factor Smart Search: Patient Name | Phone | Patient ID | Old ID | Doctor | Chamber"]
+    
+    CalHome --> ScreenMode{"Screen Viewport"}
+    
+    ScreenMode -->|"Mobile (< 768px)"| MobileAgenda["Mobile Agenda Timeline View: Horizontal Day Carousel Ribbon + Vertical Event Stream + 1-Tap Dial/WA"]
+    ScreenMode -->|"Desktop & Tablet (>= 768px)"| MonthGrid["Monthly 7-Col Matrix: Day Number, Doctor Shift Badges, Color-Coded Event Chips (Blue/Green/Red)"]
+    
+    MonthGrid --> DayClick["User Clicks Calendar Day Cell"]
+    MobileAgenda --> DayClick
+    
+    DayClick --> DayModal["Interactive Day Schedule Modal: List Appointments, Visits, Doctor Leaves"]
+    
+    DayModal --> ActionChoice{"Quick Action Triggers"}
+    ActionChoice -->|"Issue Token"| IssueToken["1-Click Token Check-in: /admin/queue/tokens/create?date=..."]
+    ActionChoice -->|"Book Appointment"| BookAppt["1-Click Book Intake: /admin/appointment-requests/create?date=..."]
+    ActionChoice -->|"Add Leave"| AddLeave["1-Click Doctor Holiday: /admin/doctor-schedules?doctor_id=X&date=..."]
+    ActionChoice -->|"View Prescription"| ViewRx["View Finalized Prescription: /admin/visits/{id}"]
+```
+
+### 9.4 Doctor Visiting Hours, Chamber Roster & Leave Management Flow (`/admin/doctor-schedules`)
+
+```mermaid
+flowchart TD
+    SetupHome["Doctor Visiting Schedules (/admin/doctor-schedules)"] --> DoctorSelect["Doctor Selector: Search Doctor | Doctor Tabs"]
+    
+    DoctorSelect --> DualPanel{"Module Area"}
+    
+    DualPanel -->|"Weekly Shifts"| WeeklyShifts["Weekly Visiting Hours Matrix (Sun-Sat)"]
+    WeeklyShifts --> BulkCopy["[📋 Copy to All Weekdays] Accelerator"]
+    WeeklyShifts --> ChamberPills["Chamber Room Quick Select (Chamber 1 | Chamber 2)"]
+    WeeklyShifts --> SaveShifts["PUT /admin/doctor-schedules/{doctor} -> Update doctor_schedules"]
+    
+    DualPanel -->|"Leaves & Holidays"| LeaveManager["Doctor Leaves & Off-Days Manager"]
+    LeaveManager --> SingleOrRange{"Leave Type"}
+    SingleOrRange -->|"Single Day"| SingleDate["Select Single Date (e.g. 2026-12-05)"]
+    SingleOrRange -->|"Date Range"| DateRange["Select Date Range: [From Date] to [To Date] (e.g. 2026-12-01 to 2026-12-07)"]
+    
+    SingleDate --> ConflictCheck{"Active Bookings on Date?"}
+    DateRange --> ConflictCheck
+    
+    ConflictCheck -->|"Yes (Warning)"| ConflictWarn["Display Warning: '5 Appointments & 2 Tokens already booked' + [Proceed Anyway]"]
+    ConflictCheck -->|"No"| StoreLeave["POST /admin/doctor-schedules/{doctor}/leaves -> Bulk insert into doctor_leaves"]
+    ConflictWarn --> StoreLeave
+    
+    StoreLeave --> SyncFeeder["Syncs with: Visual Calendar (/admin/calendar) & Queue Token Auto-Chamber (/admin/queue/tokens/create)"]
+```
+
 ---
 
 ## 10. Automated Patient Communications Flow (`[x] Done`)

@@ -325,3 +325,32 @@
   - Supported automatic 80mm POS slip redirection and print window on token issue, added "+ Issue Next" button on print screen, plus secondary fast-track `[+ Issue & Start Consultation]` action.
 - [x] **Task 22.4**: Verification & Testing
   - Added feature tests in `QueueManagementAndCalendarTest.php` covering token issuance search parameters, duplicate token guard, print slip redirection, and doctor load calculation (12 tests, 91 assertions passing). Pint formatting and Vite build verified.
+
+### Phase 23: Doctor Visual Calendar, Multi-Screen Agenda & Search Upgrade (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 23.1**: Backend Multi-Factor Search & Shift Roster Aggregation
+  - Upgrade `CalendarController::index` to accept `search` / `q`, querying across `AppointmentRequest` (name, phone, message) and `Visit` (patient name, phone, patient code, old ID, doctor name).
+  - Aggregate recurring doctor weekly schedules (`DoctorSchedule`) to render active physician duty shifts on each day of the month without losing clinic appointments when a doctor filter is applied.
+- [ ] **Task 23.2**: Desktop & Tablet Calendar Experience
+  - Implement debounced search input (350ms) with reset and matching event highlights.
+  - Add Event Type filter tabs (`All Events`, `Appointments`, `Visits`, `Doctor Leaves`).
+  - Render recurring doctor shift badges (e.g. `👨‍⚕️ Chamber 1 (09:00-14:00)`) on active calendar weekdays.
+  - Upgrade Day Schedule Modal with 1-click action triggers: `[+ Issue Token]`, `[+ Book Appointment]`, `[+ Add Doctor Leave]`, and 1-tap phone/WhatsApp contact links.
+- [ ] **Task 23.3**: Mobile Responsive Agenda Timeline View
+  - Implement dual-mode presentation: high-density **Mobile Daily Agenda Timeline View** (`block md:hidden`) with horizontal date picker ribbon and vertical chronological cards.
+  - Structured 7-column calendar matrix on desktop/tablets (`hidden md:block`).
+- [ ] **Task 23.4**: Verification & Testing
+  - Add feature tests in `QueueManagementAndCalendarTest.php` verifying calendar search parameters, doctor shift roster aggregation, and day schedule endpoints. Pint formatting and Vite build verification.
+
+### Phase 24: Doctor Visiting Schedules, Chamber Roster & Leave Range Upgrade (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 24.1**: Backend Leave Date Range Support & Conflict Detection (`DoctorScheduleController.php`, `StoreDoctorLeaveRequest.php`)
+  - Extend `StoreDoctorLeaveRequest` to validate optional `leave_date_end` (date, `>=:leave_date`).
+  - In `DoctorScheduleController::storeLeave`, handle multi-day date range insertion in a database transaction, generating daily records automatically.
+  - Add conflict detection helper returning warning counts for existing appointments (`AppointmentRequest`) and tokens (`QueueToken`) on the requested leave dates.
+- [ ] **Task 24.2**: Schedule Copy Accelerator & Chamber Management
+  - Add 1-click `📋 Copy Sunday Times to Mon-Thu` schedule accelerator in `Schedules.jsx` to pre-fill standard clinic shifts across active working days.
+  - Add quick chamber selector pills (`Chamber 1`, `Chamber 2`, `Chamber 3`).
+- [ ] **Task 24.3**: Mobile Sub-Tab Navigation & Responsive UI
+  - On mobile screens (< 768px), introduce top sub-tabs: `[ 🕒 Weekly Visiting Hours ]` and `[ 🏖️ Leaves & Off-Days ]` to prevent excessive vertical scrolling.
+  - Implement doctor search filter for clinics with multiple physicians/consultants.
+- [ ] **Task 24.4**: Verification & Testing
+  - Feature test coverage for leave date range creation, conflict detection warnings, and schedule updates. Pint formatting and Vite build verification.
