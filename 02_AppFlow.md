@@ -349,6 +349,37 @@ flowchart TD
     CashierActions -->|"View Details"| ViewDetail["View Invoice & Payment Audit Trail: /admin/invoices/{id}"]
 ```
 
+### 8.2 Point-of-Sale (POS) Invoice Creation & Cashier Checkout Flow (`/admin/invoices/create`)
+
+```mermaid
+flowchart TD
+    Cashier["Cashier / Front Desk Staff"] --> OpenCreate["Open /admin/invoices/create"]
+    
+    OpenCreate --> SourcePathway{"Checkout Source"}
+    
+    SourcePathway -->|"1. From EHR Visit"| AutoImport["Auto-fill from Visit (?visit_id=X): Doctor Fee + Prescribed Medicines + Lab Investigations"]
+    SourcePathway -->|"2. Direct Counter Sale"| CounterSale["Counter Sale: Debounced Patient Search (Combobox) + Demographics Card"]
+    
+    AutoImport --> ItemCustomization["Line Items Grid: Qty, Unit Price, Notes, Line Deletion"]
+    CounterSale --> AddPharmacy["Quick Add: Debounced Pharmacy Stock Search (Combobox: All Active Batches)"]
+    AddPharmacy --> ItemCustomization
+    
+    ItemCustomization --> Calculations["Financial Computation: Subtotal, Fixed/Percent Discount, Tax, Net Total"]
+    
+    Calculations --> PaymentTender{"Payment Collection Mode"}
+    PaymentTender -->|"Credit / Unpaid"| SkipPayment["Uncheck 'Collect Payment Now' -> Generates Unpaid Invoice"]
+    PaymentTender -->|"Cash Collection"| CashDrawer["Cash Tender: Enter Amount Handed -> Instant Change Return Calculation (ফেরত দিন)"]
+    PaymentTender -->|"Digital MFS / Card"| DigitalPay["bKash / Nagad / Rocket / Card -> Record TrxID & Card Reference"]
+    
+    CashDrawer --> SubmitInvoice["Submit: POST /admin/invoices (StoreInvoiceRequest)"]
+    DigitalPay --> SubmitInvoice
+    SkipPayment --> SubmitInvoice
+    
+    SubmitInvoice --> PrintDecision{"Auto-Print 80mm POS Slip?"}
+    PrintDecision -->|"Yes (Checked)"| OpenPOS["Immediate Print Window: /admin/invoices/{id}/pos-receipt + [Create Next Invoice]"]
+    PrintDecision -->|"No"| ViewInvoice["Redirect: /admin/invoices/{id}"]
+```
+
 ---
 
 ## 9. Patient Queue Management & Digital Signage Flow (`[x] Done`)

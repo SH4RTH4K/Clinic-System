@@ -368,6 +368,21 @@
   - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) displaying invoice #, status badge, patient name with 1-tap call, color-coded financial pills (Total, Paid, Due), and 1-tap thermal POS receipt printing.
 - [ ] **Task 26.4**: Verification & Testing
   - Feature test coverage in `PatientBillingAndCashRegisterTest.php` verifying search by old ID, doctor name, date presets, CSV export, and quick payment recording. Pint formatting and Vite build verification.
+
+### Phase 27: Point-of-Sale (POS) Invoice Creation & Cashier Checkout (`/admin/invoices/create`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 27.1**: Backend Pharmacy Catalog & Inventory Search Endpoint
+  - Implement `/admin/inventory/batches/search?q=...` to support fast debounced lookup across all active medicine batches, remedies, potencies, and pharmaceuticals with live stock and selling prices.
+  - Upgrade `InvoiceController::store` to accept optional `auto_print_pos` boolean and return appropriate redirect/print metadata.
+- [ ] **Task 27.2**: Frontend POS Terminal Transformation
+  - Upgrade patient selection with rich Demographics Verification Card (Photo, IDs, Old ID, Blood Group, Age) and barcode scanner listener.
+  - Replace static 50-item batch dropdown with async debounced Pharmacy Stock Search Combobox.
+  - Add built-in POS Cash Drawer Calculator with cash tendered input, quick denomination chips (`[ Exact ]`, `[ ৳500 ]`, `[ ৳1,000 ]`, `[ ৳2,000 ]`), and live change return indicator (ফেরত দিন).
+  - Add `[x] Automatically open 80mm POS Thermal Slip print dialog` toggle with fast-track `[ + Create Next Invoice ]` action.
+- [ ] **Task 27.3**: Mobile Responsive Touch POS Layout
+  - Implement 2-column POS Terminal layout on Desktop/Tablet (Left: Items & Patient, Right: Calculation, Tender & Payment).
+  - High-density mobile touch card stream (`block md:hidden`) with tactile `+` / `-` quantity steppers and sticky bottom summary.
+- [ ] **Task 27.4**: Verification & Testing
+  - Add feature tests in `PatientBillingAndCashRegisterTest.php` covering batch search, change calculation, and POS auto-print redirection. Pint formatting and Vite build verification.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -404,3 +419,18 @@
   - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) displaying invoice #, status badge, patient name with 1-tap call, color-coded financial pills (Total, Paid, Due), and 1-tap thermal POS receipt printing.
 - [ ] **Task 26.4**: Verification & Testing
   - Feature test coverage in `PatientBillingAndCashRegisterTest.php` verifying search by old ID, doctor name, date presets, CSV export, and quick payment recording. Pint formatting and Vite build verification.
+
+### Phase 27: Point-of-Sale (POS) Invoice Creation & Cashier Checkout (`/admin/invoices/create`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 27.1**: Backend Pharmacy Catalog & Inventory Search Endpoint
+  - Implement `/admin/inventory/batches/search?q=...` to support fast debounced lookup across all active medicine batches, remedies, potencies, and pharmaceuticals with live stock and selling prices.
+  - Upgrade `InvoiceController::store` to accept optional `auto_print_pos` boolean and return appropriate redirect/print metadata.
+- [ ] **Task 27.2**: Frontend POS Terminal Transformation
+  - Upgrade patient selection with rich Demographics Verification Card (Photo, IDs, Old ID, Blood Group, Age) and barcode scanner listener.
+  - Replace static 50-item batch dropdown with async debounced Pharmacy Stock Search Combobox.
+  - Add built-in POS Cash Drawer Calculator with cash tendered input, quick denomination chips (`[ Exact ]`, `[ ৳500 ]`, `[ ৳1,000 ]`, `[ ৳2,000 ]`), and live change return indicator (ফেরত দিন).
+  - Add `[x] Automatically open 80mm POS Thermal Slip print dialog` toggle with fast-track `[ + Create Next Invoice ]` action.
+- [ ] **Task 27.3**: Mobile Responsive Touch POS Layout
+  - Implement 2-column POS Terminal layout on Desktop/Tablet (Left: Items & Patient, Right: Calculation, Tender & Payment).
+  - High-density mobile touch card stream (`block md:hidden`) with tactile `+` / `-` quantity steppers and sticky bottom summary.
+- [ ] **Task 27.4**: Verification & Testing
+  - Add feature tests in `PatientBillingAndCashRegisterTest.php` covering batch search, change calculation, and POS auto-print redirection. Pint formatting and Vite build verification.
