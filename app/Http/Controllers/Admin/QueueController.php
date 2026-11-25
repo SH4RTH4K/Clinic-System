@@ -26,11 +26,11 @@ class QueueController extends Controller
         $date = $request->input('date', Carbon::today()->toDateString());
         $doctorId = $request->input('doctor_id');
         $status = $request->input('status');
-        $search = $request->input('search');
+        $search = trim((string) ($request->input('search') ?: $request->input('q')));
 
         $query = PatientQueueToken::query()
             ->with([
-                'patient:id,name,phone,patient_no,patient_series,patient_code',
+                'patient:id,name,phone,patient_no,patient_series,patient_code,old_or_other_id,photo_path,gender,age_years',
                 'doctor:id,name,name_bn,credentials,specialty',
                 'visit:id,status',
             ])
@@ -44,11 +44,29 @@ class QueueController extends Controller
             $query->where('status', $status);
         }
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
+        if ($search !== '') {
+            $numericSearch = ltrim((string) preg_replace('/[^0-9]/', '', $search), '0');
+            $query->where(function ($q) use ($search, $numericSearch) {
                 $q->where('token_code', 'like', "%{$search}%")
                     ->orWhere('patient_name', 'like', "%{$search}%")
-                    ->orWhere('patient_phone', 'like', "%{$search}%");
+                    ->orWhere('patient_phone', 'like', "%{$search}%")
+                    ->orWhere('service_room', 'like', "%{$search}%")
+                    ->orWhereHas('patient', function ($pq) use ($search) {
+                        $pq->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('patient_no', 'like', "%{$search}%")
+                            ->orWhere('patient_code', 'like', "%{$search}%")
+                            ->orWhere('old_or_other_id', 'like', "%{$search}%")
+                            ->orWhere('guardian_name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('doctor', function ($dq) use ($search) {
+                        $dq->where('name', 'like', "%{$search}%")
+                            ->orWhere('name_bn', 'like', "%{$search}%");
+                    });
+
+                if ($numericSearch !== '' && is_numeric($numericSearch)) {
+                    $q->orWhere('token_number', (int) $numericSearch);
+                }
             });
         }
 

@@ -447,6 +447,72 @@ class QueueManagementAndCalendarTest extends TestCase
         ]));
     }
 
+    public function test_queue_dashboard_smart_search_and_eager_loading(): void
+    {
+        $specialPatient = Patient::factory()->create([
+            'name' => 'Taki Tajwar Sadik',
+            'phone' => '01718784114',
+            'patient_code' => 'A-2026-000004',
+            'old_or_other_id' => '3391-A',
+        ]);
+
+        $token = PatientQueueToken::factory()->create([
+            'token_number' => 4,
+            'token_code' => 'T-004',
+            'token_date' => Carbon::today(),
+            'doctor_id' => $this->doctor->id,
+            'patient_id' => $specialPatient->id,
+            'patient_name' => $specialPatient->name,
+            'patient_phone' => $specialPatient->phone,
+            'service_room' => 'Chamber 1',
+            'status' => 'waiting',
+        ]);
+
+        // 1. Search by Patient Code (A-2026-000004)
+        $codeSearchResponse = $this->actingAs($this->staff)->get(route('admin.queue.index', [
+            'search' => 'A-2026-000004',
+        ]));
+        $codeSearchResponse->assertOk();
+        $codeSearchResponse->assertInertia(fn ($page) => $page
+            ->component('Admin/Queue/Index')
+            ->has('tokens.data', 1)
+            ->where('tokens.data.0.token_code', 'T-004')
+            ->where('tokens.data.0.patient.old_or_other_id', '3391-A')
+        );
+
+        // 2. Search by Old/Other ID (3391-A)
+        $oldIdSearchResponse = $this->actingAs($this->staff)->get(route('admin.queue.index', [
+            'search' => '3391-A',
+        ]));
+        $oldIdSearchResponse->assertOk();
+        $oldIdSearchResponse->assertInertia(fn ($page) => $page
+            ->component('Admin/Queue/Index')
+            ->has('tokens.data', 1)
+            ->where('tokens.data.0.token_code', 'T-004')
+        );
+
+        // 3. Search by Numeric Token (#4)
+        $numericSearchResponse = $this->actingAs($this->staff)->get(route('admin.queue.index', [
+            'search' => '#4',
+        ]));
+        $numericSearchResponse->assertOk();
+        $numericSearchResponse->assertInertia(fn ($page) => $page
+            ->component('Admin/Queue/Index')
+            ->has('tokens.data', 1)
+            ->where('tokens.data.0.token_number', 4)
+        );
+
+        // 4. Search by Doctor Name
+        $doctorSearchResponse = $this->actingAs($this->staff)->get(route('admin.queue.index', [
+            'search' => 'Shahedur',
+        ]));
+        $doctorSearchResponse->assertOk();
+        $doctorSearchResponse->assertInertia(fn ($page) => $page
+            ->component('Admin/Queue/Index')
+            ->has('tokens.data', 1)
+        );
+    }
+
     public function test_unauthorized_user_cannot_access_queue_or_calendar(): void
     {
         $queueResponse = $this->actingAs($this->unauthorizedUser)->get(route('admin.queue.index'));

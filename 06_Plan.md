@@ -292,22 +292,23 @@
   - Mobile cards display patient avatar, age, gender, diagnosis, vitals, prescribed items count, 1-tap call & WhatsApp links, billing badge, and touch action buttons.
 - [x] **Verification**: Added 5 comprehensive feature tests in `VisitsDirectoryFeatureTest.php` covering search, date/doctor/status filters, CSV export, and clinical authorization boundaries (111 assertions). Pint formatted and Vite build verified (all 87 visit tests passing).
 
-### Phase 21: Waiting Room Queue Multi-Screen Optimization & Search Upgrade (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 21.1**: Upgraded Unified Smart Search & Query Optimization
-  - Upgrade `QueueController::index` search query to match `token_code`, numeric `token_number` (`4`, `#4`), `patient_name`, `patient_phone`, `service_room`, and eager-loaded `patient` (`name`, `phone`, `patient_no`, `patient_code`, `patient_series`, `old_or_other_id`) and `doctor` (`name`, `name_bn`).
-  - Eager-load `patient:id,name,phone,patient_no,patient_series,patient_code,old_or_other_id,photo_path,gender,age_years` to supply avatars and demographic summaries without extra queries.
-- [ ] **Task 21.2**: Desktop & Tablet Dashboard Experience
-  - Implement debounced search input with dedicated `Search` button, Enter key trigger, and `Reset` button (eliminating unthrottled keystroke server requests).
-  - Add live queue auto-refresh toggle (15s / 30s) with visual countdown pill and 1-click `🔄 Refresh Queue` action.
-  - Add 1-click **`+ Start Visit`** direct consultation launcher (`/admin/visits/create?patient_id=X&token_id=Y`) for calling and in-consultation tokens.
-  - Fix `patient_identifier` display bug (replacing non-existent `token.patient?.patient_number`).
-  - Add 1-tap phone dialer and WhatsApp chat links for calling/waiting patients.
-  - Wrap desktop table in `min-w-[850px]` container to protect tablet screens from column crushing.
-- [ ] **Task 21.3**: Mobile Responsive Touch Card Architecture
-  - Implement dual-mode presentation: high-density mobile queue cards (`block md:hidden`) and structured table (`hidden md:block`).
-  - Refine mobile counter banner to a compact 3-column / 2-row grid to reduce vertical scroll distance by 50%.
-  - Touch-friendly mobile cards displaying token number badge (`T-004`), patient name, priority pill (`Urgent`), status badge, doctor & chamber, issued/called time, phone with 1-tap call & WhatsApp, and thumb-friendly action buttons.
-- [ ] **Verification**: Add feature tests in `QueueManagementAndCalendarTest.php` verifying upgraded search parameters, multi-field matching, and auto-refresh state. Pint format and Vite build verification.
+### Phase 21: Waiting Room Queue Multi-Screen Optimization & Search Upgrade (`[x] COMPLETED`)
+- [x] **Task 21.1**: Upgraded Unified Smart Search & Query Optimization
+  - Upgraded `QueueController::index` search query to match `token_code`, numeric `token_number` (`4`, `#4`), `patient_name`, `patient_phone`, `service_room`, and eager-loaded `patient` (`name`, `phone`, `patient_no`, `patient_code`, `patient_series`, `old_or_other_id`, `guardian_name`) and `doctor` (`name`, `name_bn`).
+  - Eager-loaded `patient:id,name,phone,patient_no,patient_series,patient_code,old_or_other_id,photo_path,gender,age_years` to supply avatars, identifiers, and demographic summaries.
+- [x] **Task 21.2**: Desktop & Tablet Dashboard Experience
+  - Implemented debounced search input (350ms) with dedicated `Search` button, Enter key trigger, and instant `Reset Filters` button.
+  - Added live queue auto-refresh toggle (15s / 30s / Off) with visual countdown pill and 1-click `🔄 Refresh Queue` action (`router.reload`).
+  - Added 1-click **`+ Start Visit`** direct consultation launcher (`/admin/visits/create?patient_id=X&token_id=Y`) for calling and in-consultation tokens.
+  - Fixed `patient_identifier` display bug (using `patient_identifier` or `patient_code` with Old ID badge).
+  - Added 1-tap phone dialer (`tel:`) and direct WhatsApp alert links for calling/waiting patients.
+  - Wrapped desktop table in `min-w-[850px]` container to protect tablet screens from column crushing.
+- [x] **Task 21.3**: Mobile Responsive Touch Card Architecture
+  - Implemented dual-mode presentation: high-density mobile queue cards (`block md:hidden`) and structured table (`hidden md:block`).
+  - Refined mobile counter banner to a compact 3-column / 2-row grid to reduce vertical scroll distance by 50%.
+  - Touch-friendly mobile cards displaying token number badge (`T-004`), patient avatar, patient name, priority pill (`Urgent`), status badge, doctor & chamber, issued/called time, phone with 1-tap call & WhatsApp, and thumb-friendly action buttons.
+- [x] **Task 21.4**: Verification & Testing
+  - Added feature tests in `QueueManagementAndCalendarTest.php` verifying patient code search, old ID search, numeric token search, and doctor search (13 tests, 147 assertions passing). Pint formatted and Vite build verified.
 
 ### Phase 22: Queue Token Issuance Workflow, Live Search & Multi-Screen Views (`[x] COMPLETED`)
 - [x] **Task 22.1**: Runtime Bug Fix & Search Parameter Upgrade
