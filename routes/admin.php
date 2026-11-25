@@ -110,6 +110,7 @@ Route::middleware(['auth', 'permission:pharmaceuticals.create'])
     ->group(fn () => Route::resource('pharmaceuticals', PharmaceuticalController::class)->only(['create', 'store']));
 Route::middleware(['auth', 'permission:pharmaceuticals.view'])->group(function () {
     Route::get('pharmaceuticals/search', [PharmaceuticalController::class, 'search'])->name('pharmaceuticals.search');
+    Route::get('pharmaceuticals/export', [PharmaceuticalController::class, 'export'])->name('pharmaceuticals.export');
     Route::resource('pharmaceuticals', PharmaceuticalController::class)->only(['index', 'show']);
 });
 Route::middleware(['auth', 'permission:pharmaceuticals.update'])

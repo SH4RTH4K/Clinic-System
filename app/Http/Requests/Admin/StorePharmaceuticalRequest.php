@@ -21,6 +21,17 @@ class StorePharmaceuticalRequest extends FormRequest
             'manufacturer' => ['nullable', 'string', 'max:150'],
             'description' => ['nullable', 'string'],
             'is_active' => ['boolean'],
+
+            // Optional atomic initial batch intake
+            'receive_initial_batch' => ['nullable', 'boolean'],
+            'batch_number' => ['nullable', 'string', 'max:100'],
+            'expiry_date' => ['nullable', 'date'],
+            'purchase_price' => ['nullable', 'numeric', 'min:0'],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
+            'initial_quantity' => ['nullable', 'numeric', 'min:0'],
+            'unit' => ['nullable', 'string', 'max:50'],
+            'reorder_level' => ['nullable', 'numeric', 'min:0'],
+            'supplier_name' => ['nullable', 'string', 'max:150'],
         ];
     }
 }

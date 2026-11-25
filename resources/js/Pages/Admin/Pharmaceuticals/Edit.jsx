@@ -1,8 +1,17 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { DOSAGE_FORMS } from './Create';
 
-const DOSAGE_FORMS = ['Tablet', 'Capsule', 'Syrup', 'Suspension', 'Injection', 'Drops', 'Inhaler', 'Ointment', 'Cream', 'Suppository'];
+const QUICK_STRENGTHS = ['500mg', '650mg', '20mg', '40mg', '100ml', '1g', '10mg', '5mg'];
+const QUICK_MANUFACTURERS = [
+    'Square Pharmaceuticals Ltd',
+    'Beximco Pharmaceuticals Ltd',
+    'Incepta Pharmaceuticals Ltd',
+    'Renata Limited',
+    'ACI Limited',
+    'Opsonin Pharma Ltd',
+];
 
 export default function Edit({ pharmaceutical }) {
     const { data, setData, put, processing, errors } = useForm({
@@ -26,10 +35,18 @@ export default function Edit({ pharmaceutical }) {
             <div className="py-6 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 <PageHeader
                     title={`Edit Drug: ${pharmaceutical.brand_name}`}
-                    description="Update conventional pharmaceutical details in the drug catalog."
+                    subtitle="Update conventional pharmaceutical details, strength, or formulation in the clinical formulary."
+                    actions={
+                        <Link
+                            href={route('admin.pharmaceuticals.index')}
+                            className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                        >
+                            Back to Catalog
+                        </Link>
+                    }
                 />
 
-                <div className="bg-white rounded-xl shadow-2xs border border-gray-100 p-6">
+                <div className="bg-white rounded-xl shadow-2xs border border-gray-200 p-6">
                     <form onSubmit={submit} className="space-y-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -77,9 +94,12 @@ export default function Edit({ pharmaceutical }) {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-800 mb-1">
-                                    Strength / Potency (মাত্রা) <span className="text-red-500">*</span>
-                                </label>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-sm font-semibold text-gray-800">
+                                        Strength / Potency (মাত্রা) <span className="text-red-500">*</span>
+                                    </label>
+                                    <span className="text-[11px] text-gray-500">Tap chip to fill:</span>
+                                </div>
                                 <input
                                     type="text"
                                     required
@@ -87,19 +107,54 @@ export default function Edit({ pharmaceutical }) {
                                     onChange={(e) => setData('strength', e.target.value)}
                                     className="w-full text-sm rounded-lg border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                                 />
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                    {QUICK_STRENGTHS.map((s) => (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => setData('strength', s)}
+                                            className={`text-[11px] px-2 py-0.5 rounded font-medium border transition ${
+                                                data.strength === s
+                                                    ? 'bg-primary-600 text-white border-primary-600'
+                                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200'
+                                            }`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
                                 {errors.strength && <p className="mt-1 text-xs text-red-600 font-medium">{errors.strength}</p>}
                             </div>
 
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-semibold text-gray-800 mb-1">
-                                    Pharmaceutical Manufacturer (কোম্পানি / প্রস্তুতকারক)
-                                </label>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-sm font-semibold text-gray-800">
+                                        Pharmaceutical Manufacturer (কোম্পানি / প্রস্তুতকারক)
+                                    </label>
+                                    <span className="text-[11px] text-gray-500">Tap to fill:</span>
+                                </div>
                                 <input
                                     type="text"
                                     value={data.manufacturer}
                                     onChange={(e) => setData('manufacturer', e.target.value)}
                                     className="w-full text-sm rounded-lg border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                                 />
+                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                    {QUICK_MANUFACTURERS.map((m) => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setData('manufacturer', m)}
+                                            className={`text-[11px] px-2 py-0.5 rounded font-medium border transition ${
+                                                data.manufacturer === m
+                                                    ? 'bg-primary-600 text-white border-primary-600'
+                                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200'
+                                            }`}
+                                        >
+                                            {m.replace(' Pharmaceuticals Ltd', '').replace(' Limited', '')}
+                                        </button>
+                                    ))}
+                                </div>
                                 {errors.manufacturer && <p className="mt-1 text-xs text-red-600 font-medium">{errors.manufacturer}</p>}
                             </div>
 

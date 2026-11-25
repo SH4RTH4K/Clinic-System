@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -23,6 +24,11 @@ class Pharmaceutical extends Model
         return LogOptions::defaults()->logAll()->logOnlyDirty()->dontSubmitEmptyLogs();
     }
 
+    public function batches(): HasMany
+    {
+        return $this->hasMany(MedicineBatch::class, 'pharmaceutical_id')->where('item_type', 'pharmaceutical');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
@@ -37,6 +43,7 @@ class Pharmaceutical extends Model
         return $query->where(function (Builder $sub) use ($term): void {
             $sub->where('brand_name', 'like', "%{$term}%")
                 ->orWhere('generic_name', 'like', "%{$term}%")
+                ->orWhere('strength', 'like', "%{$term}%")
                 ->orWhere('manufacturer', 'like', "%{$term}%");
         });
     }
