@@ -487,6 +487,29 @@
 - [ ] **Task 33.5**: Verification & Testing
   - Add feature test suite `tests/Feature/PharmacyInventoryTest.php` verifying multi-attribute search, FEFO sorting, CSV export, safe deactivation, and mobile touch cards.
   - Run Pint code formatting and build Vite production assets.
+
+### Phase 34: Pharmaceutical & Remedy Manufacturer Master Management (`/admin/manufacturers`) (`[x] COMPLETED`)
+- [x] **Task 34.1**: Database Schema & Eloquent Architecture
+  - Create `manufacturers` database table with fields: `name` (unique), `short_name`, `name_bn`, `type` (`allopathic`, `homeopathic`, `dual`, `surgical`), `contact_person` (MR name), `phone`, `email`, `address`, `website`, `notes`, `is_active`.
+  - Create `Manufacturer` Eloquent model with local scopes: `active()`, `type()`, `search()` and `display_name` accessor.
+  - Create and assign `manufacturers.*` permissions (`view`, `create`, `update`, `delete`) to Super Admin and Doctor roles.
+- [x] **Task 34.2**: Backend Form Requests, Controller & Search API
+  - Create dedicated `StoreManufacturerRequest` and `UpdateManufacturerRequest` validating company identity and unique constraint.
+  - Implement `ManufacturerController` with `index`, `create`, `store`, `edit`, `update`, `destroy` (safe deactivation), and `search` JSON API endpoint.
+  - Register RESTful and search routes under `routes/admin.php`.
+- [x] **Task 34.3**: Frontend Directory, Responsive Workstation & Mobile Touch Cards (`/admin/manufacturers`)
+  - Implement `resources/js/Pages/Admin/Manufacturers/Index.jsx` with KPI tiles, 300ms debounced search, category filter pills (`All`, `Allopathy 💊`, `Homeopathy 🌿`, `Dual 🏥`, `Surgical 🩺`), desktop DataTable, and mobile touch cards (`block md:hidden`).
+  - Add click-to-call `tel:` MR links and deactivation modal.
+- [x] **Task 34.4**: Frontend Entry & Edit Studios (`Create.jsx` & `Edit.jsx`)
+  - Create `resources/js/Pages/Admin/Manufacturers/Create.jsx` with 1-click Bangladeshi & international presets (`Square`, `Beximco`, `Incepta`, `Renata`, `Schwabe Germany`, `SBL India`, `Dr. Reckeweg`).
+  - Create `resources/js/Pages/Admin/Manufacturers/Edit.jsx` with full company profile editing.
+- [x] **Task 34.5**: Cross-Module Integration with Drug Formulary (`/admin/pharmaceuticals/create` & `Edit.jsx`)
+  - Pass registered manufacturers to `PharmaceuticalController@create` and `@edit`.
+  - Update `Pharmaceuticals/Create.jsx` and `Edit.jsx` with HTML5 datalist autocomplete, registered manufacturer quick chips, and inline `+ Add New Company` shortcut link.
+- [x] **Task 34.6**: Verification, Testing & Asset Compilation
+  - Create test suite `tests/Feature/ManufacturerManagementTest.php` (9 tests passed, 86 assertions).
+  - Verify zero regressions in `PharmaceuticalCatalogTest` (6 tests passed, 71 assertions) and `DualPharmacyInventoryTest` (9 tests passed, 61 assertions).
+  - Format code with Laravel Pint and build Vite production bundle (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -642,3 +665,26 @@
 - [ ] **Task 33.5**: Verification & Testing
   - Add feature test suite `tests/Feature/PharmacyInventoryTest.php` verifying multi-attribute search, FEFO sorting, CSV export, safe deactivation, and mobile touch cards.
   - Run Pint code formatting and build Vite production assets.
+
+### Phase 34: Pharmaceutical & Remedy Manufacturer Master Management (`/admin/manufacturers`) (`[x] COMPLETED`)
+- [x] **Task 34.1**: Database Schema & Eloquent Architecture
+  - Create `manufacturers` database table with fields: `name` (unique), `short_name`, `name_bn`, `type` (`allopathic`, `homeopathic`, `dual`, `surgical`), `contact_person` (MR name), `phone`, `email`, `address`, `website`, `notes`, `is_active`.
+  - Create `Manufacturer` Eloquent model with local scopes: `active()`, `type()`, `search()` and `display_name` accessor.
+  - Create and assign `manufacturers.*` permissions (`view`, `create`, `update`, `delete`) to Super Admin and Doctor roles.
+- [x] **Task 34.2**: Backend Form Requests, Controller & Search API
+  - Create dedicated `StoreManufacturerRequest` and `UpdateManufacturerRequest` validating company identity and unique constraint.
+  - Implement `ManufacturerController` with `index`, `create`, `store`, `edit`, `update`, `destroy` (safe deactivation), and `search` JSON API endpoint.
+  - Register RESTful and search routes under `routes/admin.php`.
+- [x] **Task 34.3**: Frontend Directory, Responsive Workstation & Mobile Touch Cards (`/admin/manufacturers`)
+  - Implement `resources/js/Pages/Admin/Manufacturers/Index.jsx` with KPI tiles, 300ms debounced search, category filter pills (`All`, `Allopathy 💊`, `Homeopathy 🌿`, `Dual 🏥`, `Surgical 🩺`), desktop DataTable, and mobile touch cards (`block md:hidden`).
+  - Add click-to-call `tel:` MR links and deactivation modal.
+- [x] **Task 34.4**: Frontend Entry & Edit Studios (`Create.jsx` & `Edit.jsx`)
+  - Create `resources/js/Pages/Admin/Manufacturers/Create.jsx` with 1-click Bangladeshi & international presets (`Square`, `Beximco`, `Incepta`, `Renata`, `Schwabe Germany`, `SBL India`, `Dr. Reckeweg`).
+  - Create `resources/js/Pages/Admin/Manufacturers/Edit.jsx` with full company profile editing.
+- [x] **Task 34.5**: Cross-Module Integration with Drug Formulary (`/admin/pharmaceuticals/create` & `Edit.jsx`)
+  - Pass registered manufacturers to `PharmaceuticalController@create` and `@edit`.
+  - Update `Pharmaceuticals/Create.jsx` and `Edit.jsx` with HTML5 datalist autocomplete, registered manufacturer quick chips, and inline `+ Add New Company` shortcut link.
+- [x] **Task 34.6**: Verification, Testing & Asset Compilation
+  - Create test suite `tests/Feature/ManufacturerManagementTest.php` (9 tests passed, 86 assertions).
+  - Verify zero regressions in `PharmaceuticalCatalogTest` (6 tests passed, 71 assertions) and `DualPharmacyInventoryTest` (9 tests passed, 61 assertions).
+  - Format code with Laravel Pint and build Vite production bundle (`npm run build`).

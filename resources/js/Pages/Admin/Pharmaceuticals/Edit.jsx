@@ -13,7 +13,7 @@ const QUICK_MANUFACTURERS = [
     'Opsonin Pharma Ltd',
 ];
 
-export default function Edit({ pharmaceutical }) {
+export default function Edit({ pharmaceutical, manufacturers = [] }) {
     const { data, setData, put, processing, errors } = useForm({
         generic_name: pharmaceutical.generic_name || '',
         brand_name: pharmaceutical.brand_name || '',
@@ -131,27 +131,49 @@ export default function Edit({ pharmaceutical }) {
                                     <label className="block text-sm font-semibold text-gray-800">
                                         Pharmaceutical Manufacturer (কোম্পানি / প্রস্তুতকারক)
                                     </label>
-                                    <span className="text-[11px] text-gray-500">Tap to fill:</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-gray-500">Tap chip or select:</span>
+                                        <Link
+                                            href={route('admin.manufacturers.create')}
+                                            className="text-[11px] font-semibold text-primary-600 hover:text-primary-800 underline"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            + Add New Company
+                                        </Link>
+                                    </div>
                                 </div>
                                 <input
                                     type="text"
+                                    list="registered-manufacturers-edit-list"
+                                    placeholder="Type or select company name..."
                                     value={data.manufacturer}
                                     onChange={(e) => setData('manufacturer', e.target.value)}
                                     className="w-full text-sm rounded-lg border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                                 />
+                                <datalist id="registered-manufacturers-edit-list">
+                                    {manufacturers.map((m) => (
+                                        <option key={m.id} value={m.name}>
+                                            {m.short_name ? `${m.short_name} (${m.type})` : m.type}
+                                        </option>
+                                    ))}
+                                </datalist>
                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                    {QUICK_MANUFACTURERS.map((m) => (
+                                    {(manufacturers.length > 0
+                                        ? manufacturers.slice(0, 8).map((m) => ({ name: m.name, label: m.short_name || m.name }))
+                                        : QUICK_MANUFACTURERS.map((m) => ({ name: m, label: m.replace(' Pharmaceuticals Ltd', '').replace(' Limited', '') }))
+                                    ).map((chip) => (
                                         <button
-                                            key={m}
+                                            key={chip.name}
                                             type="button"
-                                            onClick={() => setData('manufacturer', m)}
+                                            onClick={() => setData('manufacturer', chip.name)}
                                             className={`text-[11px] px-2 py-0.5 rounded font-medium border transition ${
-                                                data.manufacturer === m
+                                                data.manufacturer === chip.name
                                                     ? 'bg-primary-600 text-white border-primary-600'
                                                     : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200'
                                             }`}
                                         >
-                                            {m.replace(' Pharmaceuticals Ltd', '').replace(' Limited', '')}
+                                            {chip.label}
                                         </button>
                                     ))}
                                 </div>

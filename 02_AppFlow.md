@@ -442,6 +442,35 @@ flowchart TD
 
 ---
 
+### 7.5 Pharmaceutical & Remedy Manufacturer Master Management (`/admin/manufacturers`) (`[x] Done`)
+
+Multi-disciplinary pharmaceutical and remedy manufacturer directory, Medical Representative (MR) contact management, and drug formulary intake integration:
+
+```mermaid
+flowchart TD
+    User([Pharmacist / Doctor / Admin]) --> MfrHome["Navigate to /admin/manufacturers"]
+    
+    MfrHome --> HeaderMetrics["Header KPIs: Total Companies | Allopathy Pharma 💊 | Homeopathy Labs 🌿 | Active Formulary Partners"]
+    
+    MfrHome --> FilterControls["Search & Discipline Strip"]
+    FilterControls --> DebouncedSearch["Debounced Search: Name | Bengali Name | Brand Code | MR Name | Phone | Email"]
+    FilterControls --> TypeFilter["Discipline Filter: [ All ] | [ Allopathy Pharma 💊 ] | [ Homeopathy Lab 🌿 ] | [ Dual Practice 🏥 ] | [ Surgical & Diag. 🩺 ]"]
+    
+    MfrHome --> ViewMode{"Device Viewport"}
+    ViewMode -- "Mobile (< 768px)" --> MobileCards["Render Mobile Touch Cards<br/>• Company Name & Bengali Script<br/>• Discipline Pill with Icon<br/>• 1-Tap MR Contact Link: Direct Phone (tel:) & WhatsApp<br/>• Depot / Distributor Address<br/>• Action Menu: Edit & Deactivate"]
+    ViewMode -- "Desktop (>= 768px)" --> DesktopTable["Render Responsive Data Table<br/>• Manufacturer & Bengali Identity<br/>• Discipline Category<br/>• Contact Representative (MR) with Click-to-Dial<br/>• Status Badge<br/>• Edit & Deactivation Dialog"]
+    
+    MfrHome --> AddCompany["Click '+ Add Manufacturer' -> /admin/manufacturers/create"]
+    AddCompany --> IntakeForm["Form Entry Studio<br/>• Quick Presets (Square, Beximco, Incepta, Schwabe, SBL, Reckeweg)<br/>• Company & Bengali Name<br/>• Category Selector with Visual Icons<br/>• MR Name, Direct Phone, Email, Depot Address, Notes"]
+    IntakeForm --> SubmitStore["POST /admin/manufacturers (StoreManufacturerRequest)"]
+    SubmitStore --> SuccessRedirect["Redirect to Index with Success Notification"]
+    
+    MfrHome --> DrugFormulary["Formulary Drug Creation Integration (/admin/pharmaceuticals/create)"]
+    DrugFormulary --> SelectMfr["Autocomplete / Datalist populated by active registered manufacturers<br/>• Quick-tap chips for top registered manufacturers<br/>• '+ Add New Company' direct modal/tab link for zero-friction onboarding"]
+```
+
+---
+
 ## 8. Billing, Invoicing & Cash Register Flow (`[x] Done`)
 
 Universal point-of-sale workflow for consultation fees, medicines, and lab tests:

@@ -179,6 +179,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Therapeutic classification and pharmacological family grouping.
   - Optional atomic initial batch intake allowing opening inventory to be logged during master drug registration.
   - Tactile quick-select chips for strengths (`500mg`, `20mg`, `40mg`, `100ml`) and pharmaceutical manufacturers (`Square`, `Beximco`, `Incepta`).
+- `[x] Done` **Pharmaceutical & Remedy Manufacturer Master Management (`/admin/manufacturers`)**:
+  - Centralized master directory for pharmaceutical companies, homeopathic laboratories (Schwabe, SBL, Reckeweg), dual-practice suppliers, and surgical vendors.
+  - Granular contact management for Medical Representatives (MR), Area Managers, direct hotlines, and order desk emails with 1-click `tel:` calling and WhatsApp messaging.
+  - Quick-preset accelerator for top Bangladeshi and international laboratories with instant category pills (`💊 Allopathy Pharma`, `🌿 Homeopathy Lab`, `🏥 Dual Practice`, `🩺 Surgical & Diag.`).
+  - Native integration with `/admin/pharmaceuticals/create` and `Edit.jsx` via HTML5 datalist, quick chips, and inline `+ Add New Company` shortcut.
+  - Dedicated search autocomplete endpoint (`/admin/manufacturers/search`) and safe reversible deactivation.
 - `[ ] In Progress` **Pharmacy Multi-Batch Inventory & Stock Control Workstation (`/admin/inventory`)**:
   - Central operational command center managing Homeopathic potencies (CH, LM, X, MT) and Allopathic pharmaceuticals across active batches.
   - Multi-attribute search matching remedy Latin/common name, pharma brand, generic, potency, strength (mg/ml), batch number, and supplier name.

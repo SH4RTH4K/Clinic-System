@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\GitRepositoryController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\LabInvestigationController;
+use App\Http\Controllers\Admin\ManufacturerController;
 use App\Http\Controllers\Admin\MedicineController;
 use App\Http\Controllers\Admin\PatientAttachmentController;
 use App\Http\Controllers\Admin\PatientConfigController;
@@ -129,6 +130,18 @@ Route::middleware(['auth', 'permission:lab_investigations.update'])
     ->group(fn () => Route::resource('lab-investigations', LabInvestigationController::class)->only(['edit', 'update'])->names('lab_investigations'));
 Route::middleware(['auth', 'permission:lab_investigations.delete'])
     ->group(fn () => Route::resource('lab-investigations', LabInvestigationController::class)->only(['destroy'])->names('lab_investigations'));
+
+// Pharmaceutical & Remedy Manufacturers
+Route::middleware(['auth', 'permission:manufacturers.create'])
+    ->group(fn () => Route::resource('manufacturers', ManufacturerController::class)->only(['create', 'store']));
+Route::middleware(['auth', 'permission:manufacturers.view'])->group(function () {
+    Route::get('manufacturers/search', [ManufacturerController::class, 'search'])->name('manufacturers.search');
+    Route::resource('manufacturers', ManufacturerController::class)->only(['index', 'show']);
+});
+Route::middleware(['auth', 'permission:manufacturers.update'])
+    ->group(fn () => Route::resource('manufacturers', ManufacturerController::class)->only(['edit', 'update']));
+Route::middleware(['auth', 'permission:manufacturers.delete'])
+    ->group(fn () => Route::resource('manufacturers', ManufacturerController::class)->only(['destroy']));
 
 // Pharmacy Inventory & Stock Control
 Route::middleware(['auth', 'permission:inventory.view'])->group(function () {

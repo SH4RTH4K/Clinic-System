@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePharmaceuticalRequest;
 use App\Http\Requests\Admin\UpdatePharmaceuticalRequest;
+use App\Models\Manufacturer;
 use App\Models\MedicineBatch;
 use App\Models\Pharmaceutical;
 use App\Models\PrescriptionItem;
@@ -72,7 +73,11 @@ class PharmaceuticalController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Pharmaceuticals/Create');
+        $manufacturers = Manufacturer::active()->orderBy('name')->get(['id', 'name', 'short_name', 'type']);
+
+        return Inertia::render('Admin/Pharmaceuticals/Create', [
+            'manufacturers' => $manufacturers,
+        ]);
     }
 
     public function store(StorePharmaceuticalRequest $request): RedirectResponse
@@ -129,8 +134,11 @@ class PharmaceuticalController extends Controller
 
     public function edit(Pharmaceutical $pharmaceutical): Response
     {
+        $manufacturers = Manufacturer::active()->orderBy('name')->get(['id', 'name', 'short_name', 'type']);
+
         return Inertia::render('Admin/Pharmaceuticals/Edit', [
             'pharmaceutical' => $pharmaceutical,
+            'manufacturers' => $manufacturers,
         ]);
     }
 
