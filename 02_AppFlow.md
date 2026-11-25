@@ -210,6 +210,32 @@ flowchart TD
     QuickTriage -->|"Link / Register"| PatientSync["[👤 Link Existing] or [Convert to Patient] -> Prevent duplicates"]
 ```
 
+### 5.2 Staff Appointment Intake & Fast-Track Booking Flow (`/admin/appointment-requests/create`)
+
+```mermaid
+flowchart TD
+    Staff["Staff Member / Receptionist"] --> OpenIntake["Open /admin/appointment-requests/create"]
+    OpenIntake --> ModeSelect{"Patient Identification Mode"}
+    
+    ModeSelect -->|"Registered Patient"| SearchPatient["Live Debounced Patient Combobox: /admin/patients/search?q=..."]
+    SearchPatient --> SelectPatient["Select Patient: Demographics Card (ID, Old ID, Photo, Phone, Blood Group) + Pre-fill"]
+    ModeSelect -->|"Walk-in Guest"| ManualEntry["Manual Entry: Name, Phone, Source (Phone / Walk-in)"]
+    
+    SelectPatient --> SlotSelect["Select Requested Date & Time Slot"]
+    ManualEntry --> SlotSelect
+    
+    SlotSelect --> DocRoster{"Live Doctor Duty Reference"}
+    DocRoster --> CheckShift["Check Doctor Shift: Weekly Working Hours (e.g. 09:00 - 14:00)"]
+    DocRoster --> CheckHoliday["Check Doctor Leave: Alert if selected date is an official holiday"]
+    
+    CheckShift --> BookingAction{"Booking Pathway"}
+    BookingAction -->|"Flexible / Needs Follow-up"| SavePending["[📝 Save as Pending Request] -> status='pending'"]
+    BookingAction -->|"Confirmed on Call"| SaveScheduled["[⚡ Confirm & Schedule Slot Immediately] -> status='scheduled' + SMS Confirmation"]
+    
+    SavePending --> RedirectList["Redirect to /admin/appointment-requests"]
+    SaveScheduled --> RedirectList
+```
+
 ---
 
 ## 6. System Health, In-App Backup & Deployment Flow (`[x] Done`)

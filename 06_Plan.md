@@ -352,8 +352,14 @@
 - [ ] **Task 24.3**: Mobile Sub-Tab Navigation & Responsive UI
   - On mobile screens (< 768px), introduce top sub-tabs: `[ 🕒 Weekly Visiting Hours ]` and `[ 🏖️ Leaves & Off-Days ]` to prevent excessive vertical scrolling.
   - Implement doctor search filter for clinics with multiple physicians/consultants.
-- [ ] **Task 24.4**: Verification & Testing
-  - Feature test coverage for leave date range creation, conflict detection warnings, and schedule updates. Pint formatting and Vite build verification.
+- [ ] **Task 25.4**: Verification & Testing
+  - Add feature tests in `AppointmentRequestWorkflowTest.php` covering search by name, phone, ID, date presets, and quick status actions. Pint formatting and Vite build verification.
+- [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
+  - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
+  - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
+  - Add dual-submission actions: `[ 📝 Save as Pending Request ]` and `[ ⚡ Confirm & Schedule Slot Immediately ]` with automatic SMS dispatch.
+  - Add live Doctor Duty & Roster Card showing consulting shifts and off-days/leaves on selected dates.
+  - Support pre-filling via URL parameters: `?patient_id=X` and `?date=YYYY-MM-DD`.
 
 ### Phase 25: Appointment Requests, Intake Search & Triage Operations Upgrade (`[ ] PENDING USER CONFIRMATION`)
 - [ ] **Task 25.1**: Backend Universal Search, Date Range Filter & KPI Aggregates
