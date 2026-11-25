@@ -298,6 +298,43 @@ flowchart TD
 
 ---
 
+### 7.1 Homeopathic Medicine Catalog & Pharmacopoeia Flow (`/admin/medicines`)
+
+Master clinical pharmacopoeia management, multi-nomenclature search, potency scale classification, and batch inventory synchronization:
+
+```mermaid
+flowchart TD
+    User([Doctor / Pharmacist / Admin]) --> OpenCatalog["Navigate to /admin/medicines"]
+    OpenCatalog --> ViewMode{"Device Viewport"}
+    
+    ViewMode -- "Mobile (< 768px)" --> MobileView["Render Mobile Medicine Touch Cards<br/>• Remedy Latin & Bengali Name<br/>• Potency Badge with Scale Color Code<br/>• Form Icon (💧 Drops, ⚪ Pills, 🧪 Liquid)<br/>• Real-Time Batch Stock Badge<br/>• Touch-friendly Edit & Deactivate Buttons"]
+    ViewMode -- "Desktop (>= 768px)" --> DesktopView["Render Clinical Pharmacopoeia Grid<br/>• Debounced Instant Search Bar (300ms)<br/>• Potency Scale Pill Strip (CH, LM, X, MT)<br/>• Formulation & Stock Status Filters<br/>• Per-Page Selector (15, 25, 50, 100)<br/>• CSV Export & + New Medicine Action"]
+    
+    DesktopView --> SearchOrFilter["Apply Search & Filter Criteria"]
+    MobileView --> SearchOrFilter
+    
+    SearchOrFilter --> MultiMatch{"Query Type"}
+    MultiMatch -- "Latin Name / Abbreviation" --> QueryName["Match name (Arnica Montana) OR Abbr (Arn., Nux-v.)"]
+    MultiMatch -- "Bengali Script / Phonetic" --> QueryBn["Match name_bn (আর্নিকা, নাক্স)"]
+    MultiMatch -- "Common / English Name" --> QueryCommon["Match common_name (Mountain Daisy, Poison Nut)"]
+    MultiMatch -- "Potency Scale Pill" --> QueryScale["Filter Centesimal CH / LM 50-Millesimal / Decimal X / MT Q"]
+    MultiMatch -- "Stock Level Pill" --> QueryStock["Filter In Stock / Low Stock / Out of Stock"]
+    
+    QueryName --> AggregateQuery["Execute Eloquent Query with MedicineBatch Stock Sum"]
+    QueryBn --> AggregateQuery
+    QueryCommon --> AggregateQuery
+    QueryScale --> AggregateQuery
+    QueryStock --> AggregateQuery
+    
+    AggregateQuery --> LiveResults["Display Filtered Remedies with Live Stock Count"]
+    LiveResults --> ClickAction{"User Action"}
+    ClickAction -- "Edit Remedy" --> EditForm["Open /admin/medicines/{id}/edit"]
+    ClickAction -- "Check / Add Stock" --> JumpInventory["Shortcut to /admin/inventory?search={name}"]
+    ClickAction -- "Toggle Active/Inactive" --> SoftDeactivate["Reversible Status Toggle (is_active)"]
+```
+
+---
+
 ## 8. Billing, Invoicing & Cash Register Flow (`[x] Done`)
 
 Universal point-of-sale workflow for consultation fees, medicines, and lab tests:

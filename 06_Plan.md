@@ -415,6 +415,24 @@
   - Implement high-density mobile touch summary cards (`block md:hidden`) with expandable complaint and diagnosis details.
 - [ ] **Task 29.4**: Verification & Testing
   - Feature test coverage in `PatientClinicalAccessTest.php` verifying multi-dimensional report filters, doctor aggregation, CSV export, and permissions. Pint formatting and Vite build verification.
+
+### Phase 30: Homeopathic Medicine Catalog, Pharmacopoeia Search & Batch Inventory Integration (`/admin/medicines`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 30.1**: Backend Multi-Nomenclature Search & Inventory Aggregation
+  - Upgrade `MedicineController::index` to support multi-field search (`search` / `q`) matching against Latin name, common name, Bengali phonetic name, and abbreviation.
+  - Implement potency scale filtering (`potency_scale`: `all`, `ch`, `lm`, `x`, `q`), formulation filter (`form`: `drops`, `pills`, `liquid`), and status filter (`status`: `active`, `inactive`, `all`).
+  - Calculate real-time aggregate physical stock across active `medicine_batches` (`item_type = 'remedy'`) using `withSum('batches as total_batch_stock', 'current_quantity')`.
+  - Add configurable pagination (`per_page`: 15, 25, 50, 100) and default alphabetical ordering (`orderBy('name', 'asc')`).
+  - Add CSV export endpoint (`GET /admin/medicines/export`) streaming remedies, potencies, formulations, and active inventory stock levels.
+- [ ] **Task 30.2**: Frontend Clinical Pharmacopoeia Studio & Filter Pill Strip
+  - Implement 300ms debounced search bar with instant reset button (`✕`).
+  - Add 1-click potency scale pill strip: `[ All Scales ]`, `[ Centesimal (CH) ]`, `[ 50-Millesimal (LM/Q) ]`, `[ Decimal (X) ]`, and `[ Mother Tinctures (Q) ]`.
+  - Add live inventory stock badge (`In Stock (XX)`, `Low Stock (XX)`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={name}`.
+  - Update deactivation modal to accurately reflect reversible status toggle rather than permanent deletion.
+- [ ] **Task 30.3**: Mobile Responsive Pharmacopoeia Touch Cards
+  - Implement high-density mobile touch cards (`block md:hidden`) featuring remedy name, Bengali script, potency pill with scale-specific color coding (CH = blue, LM = purple, X = emerald, Q = amber), form icon (💧 Drops, ⚪ Pills, 🧪 Liquid), live stock badge, and 44px+ touch-friendly actions.
+- [ ] **Task 30.4**: Verification & Testing
+  - Add feature test suite `tests/Feature/MedicineCatalogTest.php` verifying multi-nomenclature search, potency scale filters, batch stock aggregation, soft deactivation, and permissions.
+  - Run Pint code formatting and build Vite production assets.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -498,3 +516,21 @@
   - Implement high-density mobile touch summary cards (`block md:hidden`) with expandable complaint and diagnosis details.
 - [ ] **Task 29.4**: Verification & Testing
   - Feature test coverage in `PatientClinicalAccessTest.php` verifying multi-dimensional report filters, doctor aggregation, CSV export, and permissions. Pint formatting and Vite build verification.
+
+### Phase 30: Homeopathic Medicine Catalog, Pharmacopoeia Search & Batch Inventory Integration (`/admin/medicines`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 30.1**: Backend Multi-Nomenclature Search & Inventory Aggregation
+  - Upgrade `MedicineController::index` to support multi-field search (`search` / `q`) matching against Latin name, common name, Bengali phonetic name, and abbreviation.
+  - Implement potency scale filtering (`potency_scale`: `all`, `ch`, `lm`, `x`, `q`), formulation filter (`form`: `drops`, `pills`, `liquid`), and status filter (`status`: `active`, `inactive`, `all`).
+  - Calculate real-time aggregate physical stock across active `medicine_batches` (`item_type = 'remedy'`) using `withSum('batches as total_batch_stock', 'current_quantity')`.
+  - Add configurable pagination (`per_page`: 15, 25, 50, 100) and default alphabetical ordering (`orderBy('name', 'asc')`).
+  - Add CSV export endpoint (`GET /admin/medicines/export`) streaming remedies, potencies, formulations, and active inventory stock levels.
+- [ ] **Task 30.2**: Frontend Clinical Pharmacopoeia Studio & Filter Pill Strip
+  - Implement 300ms debounced search bar with instant reset button (`✕`).
+  - Add 1-click potency scale pill strip: `[ All Scales ]`, `[ Centesimal (CH) ]`, `[ 50-Millesimal (LM/Q) ]`, `[ Decimal (X) ]`, and `[ Mother Tinctures (Q) ]`.
+  - Add live inventory stock badge (`In Stock (XX)`, `Low Stock (XX)`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={name}`.
+  - Update deactivation modal to accurately reflect reversible status toggle rather than permanent deletion.
+- [ ] **Task 30.3**: Mobile Responsive Pharmacopoeia Touch Cards
+  - Implement high-density mobile touch cards (`block md:hidden`) featuring remedy name, Bengali script, potency pill with scale-specific color coding (CH = blue, LM = purple, X = emerald, Q = amber), form icon (💧 Drops, ⚪ Pills, 🧪 Liquid), live stock badge, and 44px+ touch-friendly actions.
+- [ ] **Task 30.4**: Verification & Testing
+  - Add feature test suite `tests/Feature/MedicineCatalogTest.php` verifying multi-nomenclature search, potency scale filters, batch stock aggregation, soft deactivation, and permissions.
+  - Run Pint code formatting and build Vite production assets.
