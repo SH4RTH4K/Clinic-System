@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdjustStockRequest;
 use App\Http\Requests\Admin\StoreMedicineBatchRequest;
 use App\Http\Requests\Admin\UpdateMedicineBatchRequest;
+use App\Models\Manufacturer;
 use App\Models\Medicine;
 use App\Models\MedicineBatch;
 use App\Models\Pharmaceutical;
@@ -65,6 +66,7 @@ class InventoryController extends Controller
         return Inertia::render('Admin/Inventory/Create', [
             'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name'])->orderBy('name')->get(),
             'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form'])->orderBy('brand_name')->get(),
+            'manufacturers' => Manufacturer::active()->orderBy('name')->get(['id', 'name', 'short_name', 'type', 'phone']),
         ]);
     }
 
@@ -83,6 +85,7 @@ class InventoryController extends Controller
             'batch' => $batch,
             'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name'])->orderBy('name')->get(),
             'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form'])->orderBy('brand_name')->get(),
+            'manufacturers' => Manufacturer::active()->orderBy('name')->get(['id', 'name', 'short_name', 'type', 'phone']),
         ]);
     }
 

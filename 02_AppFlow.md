@@ -438,6 +438,7 @@ flowchart TD
     Action -- "1-Click Adjust" --> OpenModal["Open Inline Stock Adjustment Modal (Correction, Wastage, Restock)"]
     Action -- "Audit Export" --> DownloadCSV["Download Physical Stocktake CSV"]
     Action -- "Safe Deactivate" --> SoftDeactivate["Reversible Batch Deactivation (Preserves Audit Ledger)"]
+    Action -- "Stock Receiving" --> StockReceive["Open /admin/inventory/create: Category-aware Manufacturer/Supplier Datalist Combobox + 1-Click '+ Add Company' Shortcut"]
 ```
 
 ---

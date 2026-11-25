@@ -510,6 +510,10 @@
   - Create test suite `tests/Feature/ManufacturerManagementTest.php` (9 tests passed, 86 assertions).
   - Verify zero regressions in `PharmaceuticalCatalogTest` (6 tests passed, 71 assertions) and `DualPharmacyInventoryTest` (9 tests passed, 61 assertions).
   - Format code with Laravel Pint and build Vite production bundle (`npm run build`).
+- [x] **Task 34.7**: Cross-Module Integration with Pharmacy Stock Intake (`/admin/inventory/create` & `Edit.jsx`)
+  - Pass registered manufacturers to `InventoryController@create` and `@edit`.
+  - Upgrade `supplier_name` into a Category-Aware Datalist Combobox dynamically prioritizing homeopathic vs allopathic suppliers based on selected item category.
+  - Add quick-select chips and inline `+ Add Company` shortcut link to `/admin/manufacturers/create`.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -688,3 +692,7 @@
   - Create test suite `tests/Feature/ManufacturerManagementTest.php` (9 tests passed, 86 assertions).
   - Verify zero regressions in `PharmaceuticalCatalogTest` (6 tests passed, 71 assertions) and `DualPharmacyInventoryTest` (9 tests passed, 61 assertions).
   - Format code with Laravel Pint and build Vite production bundle (`npm run build`).
+- [x] **Task 34.7**: Cross-Module Integration with Pharmacy Stock Intake (`/admin/inventory/create` & `Edit.jsx`)
+  - Pass registered manufacturers to `InventoryController@create` and `@edit`.
+  - Upgrade `supplier_name` into a Category-Aware Datalist Combobox dynamically prioritizing homeopathic vs allopathic suppliers based on selected item category.
+  - Add quick-select chips and inline `+ Add Company` shortcut link to `/admin/manufacturers/create`.

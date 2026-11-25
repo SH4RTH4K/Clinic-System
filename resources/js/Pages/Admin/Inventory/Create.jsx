@@ -3,8 +3,32 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 
-export default function Create({ medicines = [], pharmaceuticals = [] }) {
+export default function Create({ medicines = [], pharmaceuticals = [], manufacturers = [] }) {
     const [itemType, setItemType] = useState('remedy');
+
+    const relevantManufacturers = manufacturers.length > 0
+        ? (itemType === 'remedy'
+            ? manufacturers.filter((m) => m.type === 'homeopathic' || m.type === 'dual')
+            : manufacturers.filter((m) => m.type === 'allopathic' || m.type === 'dual'))
+        : [];
+
+    const fallbackChips = itemType === 'remedy'
+        ? [
+            { name: 'Dr. Willmar Schwabe Pharmaceuticals', label: 'Schwabe Germany' },
+            { name: 'SBL Pvt. Ltd.', label: 'SBL India' },
+            { name: 'Dr. Reckeweg & Co. GmbH', label: 'Dr. Reckeweg' },
+            { name: 'Hahnemann Laboratories', label: 'Hahnemann' },
+        ]
+        : [
+            { name: 'Square Pharmaceuticals Ltd', label: 'Square' },
+            { name: 'Beximco Pharmaceuticals Ltd', label: 'Beximco' },
+            { name: 'Incepta Pharmaceuticals Ltd', label: 'Incepta' },
+            { name: 'Renata Limited', label: 'Renata' },
+        ];
+
+    const matchingChips = relevantManufacturers.length > 0
+        ? relevantManufacturers.slice(0, 6).map((m) => ({ name: m.name, label: m.short_name || m.name }))
+        : fallbackChips;
 
     const { data, setData, post, processing, errors } = useForm({
         item_type: 'remedy',
@@ -227,16 +251,52 @@ export default function Create({ medicines = [], pharmaceuticals = [] }) {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                    Supplier / Manufacturer
-                                </label>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                        Supplier / Manufacturer (কোম্পানি / প্রস্তুতকারক)
+                                    </label>
+                                    <Link
+                                        href={route('admin.manufacturers.create')}
+                                        className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        + Add Company
+                                    </Link>
+                                </div>
                                 <input
                                     type="text"
+                                    list="inventory-manufacturers-create-list"
                                     value={data.supplier_name}
                                     onChange={(e) => setData('supplier_name', e.target.value)}
-                                    placeholder="e.g. Reckeweg, SBL, Square Pharma"
+                                    placeholder="Type or select company..."
                                     className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs shadow-xs focus:border-teal-500 focus:ring-teal-500"
                                 />
+                                <datalist id="inventory-manufacturers-create-list">
+                                    {manufacturers.map((m) => (
+                                        <option key={m.id} value={m.name}>
+                                            {m.short_name ? `${m.short_name} (${m.type})` : m.type}
+                                        </option>
+                                    ))}
+                                </datalist>
+                                {/* Quick Chips */}
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                    {matchingChips.map((chip) => (
+                                        <button
+                                            key={chip.name}
+                                            type="button"
+                                            onClick={() => setData('supplier_name', chip.name)}
+                                            className={`text-[10px] px-1.5 py-0.5 rounded font-medium border transition ${
+                                                data.supplier_name === chip.name
+                                                    ? 'bg-teal-600 text-white border-teal-600'
+                                                    : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                                            }`}
+                                        >
+                                            {chip.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {errors.supplier_name && <p className="mt-1 text-xs text-red-600">{errors.supplier_name}</p>}
                             </div>
 
                             <div>
