@@ -398,6 +398,23 @@
   - Implement tactile accordion / tabbed view on mobile (`[ 📡 Gateway ]`, `[ ⚡ Triggers ]`, `[ 📝 Templates ]`) preventing long vertical scrolling.
 - [ ] **Task 28.4**: Verification & Testing
   - Add feature tests in `AutomatedPatientCommunicationsTest.php` verifying balance checking, test ping dispatch, billing receipt SMS triggering, and template saving. Pint formatting and Vite build verification.
+
+### Phase 29: Clinical, Financial & Operational Analytics Reports Suite (`/admin/reports`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 29.1**: Backend Multi-Dimensional Analytics Aggregation & Search
+  - Upgrade `ReportController::index` to support multi-column search (`search` / `q`) across patient name, phone, patient code, and chief complaint / diagnosis.
+  - Implement filters for `doctor_id`, `status` (`finalized`, `draft`, `amended`), and `date_preset` (`today`, `yesterday`, `this_week`, `this_month`, `last_month`, `this_year`).
+  - Calculate executive KPI summary statistics: total consultations, unique patients seen, finalized prescriptions, and average daily patient volume.
+  - Provide domain-specific aggregations: Doctor Productivity metrics and Top Dispensed Remedies.
+  - Add CSV export endpoint (`GET /admin/reports/export`) to stream filtered clinical activity records for external statistical analysis.
+- [ ] **Task 29.2**: Frontend Analytical Studio & Multi-Tab Dashboard
+  - Implement top executive KPI tiles with visual icons and comparative statistics.
+  - Add 3 dedicated analytical tabs: `[ 📋 Consultations & Morbidity ]`, `[ 👨‍⚕️ Doctor Productivity ]`, and `[ 💊 Top Dispensed Remedies ]`.
+  - Add tactile date preset pill buttons (`[ Today ]`, `[ This Week ]`, `[ This Month ]`, `[ This Year ]`).
+  - Add 350ms debounced search bar with reset (`✕`) button and Doctor filter dropdown.
+- [ ] **Task 29.3**: Mobile Responsive Analytics Layout
+  - Implement high-density mobile touch summary cards (`block md:hidden`) with expandable complaint and diagnosis details.
+- [ ] **Task 29.4**: Verification & Testing
+  - Feature test coverage in `PatientClinicalAccessTest.php` verifying multi-dimensional report filters, doctor aggregation, CSV export, and permissions. Pint formatting and Vite build verification.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -464,3 +481,20 @@
   - Implement tactile accordion / tabbed view on mobile (`[ 📡 Gateway ]`, `[ ⚡ Triggers ]`, `[ 📝 Templates ]`) preventing long vertical scrolling.
 - [ ] **Task 28.4**: Verification & Testing
   - Add feature tests in `AutomatedPatientCommunicationsTest.php` verifying balance checking, test ping dispatch, billing receipt SMS triggering, and template saving. Pint formatting and Vite build verification.
+
+### Phase 29: Clinical, Financial & Operational Analytics Reports Suite (`/admin/reports`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 29.1**: Backend Multi-Dimensional Analytics Aggregation & Search
+  - Upgrade `ReportController::index` to support multi-column search (`search` / `q`) across patient name, phone, patient code, and chief complaint / diagnosis.
+  - Implement filters for `doctor_id`, `status` (`finalized`, `draft`, `amended`), and `date_preset` (`today`, `yesterday`, `this_week`, `this_month`, `last_month`, `this_year`).
+  - Calculate executive KPI summary statistics: total consultations, unique patients seen, finalized prescriptions, and average daily patient volume.
+  - Provide domain-specific aggregations: Doctor Productivity metrics and Top Dispensed Remedies.
+  - Add CSV export endpoint (`GET /admin/reports/export`) to stream filtered clinical activity records for external statistical analysis.
+- [ ] **Task 29.2**: Frontend Analytical Studio & Multi-Tab Dashboard
+  - Implement top executive KPI tiles with visual icons and comparative statistics.
+  - Add 3 dedicated analytical tabs: `[ 📋 Consultations & Morbidity ]`, `[ 👨‍⚕️ Doctor Productivity ]`, and `[ 💊 Top Dispensed Remedies ]`.
+  - Add tactile date preset pill buttons (`[ Today ]`, `[ This Week ]`, `[ This Month ]`, `[ This Year ]`).
+  - Add 350ms debounced search bar with reset (`✕`) button and Doctor filter dropdown.
+- [ ] **Task 29.3**: Mobile Responsive Analytics Layout
+  - Implement high-density mobile touch summary cards (`block md:hidden`) with expandable complaint and diagnosis details.
+- [ ] **Task 29.4**: Verification & Testing
+  - Feature test coverage in `PatientClinicalAccessTest.php` verifying multi-dimensional report filters, doctor aggregation, CSV export, and permissions. Pint formatting and Vite build verification.

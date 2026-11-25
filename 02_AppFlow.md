@@ -560,3 +560,29 @@ flowchart TD
     EventTriggers --> SaveConfig
     SaveConfig --> ActiveDispatcher["Powers Automated SMS & WhatsApp Dispatches Throughout RemediQ"]
 ```
+
+---
+
+## 11. Clinical, Financial & Operational Analytics Reports Flow (`[x] Done`)
+
+Multi-dimensional analytics suite for clinical volume, doctor performance, morbidity trends, and data export:
+
+```mermaid
+flowchart TD
+    ReportsHome["Reports & Analytics Suite (/admin/reports)"] --> HeaderKPIs["Executive KPIs: Consultations | Unique Patients | Finalized Rx | Daily Average"]
+    
+    ReportsHome --> FilterBar["Filter Bar: Date Presets (Today/Week/Month/Year) | Doctor Filter | Smart Search | CSV Export"]
+    
+    ReportsHome --> ReportTabs{"Analytical Reporting Domain"}
+    
+    ReportTabs -->|"Consultations & Morbidity"| Tab1["Consultations Matrix: Date, Patient, Doctor, Complaint, Diagnoses, Status"]
+    ReportTabs -->|"Doctor Performance"| Tab2["Doctor Productivity: Consultations per Doctor, New vs Follow-up, Finalized Visits"]
+    ReportTabs -->|"Remedy Utilization"| Tab3["Pharmacy Insights: Top Prescribed Remedies (Homeopathic & Conventional)"]
+    
+    Tab1 --> ExportEngine{"Export & Print Triggers"}
+    Tab2 --> ExportEngine
+    Tab3 --> ExportEngine
+    
+    ExportEngine -->|"CSV Download"| ExportCSV["Stream Filtered Dataset as CSV / Excel"]
+    ExportEngine -->|"Print Layout"| PrintReport["Print-Optimized Clinical Summary (@media print)"]
+```

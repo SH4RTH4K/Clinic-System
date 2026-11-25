@@ -227,3 +227,8 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Mobile 1-Tap Quick Dial & WhatsApp Integration**: Formatted phone number with 1-tap `tel:` call link and dedicated WhatsApp click-to-chat button with country code prefixing (`88`).
 - `[x] Done` **Compact KPI & Topbar Layout**: Refined KPI summary statistics card grid (`grid-cols-2 lg:grid-cols-4`) with compact mobile padding (`p-2.5 sm:p-3.5`), optimized typography, and decluttered topbar (`View Website` hidden on mobile with `hidden lg:flex`).
 - `[x] Done` **Universal DataTable Minimum Width Safeguard**: Upgraded `DataTable.jsx` with customizable `tableClassName` and default `min-w-[650px]` minimum width to prevent column crushing and unreadable vertical wrapping across all system tables.
+
+---
+
+### Module 14: Clinical, Financial & Operational Analytics Reports
+- `[ ] Pending` **Multi-Dimensional Reports Suite & Analytics Dashboard (`/admin/reports`)**: Multi-column smart search (patient name, phone, patient code, diagnosis, complaint), Attending Doctor filter, 1-click tactile date presets (`Today`, `Yesterday`, `This Week`, `This Month`, `This Year`), executive KPI banner tiles (Total Consultations, Unique Patients, Finalized Rx, Daily Average), categorized analytical tabs (`Clinical Consultations & Morbidity`, `Doctor Productivity`, `Pharmacy Top Dispensed Remedies`), CSV / Excel data export, and responsive executive mobile touch cards (`block md:hidden`).
