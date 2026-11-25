@@ -179,6 +179,13 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Therapeutic classification and pharmacological family grouping.
   - Optional atomic initial batch intake allowing opening inventory to be logged during master drug registration.
   - Tactile quick-select chips for strengths (`500mg`, `20mg`, `40mg`, `100ml`) and pharmaceutical manufacturers (`Square`, `Beximco`, `Incepta`).
+- `[ ] In Progress` **Pharmacy Multi-Batch Inventory & Stock Control Workstation (`/admin/inventory`)**:
+  - Central operational command center managing Homeopathic potencies (CH, LM, X, MT) and Allopathic pharmaceuticals across active batches.
+  - Multi-attribute search matching remedy Latin/common name, pharma brand, generic, potency, strength (mg/ml), batch number, and supplier name.
+  - FEFO (First-Expired, First-Out) shelf rotation sorting and lowest stock reorder prioritization.
+  - Offline physical audit stocktake CSV export.
+  - Safe soft deactivation preventing cascade deletion of stock transactions.
+  - Tactile mobile touch cards (`block md:hidden`) replacing horizontal table scrolling.
 - `[x] Done` **Dual Stock Management**:
   - Homeopathic inventory: Dilutions, Mother Tinctures (30ml, 100ml, 450ml), Globules, and Biochemic preparations.
   - Allopathic inventory: Box/Strip packaging, tablets, syrups, injections.

@@ -409,6 +409,39 @@ flowchart TD
 
 ---
 
+### 7.4 Pharmacy Multi-Batch Inventory & Stock Control Workstation (`/admin/inventory`)
+
+Dual pharmacy stock management, multi-attribute search, FEFO batch rotation, and inline stock adjustment:
+
+```mermaid
+flowchart TD
+    User([Pharmacist / Compounder / Cashier]) --> OpenInventory["Navigate to /admin/inventory"]
+    OpenInventory --> ViewMode{"Device Viewport"}
+    
+    ViewMode -- "Mobile (< 768px)" --> MobileCards["Render Mobile Inventory Batch Cards<br/>• Remedy / Pharma Name with Potency/Strength Tag<br/>• Stock Balance with Reorder Level & Unit<br/>• Urgency Expiry Countdown Badge (FEFO)<br/>• Buy / Sell Valuation Chips<br/>• Full-Width Adjust Stock, Edit, Deactivate Buttons"]
+    ViewMode -- "Desktop (>= 768px)" --> DesktopTable["Render Inventory Command Center<br/>• KPI Summary Strip (Batches, Low Stock, Expiring, Valuations)<br/>• 300ms Debounced Search & Reset<br/>• FEFO / Reorder Priority Sorting<br/>• Item Type Tabs (All, Homeo, Allopathy)<br/>• Export Stocktake CSV Action"]
+    
+    DesktopTable --> ApplySearch["Apply Search & Filtering"]
+    MobileCards --> ApplySearch
+    
+    ApplySearch --> MatchFilter{"Query Conditions"}
+    MatchFilter -- "Search Text" --> MatchAttrs["Match Remedy/Brand, Generic, Potency (30C, LM), Strength (500mg), Batch #, Supplier"]
+    MatchFilter -- "Status Pill" --> MatchStatus["Filter Low Stock (≤ Reorder), Expiring (≤ 30d), Expired, Out of Stock"]
+    MatchFilter -- "Sort Option" --> MatchSort["Sort by FEFO (Earliest Expiry First), Lowest Stock, Latest, A-Z"]
+    
+    MatchAttrs --> ExecuteQuery["Execute Batch Query with Medicine & Pharma Relations"]
+    MatchStatus --> ExecuteQuery
+    MatchSort --> ExecuteQuery
+    
+    ExecuteQuery --> DisplayResults["Render Filtered Batches with Real-Time Balances"]
+    DisplayResults --> Action{"Dispensary Action"}
+    Action -- "1-Click Adjust" --> OpenModal["Open Inline Stock Adjustment Modal (Correction, Wastage, Restock)"]
+    Action -- "Audit Export" --> DownloadCSV["Download Physical Stocktake CSV"]
+    Action -- "Safe Deactivate" --> SoftDeactivate["Reversible Batch Deactivation (Preserves Audit Ledger)"]
+```
+
+---
+
 ## 8. Billing, Invoicing & Cash Register Flow (`[x] Done`)
 
 Universal point-of-sale workflow for consultation fees, medicines, and lab tests:

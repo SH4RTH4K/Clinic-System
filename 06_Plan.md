@@ -468,6 +468,24 @@
 - [x] **Task 32.4**: Verification & Testing
   - Add feature tests in `tests/Feature/PharmaceuticalCatalogTest.php` covering drug creation, opening batch creation, and validation rules.
   - Run Pint code formatting and build Vite production assets.
+
+### Phase 33: Pharmacy Multi-Batch Inventory, FEFO Sorting & Mobile Workstation (`/admin/inventory`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 33.1**: Backend Multi-Attribute Search, FEFO Sorting & Stocktake CSV Export
+  - Upgrade `InventoryController::index` to search across `batch_number`, `supplier_name`, `form`, `potency`, `medicine.name`, `pharmaceutical.brand_name`, `pharmaceutical.generic_name`, and `pharmaceutical.strength`.
+  - Implement sort selector: `latest` (default), `expiry_asc` (FEFO - earliest expiry first), `stock_asc` (reorder priority), `stock_desc`, `name_asc`.
+  - Add supplier filter and configurable pagination (`per_page`: 15, 25, 50, 100).
+  - Add CSV export endpoint (`GET /admin/inventory/export`) streaming physical stocktake sheet with batch details, location, current quantity, expiry, cost, and selling valuation.
+- [ ] **Task 33.2**: Audit Protection & Cascade Deletion Hardening
+  - Upgrade `InventoryController::destroy` to perform safe deactivation (`is_active = false`) if stock transactions exist, protecting the transaction ledger and invoice records.
+- [ ] **Task 33.3**: Frontend Workstation & FEFO Sort Controls
+  - Implement 300ms debounced instant search with clear (`✕`) button.
+  - Add FEFO / Reorder priority sort dropdown and per-page selector.
+  - Add `📥 Export Stocktake CSV` action in header.
+  - Replace browser `confirm()` with RemediQ's standard `ConfirmDialog` component.
+- [ ] **Task 33.4**: Mobile Responsive Inventory Batch Touch Cards
+  - Implement high-density mobile touch cards (`block md:hidden`) featuring item title, potency/strength tag, stock balance with reorder indicator, expiry urgency pill, buy/sell valuation chips, and 44px+ touch-friendly action buttons (`Adjust Stock`, `Edit`, `Deactivate`).
+- [ ] **Task 33.5**: Verification & Testing
+  - Add feature test suite `tests/Feature/PharmacyInventoryTest.php` verifying multi-attribute search, FEFO sorting, CSV export, safe deactivation, and mobile touch cards.
   - Run Pint code formatting and build Vite production assets.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
@@ -605,4 +623,22 @@
 - [x] **Task 32.4**: Verification & Testing
   - Add feature tests in `tests/Feature/PharmaceuticalCatalogTest.php` covering drug creation, opening batch creation, and validation rules.
   - Run Pint code formatting and build Vite production assets.
+
+### Phase 33: Pharmacy Multi-Batch Inventory, FEFO Sorting & Mobile Workstation (`/admin/inventory`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 33.1**: Backend Multi-Attribute Search, FEFO Sorting & Stocktake CSV Export
+  - Upgrade `InventoryController::index` to search across `batch_number`, `supplier_name`, `form`, `potency`, `medicine.name`, `pharmaceutical.brand_name`, `pharmaceutical.generic_name`, and `pharmaceutical.strength`.
+  - Implement sort selector: `latest` (default), `expiry_asc` (FEFO - earliest expiry first), `stock_asc` (reorder priority), `stock_desc`, `name_asc`.
+  - Add supplier filter and configurable pagination (`per_page`: 15, 25, 50, 100).
+  - Add CSV export endpoint (`GET /admin/inventory/export`) streaming physical stocktake sheet with batch details, location, current quantity, expiry, cost, and selling valuation.
+- [ ] **Task 33.2**: Audit Protection & Cascade Deletion Hardening
+  - Upgrade `InventoryController::destroy` to perform safe deactivation (`is_active = false`) if stock transactions exist, protecting the transaction ledger and invoice records.
+- [ ] **Task 33.3**: Frontend Workstation & FEFO Sort Controls
+  - Implement 300ms debounced instant search with clear (`✕`) button.
+  - Add FEFO / Reorder priority sort dropdown and per-page selector.
+  - Add `📥 Export Stocktake CSV` action in header.
+  - Replace browser `confirm()` with RemediQ's standard `ConfirmDialog` component.
+- [ ] **Task 33.4**: Mobile Responsive Inventory Batch Touch Cards
+  - Implement high-density mobile touch cards (`block md:hidden`) featuring item title, potency/strength tag, stock balance with reorder indicator, expiry urgency pill, buy/sell valuation chips, and 44px+ touch-friendly action buttons (`Adjust Stock`, `Edit`, `Deactivate`).
+- [ ] **Task 33.5**: Verification & Testing
+  - Add feature test suite `tests/Feature/PharmacyInventoryTest.php` verifying multi-attribute search, FEFO sorting, CSV export, safe deactivation, and mobile touch cards.
   - Run Pint code formatting and build Vite production assets.
