@@ -376,6 +376,39 @@ flowchart TD
 
 ---
 
+### 7.3 Allopathic Pharmaceutical Drug Creation & Formulary Intake Workflow (`/admin/pharmaceuticals/create`)
+
+Drug onboarding, bilingual formulation, dosage classification, and atomic opening inventory batch intake:
+
+```mermaid
+flowchart TD
+    User([Pharmacist / Doctor / Admin]) --> OpenCreate["Open /admin/pharmaceuticals/create"]
+    
+    OpenCreate --> InputFields["Fill Core Drug Details"]
+    InputFields --> Brand["Brand Name (e.g. Napa Extra, Seclo)"]
+    InputFields --> Generic["Generic Formulation (e.g. Paracetamol, Omeprazole)"]
+    InputFields --> DosageForm["Select Dosage Form (Expanded: Tablet, Capsule, Syrup, Drops, Spray, etc.)"]
+    InputFields --> Strength["Specify Strength (Tap quick chips: 500mg, 20mg, 40mg, etc.)"]
+    InputFields --> Mfr["Specify Manufacturer (Tap quick chips: Square, Beximco, etc.)"]
+    InputFields --> Category["Select Therapeutic Class (e.g. Analgesic, Antibiotic, PPI)"]
+    
+    InputFields --> DupCheck{"Duplicate Check"}
+    DupCheck -- "Already Exists" --> AlertDup["Show Inline Warning: Drug already registered"]
+    DupCheck -- "Unique" --> BatchToggle{"Receive Initial Stock Batch?"}
+    
+    BatchToggle -- "No (Catalog Master Only)" --> SubmitMaster["Submit to POST /admin/pharmaceuticals"]
+    BatchToggle -- "Yes (With Initial Inventory)" --> BatchFields["Enter Batch Details:<br/>• Batch Number<br/>• Expiry Date<br/>• Purchase & Selling Price<br/>• Initial Quantity (Boxes/Strips)"]
+    
+    BatchFields --> SubmitAtomic["Submit Atomic Master + Batch Creation"]
+    SubmitMaster --> SaveMaster["Create Pharmaceutical Record"]
+    SubmitAtomic --> SaveMaster
+    SubmitAtomic --> SaveBatch["Create MedicineBatch in Pharmacy Inventory"]
+    
+    SaveMaster --> Redirect["Redirect to /admin/pharmaceuticals with Success Toast"]
+```
+
+---
+
 ## 8. Billing, Invoicing & Cash Register Flow (`[x] Done`)
 
 Universal point-of-sale workflow for consultation fees, medicines, and lab tests:

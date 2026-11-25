@@ -173,6 +173,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Real-time physical batch stock aggregation across active `medicine_batches` with 1-click restocking shortcut to `/admin/inventory`.
   - Data safety hardening replacing destructive cascade deletions with reversible soft deactivation (`is_active`).
   - Mobile touch cards (`block md:hidden`) and desktop formulary workstation with CSV export.
+- `[ ] In Progress` **Allopathic Pharmaceutical Drug Creation & Intake Workflow (`/admin/pharmaceuticals/create`)**:
+  - Restoring top header action link (`actions` prop in `PageHeader`) for immediate navigation.
+  - Expanded dosage forms (`Gel`, `Lotion`, `Eye Drops`, `Ear Drops`, `Nasal Spray`, `Powder / Sachet`, `IV Infusion`).
+  - Therapeutic classification and pharmacological family grouping.
+  - Optional atomic initial batch intake allowing opening inventory to be logged during master drug registration.
+  - Tactile quick-select chips for strengths (`500mg`, `20mg`, `40mg`, `100ml`) and pharmaceutical manufacturers (`Square`, `Beximco`, `Incepta`).
 - `[x] Done` **Dual Stock Management**:
   - Homeopathic inventory: Dilutions, Mother Tinctures (30ml, 100ml, 450ml), Globules, and Biochemic preparations.
   - Allopathic inventory: Box/Strip packaging, tablets, syrups, injections.

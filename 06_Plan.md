@@ -453,6 +453,21 @@
 - [ ] **Task 31.5**: Verification & Testing
   - Add feature test suite `tests/Feature/PharmaceuticalCatalogTest.php` verifying multi-parameter search, strength matching, dosage form filtering, batch stock aggregation, safe deactivation, and mobile touch cards.
   - Run Pint code formatting and build Vite production assets.
+
+### Phase 32: Allopathic Pharmaceutical Drug Creation, Header Action Fix & Atomic Inventory Intake (`/admin/pharmaceuticals/create`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 32.1**: Header Navigation Prop Bug Fix & Direct Action Restoration
+  - Correct `action` -> `actions` and `description` -> `subtitle` prop mismatch in `resources/js/Pages/Admin/Pharmaceuticals/Index.jsx` so the `+ Add Pharmaceutical Drug` button renders immediately.
+- [ ] **Task 32.2**: Backend Validation & Atomic Batch Receiving Support
+  - Expand `StorePharmaceuticalRequest` to validate expanded dosage forms (`Gel`, `Lotion`, `Eye Drops`, `Ear Drops`, `Nasal Spray`, `Powder / Sachet`, `IV Infusion`).
+  - Add support for optional opening batch creation (`initial_batch`: `batch_number`, `expiry_date`, `purchase_price`, `selling_price`, `initial_quantity`).
+  - Upgrade `PharmaceuticalController::store` with database transaction to atomically create drug master and opening `MedicineBatch` when requested.
+- [ ] **Task 32.3**: Frontend Intake Studio & Mobile Ergonomics
+  - Add quick-select chips for common strengths (`500mg`, `650mg`, `20mg`, `40mg`, `100ml`) and leading manufacturers (`Square`, `Beximco`, `Incepta`, `Renata`, `ACI`, `Opsonin`).
+  - Add collapsible `[ ] Receive Opening Batch Now` intake section.
+  - Add real-time duplicate drug combination warning.
+- [ ] **Task 32.4**: Verification & Testing
+  - Add feature tests in `tests/Feature/PharmaceuticalCatalogTest.php` covering drug creation, opening batch creation, and validation rules.
+  - Run Pint code formatting and build Vite production assets.
   - Run Pint code formatting and build Vite production assets.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
@@ -574,5 +589,20 @@
   - Implement high-density mobile touch cards (`block md:hidden`) featuring brand name + strength title, generic formulation subtitle, dosage form pill with icon, manufacturer tag, real-time batch stock badge, and 44px+ touch-friendly actions.
 - [ ] **Task 31.5**: Verification & Testing
   - Add feature test suite `tests/Feature/PharmaceuticalCatalogTest.php` verifying multi-parameter search, strength matching, dosage form filtering, batch stock aggregation, safe deactivation, and mobile touch cards.
+  - Run Pint code formatting and build Vite production assets.
+
+### Phase 32: Allopathic Pharmaceutical Drug Creation, Header Action Fix & Atomic Inventory Intake (`/admin/pharmaceuticals/create`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 32.1**: Header Navigation Prop Bug Fix & Direct Action Restoration
+  - Correct `action` -> `actions` and `description` -> `subtitle` prop mismatch in `resources/js/Pages/Admin/Pharmaceuticals/Index.jsx` so the `+ Add Pharmaceutical Drug` button renders immediately.
+- [ ] **Task 32.2**: Backend Validation & Atomic Batch Receiving Support
+  - Expand `StorePharmaceuticalRequest` to validate expanded dosage forms (`Gel`, `Lotion`, `Eye Drops`, `Ear Drops`, `Nasal Spray`, `Powder / Sachet`, `IV Infusion`).
+  - Add support for optional opening batch creation (`initial_batch`: `batch_number`, `expiry_date`, `purchase_price`, `selling_price`, `initial_quantity`).
+  - Upgrade `PharmaceuticalController::store` with database transaction to atomically create drug master and opening `MedicineBatch` when requested.
+- [ ] **Task 32.3**: Frontend Intake Studio & Mobile Ergonomics
+  - Add quick-select chips for common strengths (`500mg`, `650mg`, `20mg`, `40mg`, `100ml`) and leading manufacturers (`Square`, `Beximco`, `Incepta`, `Renata`, `ACI`, `Opsonin`).
+  - Add collapsible `[ ] Receive Opening Batch Now` intake section.
+  - Add real-time duplicate drug combination warning.
+- [ ] **Task 32.4**: Verification & Testing
+  - Add feature tests in `tests/Feature/PharmaceuticalCatalogTest.php` covering drug creation, opening batch creation, and validation rules.
   - Run Pint code formatting and build Vite production assets.
   - Run Pint code formatting and build Vite production assets.
