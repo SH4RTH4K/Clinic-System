@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
+import SearchableCombobox from '@/Components/SearchableCombobox';
 
 export default function Edit({ batch, medicines = [], pharmaceuticals = [], manufacturers = [] }) {
     const { data, setData, put, processing, errors } = useForm({
@@ -104,34 +105,25 @@ export default function Edit({ batch, medicines = [], pharmaceuticals = [], manu
                             </div>
 
                             <div>
-                                <div className="flex items-center justify-between mb-1">
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
-                                        Supplier / Manufacturer (কোম্পানি / প্রস্তুতকারক)
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
+                                        Supplier / Manufacturer
                                     </label>
                                     <Link
                                         href={route('admin.manufacturers.create')}
-                                        className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+                                        className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline shrink-0"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     >
                                         + Add Company
                                     </Link>
                                 </div>
-                                <input
-                                    type="text"
-                                    list="inventory-manufacturers-edit-list"
+                                <SearchableCombobox
                                     value={data.supplier_name}
-                                    onChange={(e) => setData('supplier_name', e.target.value)}
-                                    placeholder="Type or select company..."
-                                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs shadow-xs focus:border-teal-500 focus:ring-teal-500"
+                                    onChange={(name) => setData('supplier_name', name)}
+                                    options={manufacturers}
+                                    placeholder="Search or type supplier..."
                                 />
-                                <datalist id="inventory-manufacturers-edit-list">
-                                    {manufacturers.map((m) => (
-                                        <option key={m.id} value={m.name}>
-                                            {m.short_name ? `${m.short_name} (${m.type})` : m.type}
-                                        </option>
-                                    ))}
-                                </datalist>
                                 {/* Quick Chips */}
                                 <div className="flex flex-wrap gap-1 mt-1.5">
                                     {matchingChips.map((chip) => (
