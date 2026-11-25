@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(PatientNumberingProfileSeeder::class);
+        $this->call(ManufacturerSeeder::class);
 
         // 1. Roles and Permissions
         $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map', 'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs'];
