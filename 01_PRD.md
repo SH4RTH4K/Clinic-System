@@ -166,6 +166,13 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Multi-formulation classification: Dilution Drops, Medicated Sugar Globules/Pills, Crude Liquid Tinctures, and Trituration Tablets.
   - Live batch inventory synchronization displaying real-time physical stock counts and low-stock warning indicators directly in the catalog.
   - Responsive multi-screen presentation with tactile mobile touch cards (`block md:hidden`) and high-density desktop pharmacopoeia grid with CSV export.
+- `[ ] In Progress` **Allopathic Pharmaceuticals Catalog & General Practice Formulary (`/admin/pharmaceuticals`)**:
+  - Central commercial medication formulary maintaining brand names, active generic chemical formulations, strengths, dosage forms (Tablet, Capsule, Syrup, Injection, Drops), and pharmaceutical manufacturers.
+  - Multi-parameter search matching brand name, generic name, strength (mg/ml), manufacturer, and Bengali script.
+  - 1-click dosage form filter pill strip with contextual medical icons (💊, 🧪, 💉, 🧴).
+  - Real-time physical batch stock aggregation across active `medicine_batches` with 1-click restocking shortcut to `/admin/inventory`.
+  - Data safety hardening replacing destructive cascade deletions with reversible soft deactivation (`is_active`).
+  - Mobile touch cards (`block md:hidden`) and desktop formulary workstation with CSV export.
 - `[x] Done` **Dual Stock Management**:
   - Homeopathic inventory: Dilutions, Mother Tinctures (30ml, 100ml, 450ml), Globules, and Biochemic preparations.
   - Allopathic inventory: Box/Strip packaging, tablets, syrups, injections.

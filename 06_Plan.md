@@ -432,6 +432,27 @@
   - Implement high-density mobile touch cards (`block md:hidden`) featuring remedy name, Bengali script, potency pill with scale-specific color coding (CH = blue, LM = purple, X = emerald, Q = amber), form icon (💧 Drops, ⚪ Pills, 🧪 Liquid), live stock badge, and 44px+ touch-friendly actions.
 - [ ] **Task 30.4**: Verification & Testing
   - Add feature test suite `tests/Feature/MedicineCatalogTest.php` verifying multi-nomenclature search, potency scale filters, batch stock aggregation, soft deactivation, and permissions.
+
+### Phase 31: Allopathic Pharmaceuticals Catalog, Multi-Parameter Search & Batch Inventory Integration (`/admin/pharmaceuticals`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 31.1**: Backend Multi-Parameter Search, Strength Matching & Inventory Aggregation
+  - Upgrade `PharmaceuticalController::index` to support multi-column search (`search` / `q`) matching simultaneously across `brand_name`, `generic_name`, `strength`, and `manufacturer`.
+  - Implement dosage form filtering (`dosage_form`), status filter (`status`: `active`, `inactive`, `all`), and stock level filter (`stock_status`: `in_stock`, `low_stock`, `out_of_stock`).
+  - Add `batches()` relationship on `Pharmaceutical` and calculate aggregate physical stock quantity across active `medicine_batches` (`item_type = 'pharmaceutical'`) using `withSum(['batches as total_batch_stock' => fn ($q) => $q->active()], 'current_quantity')`.
+  - Add configurable pagination (`per_page`: 15, 25, 50, 100) and preserve alphabetical sorting by brand name.
+  - Add CSV export endpoint (`GET /admin/pharmaceuticals/export`) streaming all registered pharmaceutical drugs, generics, strengths, manufacturers, and active inventory stock counts.
+- [ ] **Task 31.2**: Data Loss Prevention & Cascade Deletion Hardening
+  - Upgrade `PharmaceuticalController::destroy` to perform safe reversible deactivation (`is_active = false`), preventing accidental cascading deletion of historical batch inventory in `medicine_batches`.
+  - Block hard deletion if active batches or prescription items are linked.
+- [ ] **Task 31.3**: Frontend Clinical Formulary Studio & Dosage Form Pill Strip
+  - Implement 300ms debounced search bar with instant reset button (`✕`).
+  - Add 1-click horizontal dosage form pill strip: `[ All Forms ]`, `[ Tablet 💊 ]`, `[ Capsule 💊 ]`, `[ Syrup 🧪 ]`, `[ Suspension 🧪 ]`, `[ Injection 💉 ]`, `[ Drops 🧴 ]`, `[ Inhaler / Ointment 🧴 ]`.
+  - Add live inventory stock badge (`In Stock: XX`, `Low Stock: XX`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={brand_name}` for rapid stock replenishment.
+  - Update confirmation dialog to accurately reflect safe status deactivation rather than permanent deletion.
+- [ ] **Task 31.4**: Mobile Responsive Formulary Touch Cards
+  - Implement high-density mobile touch cards (`block md:hidden`) featuring brand name + strength title, generic formulation subtitle, dosage form pill with icon, manufacturer tag, real-time batch stock badge, and 44px+ touch-friendly actions.
+- [ ] **Task 31.5**: Verification & Testing
+  - Add feature test suite `tests/Feature/PharmaceuticalCatalogTest.php` verifying multi-parameter search, strength matching, dosage form filtering, batch stock aggregation, safe deactivation, and mobile touch cards.
+  - Run Pint code formatting and build Vite production assets.
   - Run Pint code formatting and build Vite production assets.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
@@ -533,4 +554,25 @@
   - Implement high-density mobile touch cards (`block md:hidden`) featuring remedy name, Bengali script, potency pill with scale-specific color coding (CH = blue, LM = purple, X = emerald, Q = amber), form icon (💧 Drops, ⚪ Pills, 🧪 Liquid), live stock badge, and 44px+ touch-friendly actions.
 - [ ] **Task 30.4**: Verification & Testing
   - Add feature test suite `tests/Feature/MedicineCatalogTest.php` verifying multi-nomenclature search, potency scale filters, batch stock aggregation, soft deactivation, and permissions.
+
+### Phase 31: Allopathic Pharmaceuticals Catalog, Multi-Parameter Search & Batch Inventory Integration (`/admin/pharmaceuticals`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 31.1**: Backend Multi-Parameter Search, Strength Matching & Inventory Aggregation
+  - Upgrade `PharmaceuticalController::index` to support multi-column search (`search` / `q`) matching simultaneously across `brand_name`, `generic_name`, `strength`, and `manufacturer`.
+  - Implement dosage form filtering (`dosage_form`), status filter (`status`: `active`, `inactive`, `all`), and stock level filter (`stock_status`: `in_stock`, `low_stock`, `out_of_stock`).
+  - Add `batches()` relationship on `Pharmaceutical` and calculate aggregate physical stock quantity across active `medicine_batches` (`item_type = 'pharmaceutical'`) using `withSum(['batches as total_batch_stock' => fn ($q) => $q->active()], 'current_quantity')`.
+  - Add configurable pagination (`per_page`: 15, 25, 50, 100) and preserve alphabetical sorting by brand name.
+  - Add CSV export endpoint (`GET /admin/pharmaceuticals/export`) streaming all registered pharmaceutical drugs, generics, strengths, manufacturers, and active inventory stock counts.
+- [ ] **Task 31.2**: Data Loss Prevention & Cascade Deletion Hardening
+  - Upgrade `PharmaceuticalController::destroy` to perform safe reversible deactivation (`is_active = false`), preventing accidental cascading deletion of historical batch inventory in `medicine_batches`.
+  - Block hard deletion if active batches or prescription items are linked.
+- [ ] **Task 31.3**: Frontend Clinical Formulary Studio & Dosage Form Pill Strip
+  - Implement 300ms debounced search bar with instant reset button (`✕`).
+  - Add 1-click horizontal dosage form pill strip: `[ All Forms ]`, `[ Tablet 💊 ]`, `[ Capsule 💊 ]`, `[ Syrup 🧪 ]`, `[ Suspension 🧪 ]`, `[ Injection 💉 ]`, `[ Drops 🧴 ]`, `[ Inhaler / Ointment 🧴 ]`.
+  - Add live inventory stock badge (`In Stock: XX`, `Low Stock: XX`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={brand_name}` for rapid stock replenishment.
+  - Update confirmation dialog to accurately reflect safe status deactivation rather than permanent deletion.
+- [ ] **Task 31.4**: Mobile Responsive Formulary Touch Cards
+  - Implement high-density mobile touch cards (`block md:hidden`) featuring brand name + strength title, generic formulation subtitle, dosage form pill with icon, manufacturer tag, real-time batch stock badge, and 44px+ touch-friendly actions.
+- [ ] **Task 31.5**: Verification & Testing
+  - Add feature test suite `tests/Feature/PharmaceuticalCatalogTest.php` verifying multi-parameter search, strength matching, dosage form filtering, batch stock aggregation, safe deactivation, and mobile touch cards.
+  - Run Pint code formatting and build Vite production assets.
   - Run Pint code formatting and build Vite production assets.

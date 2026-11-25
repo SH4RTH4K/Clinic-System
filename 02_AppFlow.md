@@ -335,6 +335,47 @@ flowchart TD
 
 ---
 
+### 7.2 Allopathic Pharmaceuticals Catalog & Formulary Flow (`/admin/pharmaceuticals`)
+
+Conventional pharmaceutical formulary management, multi-parameter search, dosage form classification, and batch inventory synchronization:
+
+```mermaid
+flowchart TD
+    User([Doctor / Pharmacist / Admin]) --> OpenPharma["Navigate to /admin/pharmaceuticals"]
+    OpenPharma --> ViewMode{"Device Viewport"}
+    
+    ViewMode -- "Mobile (< 768px)" --> MobileView["Render Mobile Pharmaceutical Touch Cards<br/>• Brand Name + Strength Title<br/>• Generic Formulation Subtitle<br/>• Dosage Form Icon (💊 Tablet, 🧪 Syrup, 💉 Injection)<br/>• Real-Time Batch Inventory Stock Badge<br/>• Touch-Friendly Edit, Inventory & Deactivate Buttons"]
+    ViewMode -- "Desktop (>= 768px)" --> DesktopView["Render Clinical Formulary Workstation<br/>• Debounced Instant Search (300ms)<br/>• Dosage Form Pill Strip (Tablet, Syrup, Capsule, etc.)<br/>• Status & Stock Level Filters<br/>• Per-Page Selector (15, 25, 50, 100)<br/>• CSV Export & + Add Pharmaceutical Action"]
+    
+    DesktopView --> SearchOrFilter["Apply Search & Filter Criteria"]
+    MobileView --> SearchOrFilter
+    
+    SearchOrFilter --> MatchCriteria{"Query Criteria"}
+    MatchCriteria -- "Brand / Commercial Name" --> MatchBrand["Match brand_name (e.g. Napa, Seclo, Moxacil)"]
+    MatchCriteria -- "Generic Formulation" --> MatchGeneric["Match generic_name (e.g. Paracetamol, Omeprazole)"]
+    MatchCriteria -- "Dosage Strength" --> MatchStrength["Match strength (e.g. 500mg, 20mg, 100ml)"]
+    MatchCriteria -- "Manufacturer" --> MatchMfr["Match manufacturer (e.g. Beximco, Square)"]
+    MatchCriteria -- "Bengali Script" --> MatchBn["Match Bengali phonetic name (e.g. নাপা, সেকলো)"]
+    MatchCriteria -- "Dosage Form Pill" --> FilterForm["Filter Tablet, Capsule, Syrup, Suspension, Injection, Drops"]
+    MatchCriteria -- "Stock Level Pill" --> FilterStock["Filter In Stock (>0), Low Stock, Out of Stock (0)"]
+    
+    MatchBrand --> ExecuteQuery["Execute Eloquent Query with MedicineBatch Stock Sum"]
+    MatchGeneric --> ExecuteQuery
+    MatchStrength --> ExecuteQuery
+    MatchMfr --> ExecuteQuery
+    MatchBn --> ExecuteQuery
+    FilterForm --> ExecuteQuery
+    FilterStock --> ExecuteQuery
+    
+    ExecuteQuery --> RenderResults["Display Filtered Drugs with Real-Time Stock Count"]
+    RenderResults --> UserAction{"User Action"}
+    UserAction -- "Edit Drug" --> EditDrug["Open /admin/pharmaceuticals/{id}/edit"]
+    UserAction -- "Restock / Manage Batches" --> JumpStock["Jump to /admin/inventory?search={brand_name}"]
+    UserAction -- "Safe Deactivate" --> SafeDeactivate["Safe Status Toggle (is_active = false) without batch loss"]
+```
+
+---
+
 ## 8. Billing, Invoicing & Cash Register Flow (`[x] Done`)
 
 Universal point-of-sale workflow for consultation fees, medicines, and lab tests:
