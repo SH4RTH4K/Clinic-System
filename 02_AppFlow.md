@@ -537,3 +537,26 @@ flowchart TD
     PatientReceives --> ViewPrescription["Public Patient View: /rx/{share_token}"]
     ViewPrescription --> DownloadPDF["Download Authentic Signed Prescription PDF: /rx/{share_token}/pdf"]
 ```
+
+### 10.1 SMS Gateway Diagnostics, Balance Check & Template Configuration Flow (`/admin/communications/settings`)
+
+```mermaid
+flowchart TD
+    SettingsHome["Communication Settings (/admin/communications/settings)"] --> DriverSetup["Gateway Driver Setup: Log | Greenweb | MimSMS | Generic REST"]
+    
+    DriverSetup --> AuthInputs["Enter API Credentials, Endpoint URL & Sender ID (Masking)"]
+    
+    AuthInputs --> LiveDiagnostics{"Live Vendor Diagnostics"}
+    LiveDiagnostics -->|"Check Balance"| BalanceQuery["[🔍 Check Balance] -> Queries Vendor Balance API & Displays SMS Credits Remaining"]
+    LiveDiagnostics -->|"Test Dispatch"| TestPing["[🚀 Send Test SMS] -> Test Mobile Number -> Immediate HTTP Response Display"]
+    
+    SettingsHome --> TemplateStudio["Interactive Message Template Studio"]
+    TemplateStudio --> TokenInserter["Clickable Token Inserter: [+ Patient Name] [+ Doctor] [+ Date] [+ Rx Link]"]
+    TemplateStudio --> CharacterCounter["Live GSM vs Unicode Billing Counter: X / 160 (GSM) vs X / 70 (Bengali Unicode)"]
+    
+    SettingsHome --> EventTriggers["Event Triggers: Appointments | Queue Tokens | Digital Rx | Billing Receipts"]
+    
+    TemplateStudio --> SaveConfig["PUT /admin/communications/settings -> Update clinic_settings.sms_config JSON"]
+    EventTriggers --> SaveConfig
+    SaveConfig --> ActiveDispatcher["Powers Automated SMS & WhatsApp Dispatches Throughout RemediQ"]
+```

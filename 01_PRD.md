@@ -209,6 +209,7 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **WhatsApp Click-to-Chat Prescription Sharing**: Pre-filled bilingual WhatsApp message sharing tokenized prescription link directly to patient phone.
 - `[x] Done` **Public Digital Prescription Access**: Secure tokenized web viewer (`/rx/{token}`) and PDF stream (`/rx/{token}/pdf`) for mobile patients without login.
 - `[x] Done` **Notification Audit Ledger**: Comprehensive log tracking SMS and WhatsApp dispatches, delivery statuses, metrics, and custom direct SMS modal.
+- `[ ] Pending` **Communication Settings, Gateway Balance Check & Template Studio Upgrade (`/admin/communications/settings`)**: Live gateway credit balance checker (`Check Balance`), real-time test SMS dispatch modal, dynamic character & segment counter (English GSM 160 vs Bengali Unicode 70), interactive clickable variable chips (`[+ Patient Name]`, `[+ Token Code]`, `[+ Rx Link]`), automated billing receipt SMS trigger, WhatsApp custom greeting template editor, and responsive studio layout.
 
 ---
 

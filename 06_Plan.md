@@ -383,6 +383,21 @@
   - High-density mobile touch card stream (`block md:hidden`) with tactile `+` / `-` quantity steppers and sticky bottom summary.
 - [ ] **Task 27.4**: Verification & Testing
   - Add feature tests in `PatientBillingAndCashRegisterTest.php` covering batch search, change calculation, and POS auto-print redirection. Pint formatting and Vite build verification.
+
+### Phase 28: Communication Settings, Gateway Balance Check & Template Studio Upgrade (`/admin/communications/settings`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 28.1**: Backend Live Gateway Diagnostics & Balance Check Endpoints
+  - Add `/admin/communications/check-balance` endpoint querying vendor balance API (Greenweb balance API, MimSMS balance API) and returning credit status.
+  - Add `/admin/communications/test-ping` endpoint allowing admin to dispatch a test SMS to a specified phone number and view real-time HTTP response.
+  - Extend `UpdateSmsSettingsRequest` and `CommunicationService` to support `auto_sms_billing` trigger and `billing_receipt` template.
+- [ ] **Task 28.2**: Frontend Template Studio & Live Counter Transformation
+  - Implement real-time character & segment counter distinguishing GSM 7-bit English (160 chars) from Unicode Bengali (70 chars) with amber billing cost alerts.
+  - Add clickable variable chips (`[+ Patient Name]`, `[+ Doctor Name]`, `[+ Token Code]`, `[+ Date]`, `[+ Rx Link]`) inserting placeholders at cursor position.
+  - Add live Mobile Phone Preview rendering message text in a smartphone simulator frame.
+  - Add WhatsApp sharing template customization editor.
+- [ ] **Task 28.3**: Mobile Responsive Studio Layout
+  - Implement tactile accordion / tabbed view on mobile (`[ 📡 Gateway ]`, `[ ⚡ Triggers ]`, `[ 📝 Templates ]`) preventing long vertical scrolling.
+- [ ] **Task 28.4**: Verification & Testing
+  - Add feature tests in `AutomatedPatientCommunicationsTest.php` verifying balance checking, test ping dispatch, billing receipt SMS triggering, and template saving. Pint formatting and Vite build verification.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -434,3 +449,18 @@
   - High-density mobile touch card stream (`block md:hidden`) with tactile `+` / `-` quantity steppers and sticky bottom summary.
 - [ ] **Task 27.4**: Verification & Testing
   - Add feature tests in `PatientBillingAndCashRegisterTest.php` covering batch search, change calculation, and POS auto-print redirection. Pint formatting and Vite build verification.
+
+### Phase 28: Communication Settings, Gateway Balance Check & Template Studio Upgrade (`/admin/communications/settings`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 28.1**: Backend Live Gateway Diagnostics & Balance Check Endpoints
+  - Add `/admin/communications/check-balance` endpoint querying vendor balance API (Greenweb balance API, MimSMS balance API) and returning credit status.
+  - Add `/admin/communications/test-ping` endpoint allowing admin to dispatch a test SMS to a specified phone number and view real-time HTTP response.
+  - Extend `UpdateSmsSettingsRequest` and `CommunicationService` to support `auto_sms_billing` trigger and `billing_receipt` template.
+- [ ] **Task 28.2**: Frontend Template Studio & Live Counter Transformation
+  - Implement real-time character & segment counter distinguishing GSM 7-bit English (160 chars) from Unicode Bengali (70 chars) with amber billing cost alerts.
+  - Add clickable variable chips (`[+ Patient Name]`, `[+ Doctor Name]`, `[+ Token Code]`, `[+ Date]`, `[+ Rx Link]`) inserting placeholders at cursor position.
+  - Add live Mobile Phone Preview rendering message text in a smartphone simulator frame.
+  - Add WhatsApp sharing template customization editor.
+- [ ] **Task 28.3**: Mobile Responsive Studio Layout
+  - Implement tactile accordion / tabbed view on mobile (`[ 📡 Gateway ]`, `[ ⚡ Triggers ]`, `[ 📝 Templates ]`) preventing long vertical scrolling.
+- [ ] **Task 28.4**: Verification & Testing
+  - Add feature tests in `AutomatedPatientCommunicationsTest.php` verifying balance checking, test ping dispatch, billing receipt SMS triggering, and template saving. Pint formatting and Vite build verification.
