@@ -301,6 +301,49 @@ flowchart TD
     FinishRx([Prescription Finalized]) --> AutoComplete[Token Status = completed]
 ```
 
+### 9.1 Multi-Screen Queue Operations & Reception Dashboard Flow (`/admin/queue`)
+
+```mermaid
+flowchart LR
+    QueueHome["Queue Management Dashboard (/admin/queue)"] --> SearchEngine["Unified Smart Search: Token Code | Token # | Patient Name | Phone | Patient ID | Old ID"]
+    QueueHome --> MultiScreen["Multi-Screen Views: Mobile Cards (<768px) | Tablet Scroll (768-1024px) | Desktop Table (>=1025px) | TV Board (1080p/4K)"]
+    QueueHome --> LiveSync["Real-Time Synchronization: Auto-Refresh Polling (15s/30s) + Status Sync"]
+    QueueHome --> DirectConsult["Direct EHR Handover: 1-Click Launch Consultation (/admin/visits/create?patient_id=X&token_id=Y)"]
+    QueueHome --> PatientContact["1-Tap Direct Patient Contact: Click-to-Dial + WhatsApp Alert for Waiting/No-Show Patients"]
+```
+
+### 9.2 Token Issuance & Queue Check-in Flow (`/admin/queue/tokens/create`)
+
+```mermaid
+flowchart TD
+    Start(["Front Desk / Check-in Arrival"]) --> Entry{"Entry Route"}
+    
+    Entry -->|"Preselected Link (?patient_id=4)"| LoadPatient["QueueController::create - Load Patient #4 Demographics"]
+    Entry -->|"Walk-in Unregistered"| WalkInMode["Toggle Walk-in Guest Mode (Name + Phone)"]
+    Entry -->|"Search Registered Patient"| AsyncSearch["Async Multi-Factor Search / Barcode Scan"]
+    
+    AsyncSearch --> MatchPatient["Select Existing Patient Record"]
+    MatchPatient --> DemographicsCard["Render Patient Demographics Verification Card"]
+    LoadPatient --> DemographicsCard
+    
+    DemographicsCard --> CheckActiveToken{"Active Token Today?"}
+    CheckActiveToken -->|"Yes"| ConflictAlert["Display Duplicate Warning Banner + [Reprint Slip] + [Override Checkbox]"]
+    CheckActiveToken -->|"No"| DoctorSelect["Select Doctor & Auto-Populate Chamber for Today"]
+    
+    ConflictAlert --> DoctorSelect
+    
+    DoctorSelect --> SetPriority["Set Priority: Normal (Green) vs Urgent (Red)"]
+    SetPriority --> ActionChoice{"Submit Action"}
+    
+    ActionChoice -->|"Issue Token & Print Slip"| StoreAndPrint["POST /admin/queue/tokens -> Redirect to /admin/queue/tokens/{id}/print"]
+    ActionChoice -->|"Issue & Start Consultation"| StoreAndConsult["POST /admin/queue/tokens?start_consultation=1 -> Redirect to /admin/visits/create"]
+    
+    StoreAndPrint --> ThermalSlip["80mm POS Thermal Slip (Auto Print Window)"]
+    ThermalSlip --> BackToQueue["[Back to Queue] or [Issue Another Token]"]
+    
+    StoreAndConsult --> VisitWorkbench["Clinical Consultation & Prescription EHR Workbench"]
+```
+
 ---
 
 ## 10. Automated Patient Communications Flow (`[x] Done`)

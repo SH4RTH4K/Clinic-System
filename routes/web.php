@@ -36,8 +36,8 @@ Route::get('/rx/{token}', [DigitalPrescriptionController::class, 'show'])->name(
 Route::get('/rx/{token}/pdf', [DigitalPrescriptionController::class, 'downloadPdf'])->name('rx.pdf');
 
 // Public Digital Prescription Sharing (WhatsApp / SMS link)
-Route::get('/rx/{token}', [\App\Http\Controllers\Public\DigitalPrescriptionController::class, 'show'])->name('rx.show');
-Route::get('/rx/{token}/pdf', [\App\Http\Controllers\Public\DigitalPrescriptionController::class, 'downloadPdf'])->name('rx.pdf');
+Route::get('/rx/{token}', [DigitalPrescriptionController::class, 'show'])->name('rx.show');
+Route::get('/rx/{token}/pdf', [DigitalPrescriptionController::class, 'downloadPdf'])->name('rx.pdf');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

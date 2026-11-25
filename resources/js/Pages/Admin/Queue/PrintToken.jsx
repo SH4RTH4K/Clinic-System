@@ -18,25 +18,33 @@ export default function PrintToken({ token, settings, aheadCount }) {
             <Head title={`Token ${token.token_code} - ${clinicName}`} />
 
             {/* Screen Controls */}
-            <div className="w-full max-w-sm mb-4 flex items-center justify-between print:hidden">
+            <div className="w-full max-w-[80mm] mb-4 flex items-center justify-between print:hidden gap-2">
                 <Link
                     href={route('admin.queue.index')}
-                    className="inline-flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 font-medium"
+                    className="inline-flex items-center gap-1 text-xs text-neutral-600 hover:text-neutral-900 font-medium"
                 >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    Back to Queue
+                    Queue
                 </Link>
-                <button
-                    onClick={() => window.print()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium shadow-sm transition"
-                >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Print Slip
-                </button>
+                <div className="flex items-center gap-1.5">
+                    <Link
+                        href={route('admin.queue.tokens.create')}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-neutral-50 text-neutral-700 rounded-md text-xs font-semibold border border-neutral-300 shadow-sm transition"
+                    >
+                        + Issue Next
+                    </Link>
+                    <button
+                        onClick={() => window.print()}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-sm transition"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Print
+                    </button>
+                </div>
             </div>
 
             {/* 80mm POS Thermal Slip */}

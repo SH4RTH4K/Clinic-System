@@ -76,16 +76,57 @@ class QueueController extends Controller
     public function create(Request $request): Response
     {
         $doctors = Doctor::query()->where('is_active', true)->with('schedules')->orderBy('sort_order')->get();
-        $patients = Patient::query()->latest('id')->take(20)->get(['id', 'name', 'phone', 'patient_no', 'patient_series', 'patient_code']);
+
+        $search = trim((string) ($request->input('search') ?: $request->input('q')));
+
+        $patientColumns = [
+            'id', 'name', 'phone', 'patient_no', 'patient_series', 'patient_code',
+            'old_or_other_id', 'photo_path', 'gender', 'age_years', 'age_months', 'age_days',
+            'blood_group', 'guardian_name', 'guardian_relationship', 'guardian_relationship_custom',
+            'manual_last_visit_date', 'legacy_visits_count',
+        ];
+
+        $patientsQuery = Patient::query();
+        if ($search !== '') {
+            $patientsQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('patient_no', 'like', "%{$search}%")
+                    ->orWhere('patient_code', 'like', "%{$search}%")
+                    ->orWhere('old_or_other_id', 'like', "%{$search}%")
+                    ->orWhere('guardian_name', 'like', "%{$search}%");
+            });
+        }
+
+        $patients = $patientsQuery->latest('id')
+            ->take(50)
+            ->get($patientColumns);
 
         $preselectedPatientId = $request->input('patient_id');
         $selectedPatient = $preselectedPatientId ? Patient::find($preselectedPatientId) : null;
+
+        if ($selectedPatient) {
+            $selectedPatient->append(['effective_last_visit_date', 'effective_visits_count', 'patient_identifier']);
+            if (! $patients->contains('id', $selectedPatient->id)) {
+                $patients->prepend($selectedPatient);
+            }
+        }
+
+        $today = now()->toDateString();
         $todayActiveTokens = PatientQueueToken::query()
-            ->whereDate('token_date', now()->toDateString())
+            ->whereDate('token_date', $today)
             ->whereIn('status', ['waiting', 'calling', 'in_consultation'])
             ->whereNotNull('patient_id')
-            ->get(['id', 'token_number', 'token_code', 'patient_id', 'status', 'doctor_id'])
+            ->get(['id', 'token_number', 'token_code', 'patient_id', 'status', 'doctor_id', 'service_room'])
             ->keyBy('patient_id');
+
+        $doctorQueueCounts = PatientQueueToken::query()
+            ->whereDate('token_date', $today)
+            ->whereIn('status', ['waiting', 'calling', 'in_consultation'])
+            ->whereNotNull('doctor_id')
+            ->selectRaw('doctor_id, count(*) as active_count')
+            ->groupBy('doctor_id')
+            ->pluck('active_count', 'doctor_id');
 
         return Inertia::render('Admin/Queue/Create', [
             'doctors' => $doctors,
@@ -94,6 +135,8 @@ class QueueController extends Controller
             'defaultDoctorId' => $request->input('doctor_id'),
             'appointmentRequestId' => $request->input('appointment_request_id'),
             'todayActiveTokens' => $todayActiveTokens,
+            'doctorQueueCounts' => $doctorQueueCounts,
+            'searchTerm' => $search,
         ]);
     }
 
@@ -103,6 +146,20 @@ class QueueController extends Controller
     public function store(StoreQueueTokenRequest $request, QueueService $queueService): RedirectResponse
     {
         $token = $queueService->issueToken($request->validated(), $request->user());
+
+        if ($request->boolean('start_consultation')) {
+            $queueService->startConsultation($token);
+
+            return redirect()->route('admin.visits.create', [
+                'patient_id' => $token->patient_id,
+                'token_id' => $token->id,
+            ])->with('success', "Token {$token->token_code} issued and entered consultation.");
+        }
+
+        if ($request->boolean('auto_print')) {
+            return redirect()->route('admin.queue.tokens.print', $token)
+                ->with('success', "Token {$token->token_code} issued successfully.");
+        }
 
         return redirect()->route('admin.queue.index', ['date' => $token->token_date->toDateString()])
             ->with('success', "Token {$token->token_code} issued successfully.");

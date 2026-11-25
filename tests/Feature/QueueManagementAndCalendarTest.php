@@ -382,6 +382,71 @@ class QueueManagementAndCalendarTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_can_render_queue_token_create_page_with_preselected_patient_and_search(): void
+    {
+        $olderPatient = Patient::factory()->create([
+            'name' => 'Aysha Begum',
+            'phone' => '01934747271',
+            'old_or_other_id' => '3391-A',
+        ]);
+
+        // When patient_id is passed, it loads preselected patient and merges into patients list
+        $response = $this->actingAs($this->staff)->get(route('admin.queue.tokens.create', [
+            'patient_id' => $olderPatient->id,
+        ]));
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Admin/Queue/Create')
+            ->has('selectedPatient')
+            ->where('selectedPatient.id', $olderPatient->id)
+            ->where('selectedPatient.name', 'Aysha Begum')
+            ->has('doctorQueueCounts')
+        );
+
+        // When search parameter is passed
+        $searchResponse = $this->actingAs($this->staff)->get(route('admin.queue.tokens.create', [
+            'search' => 'Aysha',
+        ]));
+        $searchResponse->assertOk();
+        $searchResponse->assertInertia(fn ($page) => $page
+            ->component('Admin/Queue/Create')
+            ->where('searchTerm', 'Aysha')
+            ->has('patients', 1)
+        );
+    }
+
+    public function test_issue_token_with_auto_print_redirects_to_print_slip(): void
+    {
+        $response = $this->actingAs($this->staff)->post(route('admin.queue.tokens.store'), [
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctor->id,
+            'service_room' => 'Chamber 1',
+            'priority' => 'normal',
+            'auto_print' => true,
+        ]);
+
+        $token = PatientQueueToken::latest('id')->first();
+        $response->assertRedirect(route('admin.queue.tokens.print', $token));
+    }
+
+    public function test_issue_token_with_start_consultation_redirects_to_visit_create(): void
+    {
+        $response = $this->actingAs($this->doctorUser)->post(route('admin.queue.tokens.store'), [
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctor->id,
+            'service_room' => 'Chamber 1',
+            'priority' => 'urgent',
+            'start_consultation' => true,
+        ]);
+
+        $token = PatientQueueToken::latest('id')->first();
+        $this->assertEquals('in_consultation', $token->status);
+        $response->assertRedirect(route('admin.visits.create', [
+            'patient_id' => $this->patient->id,
+            'token_id' => $token->id,
+        ]));
+    }
+
     public function test_unauthorized_user_cannot_access_queue_or_calendar(): void
     {
         $queueResponse = $this->actingAs($this->unauthorizedUser)->get(route('admin.queue.index'));

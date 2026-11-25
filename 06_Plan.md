@@ -291,3 +291,36 @@
   - Implemented dual-mode presentation: high-density mobile consultation cards (`block md:hidden`) and structured table (`hidden md:block`).
   - Mobile cards display patient avatar, age, gender, diagnosis, vitals, prescribed items count, 1-tap call & WhatsApp links, billing badge, and touch action buttons.
 - [x] **Verification**: Added 5 comprehensive feature tests in `VisitsDirectoryFeatureTest.php` covering search, date/doctor/status filters, CSV export, and clinical authorization boundaries (111 assertions). Pint formatted and Vite build verified (all 87 visit tests passing).
+
+### Phase 21: Waiting Room Queue Multi-Screen Optimization & Search Upgrade (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 21.1**: Upgraded Unified Smart Search & Query Optimization
+  - Upgrade `QueueController::index` search query to match `token_code`, numeric `token_number` (`4`, `#4`), `patient_name`, `patient_phone`, `service_room`, and eager-loaded `patient` (`name`, `phone`, `patient_no`, `patient_code`, `patient_series`, `old_or_other_id`) and `doctor` (`name`, `name_bn`).
+  - Eager-load `patient:id,name,phone,patient_no,patient_series,patient_code,old_or_other_id,photo_path,gender,age_years` to supply avatars and demographic summaries without extra queries.
+- [ ] **Task 21.2**: Desktop & Tablet Dashboard Experience
+  - Implement debounced search input with dedicated `Search` button, Enter key trigger, and `Reset` button (eliminating unthrottled keystroke server requests).
+  - Add live queue auto-refresh toggle (15s / 30s) with visual countdown pill and 1-click `🔄 Refresh Queue` action.
+  - Add 1-click **`+ Start Visit`** direct consultation launcher (`/admin/visits/create?patient_id=X&token_id=Y`) for calling and in-consultation tokens.
+  - Fix `patient_identifier` display bug (replacing non-existent `token.patient?.patient_number`).
+  - Add 1-tap phone dialer and WhatsApp chat links for calling/waiting patients.
+  - Wrap desktop table in `min-w-[850px]` container to protect tablet screens from column crushing.
+- [ ] **Task 21.3**: Mobile Responsive Touch Card Architecture
+  - Implement dual-mode presentation: high-density mobile queue cards (`block md:hidden`) and structured table (`hidden md:block`).
+  - Refine mobile counter banner to a compact 3-column / 2-row grid to reduce vertical scroll distance by 50%.
+  - Touch-friendly mobile cards displaying token number badge (`T-004`), patient name, priority pill (`Urgent`), status badge, doctor & chamber, issued/called time, phone with 1-tap call & WhatsApp, and thumb-friendly action buttons.
+- [ ] **Verification**: Add feature tests in `QueueManagementAndCalendarTest.php` verifying upgraded search parameters, multi-field matching, and auto-refresh state. Pint format and Vite build verification.
+
+### Phase 22: Queue Token Issuance Workflow, Live Search & Multi-Screen Views (`[x] COMPLETED`)
+- [x] **Task 22.1**: Runtime Bug Fix & Search Parameter Upgrade
+  - Resolved Temporal Dead Zone ReferenceError in `Create.jsx` (`activeTokenToday` accessed before `useForm`).
+  - Upgraded `QueueController::create` to accept `search` / `q` parameters, query matching `name`, `phone`, `patient_no`, `patient_code`, `old_or_other_id`, and ensure `$selectedPatient` is always included in the patient list.
+  - Implemented debounced async patient autocomplete / live combobox leveraging `/admin/patients/search?q=...` with OPD card barcode scan support.
+- [x] **Task 22.2**: Patient Demographics Verification Card & Conflict Actions
+  - Displayed rich Patient Demographics Verification Card upon patient selection (photo/avatar, `A-2026-000004`, `3391-A`, father/guardian, age/gender, phone, blood group, last visit date, total visits).
+  - Upgraded active duplicate token conflict alert with interactive actions (`[Reprint Slip]`, `[View in Queue]`) and `[ ] Confirm & Issue Additional Token` confirmation gate.
+  - Calculated real-time doctor queue load counts (e.g. `2 waiting today`) and auto-selected chamber based on today's active schedule.
+- [x] **Task 22.3**: Multi-Screen Responsive Layout & POS Slip Print Workflow
+  - Refactored to adaptive 2-column desktop layout (Left: Patient Search & Demographics; Right: Doctor, Chamber, Priority & Print Options).
+  - Optimized mobile phone layout (<768px) with tactile touch pills for Patient Type and Priority, compact card spacing, and full-width stacked actions.
+  - Supported automatic 80mm POS slip redirection and print window on token issue, added "+ Issue Next" button on print screen, plus secondary fast-track `[+ Issue & Start Consultation]` action.
+- [x] **Task 22.4**: Verification & Testing
+  - Added feature tests in `QueueManagementAndCalendarTest.php` covering token issuance search parameters, duplicate token guard, print slip redirection, and doctor load calculation (12 tests, 91 assertions passing). Pint formatting and Vite build verified.

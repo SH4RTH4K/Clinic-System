@@ -27,6 +27,9 @@ class StoreQueueTokenRequest extends FormRequest
             'token_date' => ['nullable', 'date'],
             'appointment_request_id' => ['nullable', 'exists:appointment_requests,id'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'auto_print' => ['nullable', 'boolean'],
+            'start_consultation' => ['nullable', 'boolean'],
+            'confirm_duplicate' => ['nullable', 'boolean'],
         ];
     }
 }
