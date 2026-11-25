@@ -174,6 +174,7 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Multi-Channel Payments**: Record payment transactions across Cash, bKash, Nagad, Rocket, Credit/Debit Card, Bank Transfer, or Clinic Discounts.
 - `[x] Done` **Printable Receipts**: Dual format receipts (Thermal 80mm POS slip and Standard A5/A4 invoice).
 - `[x] Done` **Daily Accounts Ledger & Closing**: Daily cash collection summary, payment methods breakdown (Cash, bKash, Nagad, Card, Bank), department revenue streams, and daily closing reconciliation sheet.
+- `[ ] Pending` **Invoices Directory Search, Quick Due Payment & Multi-Screen Touch Transformation (`/admin/invoices`)**: Multi-column debounced smart search (invoice #, patient name, phone, patient code, old ID `3391-A`, series/number, doctor name), quick date range presets (`Today`, `Yesterday`, `This Week`, `This Month`), payment method filter (`Cash`, `bKash`, `Nagad`, `Card`), 1-click `[ 💵 Collect Due ]` quick payment modal, CSV/Excel export for accountant ledger reconciliation, and high-density mobile touch cards (`block md:hidden`).
 
 ---
 

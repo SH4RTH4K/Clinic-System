@@ -323,6 +323,32 @@ flowchart TD
     PrintSlip --> DailyLedger[Invoice added to Daily Cash Reconciliation Report]
 ```
 
+### 8.1 Invoices Directory, Search Engine & Cashier Operations Flow (`/admin/invoices`)
+
+```mermaid
+flowchart TD
+    InvHome["Invoices & Billing Directory (/admin/invoices)"] --> HeaderKPIs["Header KPIs: Total Billed | Total Collected | Outstanding Due | Unpaid Count"]
+    
+    InvHome --> Controls["Search & Filter Bar: Smart Search | Status Tabs | Date Presets | Payment Method | Export"]
+    
+    Controls --> SearchEngine["Multi-Column Smart Search: Invoice # | Patient Name | Phone | Patient ID | Old ID | Doctor"]
+    Controls --> DatePills["Quick Date Presets: [ Today ] | [ Yesterday ] | [ This Week ] | [ This Month ]"]
+    Controls --> ExportCSV["Export Filtered Data: CSV Download for Accounting"]
+    
+    InvHome --> ScreenMode{"Screen Viewport"}
+    
+    ScreenMode -->|"Mobile (< 768px)"| MobileCards["High-Density Mobile Touch Cards: 1-Tap Thermal Slip | Financial Pills | Quick Actions"]
+    ScreenMode -->|"Tablet & Desktop (>= 768px)"| DesktopTable["Responsive Data Table: Full Breakdown (Invoice, Patient, Doctor, Totals, Dues, Actions)"]
+    
+    DesktopTable --> CashierActions{"Cashier Action Triggers"}
+    MobileCards --> CashierActions
+    
+    CashierActions -->|"Collect Due"| DueModal["1-Click Due Payment Modal: Record Cash/MFS & Print Receipt without leaving"]
+    CashierActions -->|"Thermal Slip"| PrintPOS["Open 80mm Thermal Slip Print Dialog"]
+    CashierActions -->|"A4/A5 Print"| PrintFull["Open Standard Invoice Print Dialog"]
+    CashierActions -->|"View Details"| ViewDetail["View Invoice & Payment Audit Trail: /admin/invoices/{id}"]
+```
+
 ---
 
 ## 9. Patient Queue Management & Digital Signage Flow (`[x] Done`)

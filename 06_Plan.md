@@ -354,6 +354,20 @@
   - Implement doctor search filter for clinics with multiple physicians/consultants.
 - [ ] **Task 25.4**: Verification & Testing
   - Add feature tests in `AppointmentRequestWorkflowTest.php` covering search by name, phone, ID, date presets, and quick status actions. Pint formatting and Vite build verification.
+
+### Phase 26: Invoices Directory Search, Quick Due Payment & Multi-Screen Transformation (`/admin/invoices`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 26.1**: Backend Multi-Column Smart Search, Quick Date Presets & CSV Export
+  - Upgrade `InvoiceController::index` to search across `invoice_number`, `patient.name`, `patient.phone`, `patient.patient_code`, `patient.old_or_other_id`, `patient.patient_no`, and `visit.doctor.name`.
+  - Add date presets filter (`today`, `yesterday`, `this_week`, `this_month`) and payment method filter (`cash`, `bkash`, `nagad`, `rocket`, `card`, `bank`).
+  - Add CSV export endpoint (`GET /admin/invoices/export`) to stream filtered invoice records for accounting reconciliation.
+- [ ] **Task 26.2**: Desktop & Tablet Experience
+  - Implement 350ms debounced search bar with reset (`✕`) button and active filter chips.
+  - Add tactile date preset pill buttons (`[ Today ]`, `[ Yesterday ]`, `[ This Week ]`, `[ This Month ]`).
+  - Add 1-click `[ 💵 Collect Due ]` modal allowing cashiers to record full or partial payments directly from the directory without navigating to the detail page.
+- [ ] **Task 26.3**: Mobile Responsive Touch Cards
+  - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) displaying invoice #, status badge, patient name with 1-tap call, color-coded financial pills (Total, Paid, Due), and 1-tap thermal POS receipt printing.
+- [ ] **Task 26.4**: Verification & Testing
+  - Feature test coverage in `PatientBillingAndCashRegisterTest.php` verifying search by old ID, doctor name, date presets, CSV export, and quick payment recording. Pint formatting and Vite build verification.
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -376,3 +390,17 @@
   - Add quick status toggle pill and 1-click `[ 🎟️ Issue Token ]` action bar with touch targets >= 44px.
 - [ ] **Task 25.4**: Verification & Testing
   - Add feature tests in `AppointmentRequestWorkflowTest.php` covering search by name, phone, ID, date presets, and quick status actions. Pint formatting and Vite build verification.
+
+### Phase 26: Invoices Directory Search, Quick Due Payment & Multi-Screen Transformation (`/admin/invoices`) (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 26.1**: Backend Multi-Column Smart Search, Quick Date Presets & CSV Export
+  - Upgrade `InvoiceController::index` to search across `invoice_number`, `patient.name`, `patient.phone`, `patient.patient_code`, `patient.old_or_other_id`, `patient.patient_no`, and `visit.doctor.name`.
+  - Add date presets filter (`today`, `yesterday`, `this_week`, `this_month`) and payment method filter (`cash`, `bkash`, `nagad`, `rocket`, `card`, `bank`).
+  - Add CSV export endpoint (`GET /admin/invoices/export`) to stream filtered invoice records for accounting reconciliation.
+- [ ] **Task 26.2**: Desktop & Tablet Experience
+  - Implement 350ms debounced search bar with reset (`✕`) button and active filter chips.
+  - Add tactile date preset pill buttons (`[ Today ]`, `[ Yesterday ]`, `[ This Week ]`, `[ This Month ]`).
+  - Add 1-click `[ 💵 Collect Due ]` modal allowing cashiers to record full or partial payments directly from the directory without navigating to the detail page.
+- [ ] **Task 26.3**: Mobile Responsive Touch Cards
+  - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) displaying invoice #, status badge, patient name with 1-tap call, color-coded financial pills (Total, Paid, Due), and 1-tap thermal POS receipt printing.
+- [ ] **Task 26.4**: Verification & Testing
+  - Feature test coverage in `PatientBillingAndCashRegisterTest.php` verifying search by old ID, doctor name, date presets, CSV export, and quick payment recording. Pint formatting and Vite build verification.
