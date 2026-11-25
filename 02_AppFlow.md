@@ -187,6 +187,29 @@ flowchart LR
     ActionChoice -- Cancel --> RejectReq[Set status=cancelled]
 ```
 
+### 5.1 Admin Appointment Requests & Triage Operations Flow (`/admin/appointment-requests`)
+
+```mermaid
+flowchart TD
+    ApptHome["Appointment Requests Management (/admin/appointment-requests)"] --> FilterBar["Header Controls: Smart Search | Status Tabs | Date Presets | KPI Metric Cards"]
+    
+    FilterBar --> SearchEngine["Multi-Field Search: Patient Name | Phone | Request # | Notes / Message"]
+    FilterBar --> KPICards["Dynamic KPIs: Total Requests | Pending Action | Contacted | Scheduled Today"]
+    
+    ApptHome --> ScreenMode{"Screen Viewport"}
+    
+    ScreenMode -->|"Mobile (< 768px)"| MobileCards["High-Density Mobile Touch Cards: 1-Tap Call & WhatsApp | Requested vs Scheduled Slot | Quick Actions"]
+    ScreenMode -->|"Tablet & Desktop (>= 768px)"| DesktopTable["Responsive Data Table: Patient Info, Slot Comparison, Source, Actions"]
+    
+    DesktopTable --> QuickTriage{"Triage & Action Triggers"}
+    MobileCards --> QuickTriage
+    
+    QuickTriage -->|"1-Click Contact"| QuickContact["Quick Status Pill: [📞 Mark Contacted] -> Update status & log event"]
+    QuickTriage -->|"Patient Arrived"| QuickToken["[🎟️ Issue Token] -> Pre-populates /admin/queue/tokens/create"]
+    QuickTriage -->|"Schedule / Reschedule"| ManageEdit["[✏️ Manage] -> /admin/appointment-requests/{id}/edit"]
+    QuickTriage -->|"Link / Register"| PatientSync["[👤 Link Existing] or [Convert to Patient] -> Prevent duplicates"]
+```
+
 ---
 
 ## 6. System Health, In-App Backup & Deployment Flow (`[x] Done`)

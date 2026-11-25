@@ -354,3 +354,19 @@
   - Implement doctor search filter for clinics with multiple physicians/consultants.
 - [ ] **Task 24.4**: Verification & Testing
   - Feature test coverage for leave date range creation, conflict detection warnings, and schedule updates. Pint formatting and Vite build verification.
+
+### Phase 25: Appointment Requests, Intake Search & Triage Operations Upgrade (`[ ] PENDING USER CONFIRMATION`)
+- [ ] **Task 25.1**: Backend Universal Search, Date Range Filter & KPI Aggregates
+  - Upgrade `AdminApptController::index` to accept `search` / `q` matching patient name, phone, request #ID, and message notes.
+  - Implement date preset filter (`today`, `tomorrow`, `this_week`, `pending_unactioned`) and custom `scheduled_date` / date range.
+  - Compute KPI summary aggregates (`total`, `pending_action`, `contacted`, `scheduled_today`) and return with Inertia payload.
+  - Add quick status update route (`PATCH /admin/appointment-requests/{id}/quick-status`) for 1-click status transitions (e.g. marking `contacted`).
+- [ ] **Task 25.2**: Desktop & Tablet Experience
+  - Implement top KPI metric banner cards with clear operational counts.
+  - Add debounced search input (350ms) with reset (`✕`) button and status filter tabs.
+  - Display prominent `[ ⏰ Today's Appointment ]` highlight badges and prioritize the `[ 🎟️ Issue Token ]` action for today's arrivals.
+- [ ] **Task 25.3**: Mobile Responsive Touch Cards
+  - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) with 1-tap call (`tel:`) and 1-tap WhatsApp (`wa.me`) reach.
+  - Add quick status toggle pill and 1-click `[ 🎟️ Issue Token ]` action bar with touch targets >= 44px.
+- [ ] **Task 25.4**: Verification & Testing
+  - Add feature tests in `AppointmentRequestWorkflowTest.php` covering search by name, phone, ID, date presets, and quick status actions. Pint formatting and Vite build verification.
