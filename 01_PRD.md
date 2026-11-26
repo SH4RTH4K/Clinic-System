@@ -129,7 +129,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Strength / Concentration (e.g., 500mg, 650mg, 20mg/5ml, 1g).
   - Manufacturer / Pharmaceutical Company.
 - `[x] Done` **Lab Investigations Master Catalog**:
-  - Pre-seeded catalog of common diagnostic investigations categorized by discipline (Hematology, Biochemistry, Radiology, Microbiology).
+  - Pre-seeded catalog of common diagnostic investigations categorized by discipline (Hematology, Biochemistry, Radiology, Ultrasound, Microbiology).
+  - Standardized short codes (`CBC`, `FBS`, `LFT`, `USG-WA`), Bengali names, specimen types (`blood`, `urine`, `imaging`), reference ranges, and turnaround times.
+  - Standard in-house fees (৳) auto-populating patient billing invoices via `BillingService`.
+  - Debounced multi-field search (300ms) matching name, code, Bengali name, specimen, and instructions with instant category pill filtering.
+  - Multi-screen responsive layout: desktop data table + high-density mobile touch cards (`block md:hidden`).
+  - 1-Click Clinical Presets Toolbar in `Create.jsx` for fast-track package onboarding (Lipid Profile, Thyroid TSH, Dengue NS1, etc.).
 
 ---
 

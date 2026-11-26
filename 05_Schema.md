@@ -317,12 +317,20 @@ CREATE TABLE `pharmaceuticals` (
 CREATE TABLE `lab_investigations` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `name` varchar(255) NOT NULL,
+  `code` varchar(50) NULL,
+  `name_bn` varchar(255) NULL,
   `category` enum('hematology', 'biochemistry', 'radiology', 'ultrasound', 'microbiology', 'other') NOT NULL,
+  `specimen_type` varchar(50) NOT NULL DEFAULT 'blood',
+  `standard_cost` decimal(10,2) NOT NULL DEFAULT '0.00',
   `default_instructions` text NULL,
+  `reference_range` text NULL,
+  `turnaround_time` varchar(100) NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL,
   `updated_at` timestamp NULL,
-  INDEX `lab_investigations_search_idx` (`category`, `name`)
+  INDEX `lab_investigations_search_idx` (`category`, `name`),
+  INDEX `lab_investigations_code_idx` (`code`),
+  INDEX `lab_investigations_specimen_type_idx` (`specimen_type`)
 );
 
 -- visit_lab_investigations

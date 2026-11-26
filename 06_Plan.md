@@ -103,7 +103,13 @@
 - [x] **Task 7.3**: Clinical Diagnosis & Lab Investigation Orders
   - Diagnosis fields (`provisional_diagnosis`, `final_diagnosis`) in Visit consultation and PDF.
   - Lab test catalog & investigation order picker (CBC, Lipid, LFT, X-Ray, USG).
-  - Autocomplete search API (`/admin/lab-investigations/search`).
+  - Autocomplete search API (`/admin/lab-investigations/search`) with clinical codes, specimens, and standard fees.
+  - Enhanced Lab Investigation Catalog (`/admin/lab-investigations`) with short codes, Bengali names, specimen types, standard fees, reference ranges, and turnaround times.
+  - Debounced real-time multi-field search (300ms) and category pill filter tabs with live metrics.
+  - Responsive multi-screen view: desktop `DataTable` + high-density mobile touch cards (`block md:hidden`).
+  - 1-Click Clinical Presets Toolbar in `Create.jsx` for rapid package onboarding.
+  - Automated Billing integration in `BillingService` populating standard fees for advised investigations.
+  - Full test coverage with 10 dedicated tests in `LabInvestigationManagementTest.php` (113 assertions).
 - [x] **Task 7.4**: Practice-Adaptive Doctor Consultation Workbench & Prescription PDF
   - Dynamic consultation workbench adapting to Homeopathy, General Practice, and Dual modes in `Visits/Create.jsx` and `Visits/Edit.jsx`.
   - Dynamic layout switching in `prescription.blade.php` based on `practice_type`.

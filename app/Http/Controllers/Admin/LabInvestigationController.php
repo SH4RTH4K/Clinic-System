@@ -23,8 +23,34 @@ class LabInvestigationController extends Controller
         }
 
         if ($category = $request->input('category')) {
-            $query->where('category', $category);
+            $query->category($category);
         }
+
+        if ($specimen = $request->input('specimen')) {
+            $query->specimen($specimen);
+        }
+
+        if ($status = $request->input('status')) {
+            if ($status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        // Metrics calculations
+        $metrics = [
+            'total' => LabInvestigation::count(),
+            'active' => LabInvestigation::where('is_active', true)->count(),
+            'with_fee' => LabInvestigation::where('standard_cost', '>', 0)->count(),
+            'categories_count' => LabInvestigation::distinct('category')->count('category'),
+            'category_breakdown' => LabInvestigation::selectRaw('category, count(*) as count')
+                ->groupBy('category')
+                ->pluck('count', 'category'),
+            'specimen_breakdown' => LabInvestigation::selectRaw('specimen_type, count(*) as count')
+                ->groupBy('specimen_type')
+                ->pluck('count', 'specimen_type'),
+        ];
 
         $labInvestigations = $query->orderBy('name')
             ->paginate(15)
@@ -32,7 +58,8 @@ class LabInvestigationController extends Controller
 
         return Inertia::render('Admin/LabInvestigations/Index', [
             'labInvestigations' => $labInvestigations,
-            'filters' => $request->only(['search', 'category']),
+            'filters' => $request->only(['search', 'category', 'status', 'specimen']),
+            'metrics' => $metrics,
         ]);
     }
 
@@ -43,7 +70,12 @@ class LabInvestigationController extends Controller
 
     public function store(StoreLabInvestigationRequest $request): RedirectResponse
     {
-        LabInvestigation::create($request->validated());
+        $data = $request->validated();
+        if (! isset($data['standard_cost']) || $data['standard_cost'] === null) {
+            $data['standard_cost'] = 0.00;
+        }
+
+        LabInvestigation::create($data);
 
         return redirect()->route('admin.lab_investigations.index')
             ->with('success', 'Diagnostic lab investigation added successfully.');
@@ -58,7 +90,12 @@ class LabInvestigationController extends Controller
 
     public function update(UpdateLabInvestigationRequest $request, LabInvestigation $labInvestigation): RedirectResponse
     {
-        $labInvestigation->update($request->validated());
+        $data = $request->validated();
+        if (! isset($data['standard_cost']) || $data['standard_cost'] === null) {
+            $data['standard_cost'] = 0.00;
+        }
+
+        $labInvestigation->update($data);
 
         return redirect()->route('admin.lab_investigations.index')
             ->with('success', 'Diagnostic lab investigation updated successfully.');
@@ -80,8 +117,20 @@ class LabInvestigationController extends Controller
 
         $results = LabInvestigation::active()
             ->search($term)
-            ->limit(20)
-            ->get(['id', 'name', 'category', 'default_instructions']);
+            ->orderBy('name')
+            ->limit(25)
+            ->get([
+                'id',
+                'name',
+                'code',
+                'name_bn',
+                'category',
+                'specimen_type',
+                'standard_cost',
+                'default_instructions',
+                'reference_range',
+                'turnaround_time',
+            ]);
 
         return response()->json($results);
     }

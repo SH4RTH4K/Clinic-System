@@ -954,14 +954,19 @@ export default function Edit({
                             {labInvestigations.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 items-center pb-2 border-b border-gray-100">
                                     <span className="text-[11px] font-bold text-gray-500 uppercase mr-1">Quick Select:</span>
-                                    {labInvestigations.slice(0, 8).map((test) => (
+                                    {labInvestigations.slice(0, 10).map((test) => (
                                         <button
                                             key={test.id}
                                             type="button"
                                             onClick={() => addLabInvestigationRow(test)}
-                                            className="px-2 py-1 text-xs rounded-md bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-gray-200 text-gray-700 transition cursor-pointer"
+                                            className="px-2 py-1 text-xs rounded-md bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-gray-200 text-gray-700 transition cursor-pointer flex items-center gap-1"
                                         >
-                                            + {test.name}
+                                            {test.code && (
+                                                <span className="font-mono font-bold text-[10px] text-teal-700 bg-teal-50 px-1 rounded">
+                                                    {test.code}
+                                                </span>
+                                            )}
+                                            <span>+ {test.name}</span>
                                         </button>
                                     ))}
                                 </div>

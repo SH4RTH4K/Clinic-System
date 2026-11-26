@@ -163,16 +163,17 @@ class BillingService
         }
 
         // 3. Ordered Lab Investigations
-        $labOrders = $visit->labInvestigations()->get();
+        $labOrders = $visit->labInvestigations()->with('labInvestigation')->get();
         foreach ($labOrders as $order) {
+            $unitPrice = (float) ($order->labInvestigation?->standard_cost ?? 0.00);
             $items[] = [
                 'item_type' => 'investigation',
                 'item_name' => $order->test_name,
                 'quantity' => 1,
-                'unit_price' => 0.00, // Clinic order reference (can be edited by receptionist)
-                'total_price' => 0.00,
+                'unit_price' => $unitPrice,
+                'total_price' => $unitPrice,
                 'medicine_batch_id' => null,
-                'notes' => 'Diagnostic investigation order',
+                'notes' => 'Diagnostic investigation order'.($order->labInvestigation?->code ? " [{$order->labInvestigation->code}]" : ''),
             ];
         }
 
