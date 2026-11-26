@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(PatientNumberingProfileSeeder::class);
         $this->call(ManufacturerSeeder::class);
+        $this->call(MedicineSeeder::class);
 
         // 1. Roles and Permissions
         $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map', 'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs'];

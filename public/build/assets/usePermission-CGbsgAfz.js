@@ -1,0 +1,1 @@
+import{o as e}from"./app-Qy2VdIA2.js";function t(){let{auth:t={}}=e().props,n=t.permissions||[];return e=>n.includes(e)}export{t};

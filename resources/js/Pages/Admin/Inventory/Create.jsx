@@ -141,22 +141,42 @@ export default function Create({ medicines = [], pharmaceuticals = [], manufactu
                             {itemType === 'remedy' ? (
                                 <>
                                     <div className="md:col-span-1">
-                                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                            Select Homeopathic Remedy <span className="text-red-500">*</span>
-                                        </label>
-                                        <select
-                                            required
+                                        <div className="flex items-center justify-between gap-1 mb-1">
+                                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                                Select Homeopathic Remedy <span className="text-red-500">*</span>
+                                            </label>
+                                            <Link
+                                                href={route('admin.medicines.create')}
+                                                className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline shrink-0"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                + Add Remedy
+                                            </Link>
+                                        </div>
+                                        <SearchableCombobox
+                                            id="remedy-selector"
                                             value={data.medicine_id}
-                                            onChange={(e) => setData('medicine_id', e.target.value)}
-                                            className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs shadow-xs focus:border-teal-500 focus:ring-teal-500"
-                                        >
-                                            <option value="">-- Choose Remedy --</option>
-                                            {medicines.map((m) => (
-                                                <option key={m.id} value={m.id}>
-                                                    {m.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            valueKey="id"
+                                            labelKey="name"
+                                            options={medicines}
+                                            placeholder="Search remedy (e.g. Arnica, Nux)..."
+                                            allowCustom={false}
+                                            required
+                                            onSelect={(remedy) => {
+                                                if (remedy) {
+                                                    setData((prev) => ({
+                                                        ...prev,
+                                                        medicine_id: remedy.id,
+                                                        potency: remedy.potency || prev.potency,
+                                                        form: remedy.form === 'drops' ? 'dilution_30ml' : (remedy.form === 'pills' ? 'globules' : prev.form),
+                                                    }));
+                                                } else {
+                                                    setData('medicine_id', '');
+                                                }
+                                            }}
+                                            subLabel={(r) => `Default: ${r.potency || '30C'} • ${r.form || 'drops'}`}
+                                        />
                                         {errors.medicine_id && <p className="mt-1 text-xs text-red-600">{errors.medicine_id}</p>}
                                     </div>
 
@@ -199,35 +219,43 @@ export default function Create({ medicines = [], pharmaceuticals = [], manufactu
                             ) : (
                                 <>
                                     <div className="md:col-span-2">
-                                        <div className="flex items-center justify-between mb-1">
+                                        <div className="flex items-center justify-between gap-1 mb-1">
                                             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
                                                 Select Pharmaceutical <span className="text-red-500">*</span>
                                             </label>
-                                            <span className="text-[10px] text-gray-400">({pharmaceuticals.length} available)</span>
+                                            <Link
+                                                href={route('admin.pharmaceuticals.create')}
+                                                className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 hover:underline shrink-0"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                + Add Drug
+                                            </Link>
                                         </div>
-                                        <select
-                                            required
+                                        <SearchableCombobox
+                                            id="pharma-selector"
                                             value={data.pharmaceutical_id}
-                                            onChange={(e) => {
-                                                const selectedId = e.target.value;
-                                                const selected = pharmaceuticals.find((p) => String(p.id) === String(selectedId));
-                                                setData((prev) => ({
-                                                    ...prev,
-                                                    pharmaceutical_id: selectedId,
-                                                    form: selected?.dosage_form ? selected.dosage_form.toLowerCase() : prev.form,
-                                                    potency: selected?.strength || prev.potency,
-                                                    supplier_name: selected?.manufacturer || prev.supplier_name,
-                                                }));
+                                            valueKey="id"
+                                            labelKey="brand_name"
+                                            options={pharmaceuticals}
+                                            placeholder="Search brand or generic (e.g. Napa, Seclo, Paracetamol)..."
+                                            allowCustom={false}
+                                            required
+                                            onSelect={(drug) => {
+                                                if (drug) {
+                                                    setData((prev) => ({
+                                                        ...prev,
+                                                        pharmaceutical_id: drug.id,
+                                                        form: drug.dosage_form ? drug.dosage_form.toLowerCase() : prev.form,
+                                                        potency: drug.strength || prev.potency,
+                                                        supplier_name: drug.manufacturer || prev.supplier_name,
+                                                    }));
+                                                } else {
+                                                    setData('pharmaceutical_id', '');
+                                                }
                                             }}
-                                            className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs shadow-xs focus:border-sky-500 focus:ring-sky-500"
-                                        >
-                                            <option value="">-- Choose Brand / Generic --</option>
-                                            {pharmaceuticals.map((p) => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.brand_name} ({p.generic_name}) - {p.strength} [{p.dosage_form}]
-                                                </option>
-                                            ))}
-                                        </select>
+                                            subLabel={(d) => `${d.generic_name} • ${d.strength} [${d.dosage_form}] ${d.manufacturer ? '• ' + d.manufacturer : ''}`}
+                                        />
                                         {errors.pharmaceutical_id && <p className="mt-1 text-xs text-red-600">{errors.pharmaceutical_id}</p>}
                                     </div>
 

@@ -10,57 +10,101 @@ const TYPE_BADGES = {
 export default function SearchableCombobox({
     value = '',
     onChange,
+    onSelect,
     options = [],
-    placeholder = 'Search manufacturer...',
+    placeholder = 'Search...',
     id = 'searchable-combobox',
     className = '',
+    labelKey = 'name',
+    valueKey = null,
+    subLabel = null,
+    badgeKey = 'type',
+    allowCustom = true,
+    required = false,
 }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [query, setQuery] = useState(value);
     const containerRef = useRef(null);
 
-    useEffect(() => {
-        setQuery(value || '');
-    }, [value]);
+    // Helper to resolve display label from value
+    const resolveDisplayLabel = (val) => {
+        if (!val && val !== 0) return '';
+        if (valueKey) {
+            const matched = options.find((opt) => String(opt[valueKey]) === String(val));
+            if (matched) return matched[labelKey] || matched.name || '';
+        }
+        return String(val);
+    };
 
+    const [query, setQuery] = useState(() => resolveDisplayLabel(value));
+
+    // Keep internal query synchronized when external value changes
+    useEffect(() => {
+        setQuery(resolveDisplayLabel(value));
+    }, [value, options]);
+
+    // Close on outside click
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (containerRef.current && !containerRef.current.contains(e.target)) {
                 setIsOpen(false);
+                // If custom is not allowed and query does not match selected value, reset
+                if (!allowCustom) {
+                    setQuery(resolveDisplayLabel(value));
+                }
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [value, allowCustom, options]);
 
     const filteredOptions = query.trim() === ''
         ? options
         : options.filter((opt) => {
             const q = query.toLowerCase();
-            return (
-                (opt.name && opt.name.toLowerCase().includes(q)) ||
-                (opt.short_name && opt.short_name.toLowerCase().includes(q)) ||
-                (opt.name_bn && opt.name_bn.toLowerCase().includes(q)) ||
-                (opt.type && opt.type.toLowerCase().includes(q))
-            );
+            const textFields = [
+                opt[labelKey],
+                opt.name,
+                opt.short_name,
+                opt.name_bn,
+                opt.type,
+                opt.brand_name,
+                opt.generic_name,
+                opt.strength,
+                opt.potency,
+                opt.dosage_form,
+            ].filter(Boolean);
+
+            return textFields.some((field) => String(field).toLowerCase().includes(q));
         });
 
     const handleInputChange = (e) => {
         const text = e.target.value;
         setQuery(text);
-        if (onChange) onChange(text);
+        if (allowCustom) {
+            if (onChange) onChange(text);
+        }
         setIsOpen(true);
     };
 
     const handleSelectOption = (opt) => {
-        setQuery(opt.name);
-        if (onChange) onChange(opt.name);
+        const displayText = opt[labelKey] || opt.name || '';
+        setQuery(displayText);
+
+        if (onSelect) {
+            onSelect(opt);
+        }
+
+        if (onChange) {
+            onChange(valueKey ? opt[valueKey] : displayText);
+        }
+
         setIsOpen(false);
     };
 
     const handleClear = () => {
         setQuery('');
-        if (onChange) onChange('');
+        if (onSelect) onSelect(null);
+        if (onChange) onChange(valueKey ? '' : '');
         setIsOpen(false);
     };
 
@@ -78,6 +122,7 @@ export default function SearchableCombobox({
                 <input
                     type="text"
                     id={id}
+                    required={required && !value}
                     value={query}
                     onChange={handleInputChange}
                     onFocus={() => setIsOpen(true)}
@@ -118,12 +163,20 @@ export default function SearchableCombobox({
                 <div className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl py-1 text-xs">
                     {filteredOptions.length > 0 ? (
                         filteredOptions.map((opt) => {
-                            const badge = TYPE_BADGES[opt.type] || { label: opt.type, icon: '🏢', badge: 'bg-gray-100 text-gray-700 border-gray-200' };
-                            const isSelected = query.toLowerCase() === opt.name.toLowerCase();
+                            const displayText = opt[labelKey] || opt.name || '';
+                            const secondaryText = typeof subLabel === 'function'
+                                ? subLabel(opt)
+                                : (subLabel ? opt[subLabel] : (opt.name_bn || opt.short_name || ''));
+
+                            const badgeType = opt[badgeKey];
+                            const badge = badgeType && TYPE_BADGES[badgeType];
+                            const isSelected = valueKey
+                                ? String(value) === String(opt[valueKey])
+                                : query.toLowerCase() === displayText.toLowerCase();
 
                             return (
                                 <button
-                                    key={opt.id || opt.name}
+                                    key={opt.id || displayText}
                                     type="button"
                                     onClick={() => handleSelectOption(opt)}
                                     className={`w-full px-3 py-2 text-left transition flex items-center justify-between gap-2 hover:bg-teal-50 dark:hover:bg-gray-700/60 ${
@@ -132,28 +185,34 @@ export default function SearchableCombobox({
                                 >
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="truncate">{opt.name}</span>
-                                            {opt.short_name && opt.short_name !== opt.name && (
-                                                <span className="text-[10px] text-gray-400">({opt.short_name})</span>
+                                            <span className="truncate">{displayText}</span>
+                                            {opt.potency && (
+                                                <span className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 px-1.5 py-0.2 rounded border border-teal-200 dark:border-teal-800">
+                                                    {opt.potency}
+                                                </span>
                                             )}
                                         </div>
-                                        {opt.name_bn && (
-                                            <p className="text-[10px] text-gray-400 truncate">{opt.name_bn}</p>
+                                        {secondaryText && (
+                                            <p className="text-[10px] text-gray-400 truncate mt-0.5">{secondaryText}</p>
                                         )}
                                     </div>
-                                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium border flex items-center gap-1 ${badge.badge}`}>
-                                        <span>{badge.icon}</span>
-                                        <span>{badge.label}</span>
-                                    </span>
+                                    {badge && (
+                                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium border flex items-center gap-1 ${badge.badge}`}>
+                                            <span>{badge.icon}</span>
+                                            <span>{badge.label}</span>
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })
                     ) : (
                         <div className="px-3 py-2 text-gray-500 text-center">
-                            <p className="text-[11px] font-medium">No matching company found in catalog.</p>
-                            <p className="text-[10px] text-teal-600 dark:text-teal-400 mt-0.5">
-                                You can keep typed text to save as custom supplier.
-                            </p>
+                            <p className="text-[11px] font-medium">No matching items found in catalog.</p>
+                            {allowCustom && (
+                                <p className="text-[10px] text-teal-600 dark:text-teal-400 mt-0.5">
+                                    You can keep typed text to save as custom entry.
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>

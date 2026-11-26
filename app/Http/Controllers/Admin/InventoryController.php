@@ -64,8 +64,8 @@ class InventoryController extends Controller
     public function create()
     {
         return Inertia::render('Admin/Inventory/Create', [
-            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name'])->orderBy('name')->get(),
-            'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form'])->orderBy('brand_name')->get(),
+            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name', 'potency', 'form'])->orderBy('name')->get(),
+            'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form', 'manufacturer'])->orderBy('brand_name')->get(),
             'manufacturers' => Manufacturer::active()->orderBy('name')->get(['id', 'name', 'short_name', 'type', 'phone']),
         ]);
     }
@@ -79,12 +79,12 @@ class InventoryController extends Controller
 
     public function edit(MedicineBatch $batch)
     {
-        $batch->load(['medicine:id,name', 'pharmaceutical:id,brand_name,generic_name,strength,dosage_form']);
+        $batch->load(['medicine:id,name,potency,form', 'pharmaceutical:id,brand_name,generic_name,strength,dosage_form,manufacturer']);
 
         return Inertia::render('Admin/Inventory/Edit', [
             'batch' => $batch,
-            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name'])->orderBy('name')->get(),
-            'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form'])->orderBy('brand_name')->get(),
+            'medicines' => Medicine::query()->where('is_active', true)->select(['id', 'name', 'potency', 'form'])->orderBy('name')->get(),
+            'pharmaceuticals' => Pharmaceutical::query()->where('is_active', true)->select(['id', 'brand_name', 'generic_name', 'strength', 'dosage_form', 'manufacturer'])->orderBy('brand_name')->get(),
             'manufacturers' => Manufacturer::active()->orderBy('name')->get(['id', 'name', 'short_name', 'type', 'phone']),
         ]);
     }
