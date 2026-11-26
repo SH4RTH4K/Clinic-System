@@ -195,6 +195,8 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Dual Stock Management**:
   - Homeopathic inventory: Dilutions, Mother Tinctures (30ml, 100ml, 450ml), Globules, and Biochemic preparations.
   - Allopathic inventory: Box/Strip packaging, tablets, syrups, injections.
+  - Interactive polymorphic `SearchableCombobox` for remedies and pharmaceuticals with direct `+ Add Remedy` / `+ Add Drug` links, auto-filling potency, form, strength, and manufacturer.
+  - Pre-seeded 45 top classical homeopathic polychrests and acute remedies via `MedicineSeeder`.
 - `[x] Done` **Batch & Expiry Tracking**: Track manufacturer batches, purchase dates, and expiry dates with automated alerts for expiring stock.
 - `[x] Done` **Prescription Auto-Deduction**: Automatically decrement remedy inventory upon visit finalization (FIFO by earliest expiry) when enabled in clinic settings.
 - `[x] Done` **Stock Movement Ledger**: Full audit log for stock receipts, adjustments, dispensing, and wastage.

@@ -143,6 +143,9 @@
   - Migrations `medicine_batches` and `stock_transactions`, with `auto_deduct_inventory` setting.
   - Eloquent models `MedicineBatch`, `StockTransaction`, and `InventoryService` handling intake, adjustment, and deduction.
   - Full UI: `Admin/Inventory/Index.jsx`, `Create.jsx`, `Edit.jsx`, and `Transactions.jsx` (Stock Ledger).
+  - Polymorphic `SearchableCombobox` with live substring search, keyboard navigation, clear buttons, and direct `+ Add Remedy` / `+ Add Drug` modal links.
+  - Smart auto-fill for potency, preparation form, strength, and manufacturer upon selecting remedy or drug.
+  - Pre-seeded 45 classical homeopathic polychrests and acute remedies via `MedicineSeeder`.
 - [x] **Task 10.2**: Expiry & Low-Stock Alerts
   - Real-time stock status calculations: low-stock (`current_quantity <= reorder_level`), expiring soon (within 30 days), and expired stock.
   - Prominent alert banner on Admin Dashboard linking directly to filtered views (`status=low_stock`, `status=expiring`).
