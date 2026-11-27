@@ -13,50 +13,66 @@ class FoodRestrictionSeeder extends Seeder
     public function run(): void
     {
         $items = [
-            // 1. Classical Homeopathic Antidotes
+            // 0. Complete Standard Homeopathic Prescription Pad Formula (Photo Reference)
+            [
+                'category' => 'homeopathic_antidote',
+                'text_bn' => 'ধূমপান, অতিরিক্ত ঝাল-টক, কাঁচা লবণ, গরুর মাংস, হাঁসের মাংস, হাঁসের ডিম, ইলিশ মাছ, চিংড়ি মাছ ও এ্যালার্জি জাতীয় কোন খাবার সম্পূর্ণ নিষেধ।',
+                'text_en' => 'Strictly avoid smoking, excess spicy/sour foods, table salt, beef, duck meat, duck eggs, hilsa fish, prawns, and any allergenic foods.',
+                'is_default' => true,
+                'sort_order' => 1,
+            ],
+
+            // 1. Classical Homeopathic Antidotes & Tobacco
+            [
+                'category' => 'homeopathic_antidote',
+                'text_bn' => 'ধূমপান, বিড়ি, সিগারেট, পান, সুপারি, জর্দা, গুল ও তামাকজাতীয় দ্রব্য সম্পূর্ণ নিষেধ।',
+                'text_en' => 'No smoking, cigarettes, betel leaf, nut, zarda, or tobacco products.',
+                'is_default' => true,
+                'sort_order' => 2,
+            ],
             [
                 'category' => 'homeopathic_antidote',
                 'text_bn' => 'কাঁচা পেঁয়াজ ও কাঁচা রসুন খাওয়া সম্পূর্ণ নিষেধ (হোমিও ঔষধের প্রতিষেধক)।',
                 'text_en' => 'Avoid raw onion and raw garlic (antidotes homeopathic remedies).',
                 'is_default' => true,
-                'sort_order' => 1,
+                'sort_order' => 3,
             ],
             [
                 'category' => 'homeopathic_antidote',
                 'text_bn' => 'তীব্র বা কড়া কফি পান করা সম্পূর্ণরূপে পরিহার করুন।',
                 'text_en' => 'Avoid strong coffee and caffeine stimulants.',
                 'is_default' => true,
-                'sort_order' => 2,
+                'sort_order' => 4,
             ],
             [
                 'category' => 'homeopathic_antidote',
                 'text_bn' => 'কর্পূর, মেন্থল, কড়া বাম, ইউক্যালিপটাস ও তীব্র সুগন্ধিযুক্ত বস্তু থেকে দূরে থাকুন।',
                 'text_en' => 'Avoid camphor, menthol, strong pain balms, and intense perfumes.',
                 'is_default' => true,
-                'sort_order' => 3,
-            ],
-            [
-                'category' => 'homeopathic_antidote',
-                'text_bn' => 'পান, সুপারি, জর্দা, গুল, বিড়ি, সিগারেট ও তামাকজাতীয় দ্রব্য সম্পূর্ণ নিষেধ।',
-                'text_en' => 'No betel leaf, nut, zarda, tobacco, or smoking.',
-                'is_default' => true,
-                'sort_order' => 4,
+                'sort_order' => 5,
             ],
 
             // 2. Sour & Cold Items
             [
                 'category' => 'sour_cold',
+                'text_bn' => 'অতিরিক্ত ঝাল ও টক জাতীয় খাবার খাওয়া সম্পূর্ণরূপে পরিহার করুন।',
+                'text_en' => 'Avoid excessively spicy, pungent, and sour foods.',
+                'is_default' => true,
+                'sort_order' => 6,
+            ],
+            [
+                'category' => 'sour_cold',
                 'text_bn' => 'ফ্রিজের অতিরিক্ত ঠাণ্ডা পানি, বরফ ও আইসক্রিম খাওয়া সম্পূর্ণরূপে পরিহার করুন।',
                 'text_en' => 'Avoid refrigerated cold water, ice, and ice cream.',
                 'is_default' => true,
-                'sort_order' => 5,
+                'sort_order' => 7,
             ],
             [
                 'category' => 'sour_cold',
                 'text_bn' => 'তেঁতুল, আচার, চালতা ও অতিরিক্ত টক জাতীয় খাবার পরিহার করুন।',
                 'text_en' => 'Avoid tamarind, pickles, and excessively sour foods.',
                 'is_default' => false,
-                'sort_order' => 6,
+                'sort_order' => 8,
             ],
             [
                 'category' => 'sour_cold',

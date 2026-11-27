@@ -13,41 +13,64 @@ class AdviceItemSeeder extends Seeder
     public function run(): void
     {
         $items = [
-            // 1. Homeopathic Specific Instructions
+            // 1. Core Homeopathic Administration (Prescription Pad Standard)
+            [
+                'category' => 'homeopathic',
+                'text_bn' => 'নিয়মিত ঔষধ খাবেন এবং খাবার আগে শিশি ১০ বার ঝাঁকিয়ে নিবেন।',
+                'text_en' => 'Take medicine regularly and shake the bottle 10 times before each dose/meal.',
+                'is_default' => true,
+                'sort_order' => 1,
+            ],
             [
                 'category' => 'homeopathic',
                 'text_bn' => 'ঔষধ সেবনের ৩০ মিনিট পূর্বে ও পরে যেকোনো খাবার বা পানীয় পরিহার করুন।',
                 'text_en' => 'Avoid food, drinks, or smoking 30 minutes before and after taking medicine.',
                 'is_default' => true,
-                'sort_order' => 1,
+                'sort_order' => 2,
             ],
             [
                 'category' => 'homeopathic',
                 'text_bn' => 'ঔষধ জিহ্বায় রেখে ধীরে ধীরে চুষে সেবন করবেন, হাত দিয়ে স্পর্শ করবেন না।',
                 'text_en' => 'Dissolve medicine on the tongue slowly; do not touch globules with bare hands.',
                 'is_default' => true,
-                'sort_order' => 2,
+                'sort_order' => 3,
             ],
             [
                 'category' => 'homeopathic',
                 'text_bn' => 'ঔষধ কড়া গন্ধযুক্ত বস্তু (যেমন কর্পূর, মেন্থল, আতর, কফি, কাঁচা পেঁয়াজ) থেকে দূরে রাখুন।',
                 'text_en' => 'Keep homeopathic remedy away from strong odors (camphor, menthol, coffee, perfume).',
                 'is_default' => true,
-                'sort_order' => 3,
+                'sort_order' => 4,
             ],
             [
                 'category' => 'homeopathic',
-                'text_bn' => 'কাঁচের বা পরিষ্কার চীনামাটির পাত্রে ঔষধের ড্রপ বা পানি মিশিয়ে সেবন করুন।',
+                'text_bn' => 'কাঁচের বা পরিষ্কার পাত্রে ঔষধের ড্রপ বা পানি মিশিয়ে সেবন করুন।',
                 'text_en' => 'Take dilution drops mixed in pure water using a clean glass or porcelain cup.',
                 'is_default' => false,
-                'sort_order' => 4,
+                'sort_order' => 5,
             ],
             [
                 'category' => 'homeopathic',
                 'text_bn' => 'লক্ষণ সম্পূর্ণ উপশম হলে চিকিৎসকের পরামর্শ ব্যতিরেকে অতিরিক্ত ডোজ সেবন করবেন না।',
                 'text_en' => 'Discontinue remedy once symptoms resolve completely unless advised otherwise.',
                 'is_default' => false,
-                'sort_order' => 5,
+                'sort_order' => 6,
+            ],
+
+            // 2. General Health, Hydration & Follow-Up Instructions
+            [
+                'category' => 'general',
+                'text_bn' => 'বিশুদ্ধ পানি পান করবেন এবং নিয়মিত বিশ্রাম নিবেন।',
+                'text_en' => 'Drink pure boiled water and ensure adequate regular rest.',
+                'is_default' => true,
+                'sort_order' => 7,
+            ],
+            [
+                'category' => 'general',
+                'text_bn' => 'পরবর্তী সাক্ষাতের সময় ব্যবস্থাপত্র অবশ্যই সঙ্গে আনিবেন।',
+                'text_en' => 'Please bring this prescription along with you on your next follow-up visit.',
+                'is_default' => true,
+                'sort_order' => 8,
             ],
 
             // 2. General Health & Medication Adherence

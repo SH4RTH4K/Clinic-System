@@ -14,6 +14,14 @@ export default function Create() {
 
     const fastTrackPresets = [
         {
+            label: 'Standard Homeo Pad Restriction',
+            icon: '📋',
+            category: 'homeopathic_antidote',
+            text_bn: 'ধূমপান, অতিরিক্ত ঝাল-টক, কাঁচা লবণ, গরুর মাংস, হাঁসের মাংস, হাঁসের ডিম, ইলিশ মাছ, চিংড়ি মাছ ও এ্যালার্জি জাতীয় কোন খাবার সম্পূর্ণ নিষেধ।',
+            text_en: 'Strictly avoid smoking, excess spicy/sour foods, table salt, beef, duck meat, duck eggs, hilsa fish, prawns, and any allergenic foods.',
+            is_default: true,
+        },
+        {
             label: 'Raw Onion & Garlic',
             icon: '🧅',
             category: 'homeopathic_antidote',

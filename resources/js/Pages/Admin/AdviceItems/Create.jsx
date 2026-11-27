@@ -14,6 +14,30 @@ export default function Create() {
 
     const fastTrackPresets = [
         {
+            label: 'Shake Bottle 10 Times',
+            icon: '🍾',
+            category: 'homeopathic',
+            text_bn: 'নিয়মিত ঔষধ খাবেন এবং খাবার আগে শিশি ১০ বার ঝাঁকিয়ে নিবেন।',
+            text_en: 'Take medicine regularly and shake the bottle 10 times before each dose/meal.',
+            is_default: true,
+        },
+        {
+            label: 'Pure Water & Rest',
+            icon: '💧',
+            category: 'general',
+            text_bn: 'বিশুদ্ধ পানি পান করবেন এবং নিয়মিত বিশ্রাম নিবেন।',
+            text_en: 'Drink pure boiled water and ensure adequate regular rest.',
+            is_default: true,
+        },
+        {
+            label: 'Bring Rx on Follow-up',
+            icon: '📋',
+            category: 'general',
+            text_bn: 'পরবর্তী সাক্ষাতের সময় ব্যবস্থাপত্র অবশ্যই সঙ্গে আনিবেন।',
+            text_en: 'Please bring this prescription along with you on your next follow-up visit.',
+            is_default: true,
+        },
+        {
             label: 'Homeopathic 30-Min Rule',
             icon: '🌿',
             category: 'homeopathic',
