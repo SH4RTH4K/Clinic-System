@@ -687,6 +687,26 @@
   - Authored test suite `tests/Feature/GeneralSettingsWorkstationTest.php` (6 tests passing, 43 assertions).
   - Verified regression test `tests/Feature/PatientNumberingWorkflowTest.php` (5 tests passing, 66 assertions; combined 11/11 tests passing, 109 assertions).
   - Formatted code with Pint and compiled frontend assets with Vite (`npm run build`).
+
+### Phase 43: Doctor Visiting Schedules, Chamber Roster & Leave Range Workstation (`/admin/doctor-schedules`) (`[x] COMPLETED`)
+- [x] **Task 43.1**: Backend Multi-Day Leave Ranges & Conflict Detection
+  - Extended `StoreDoctorLeaveRequest` with optional `leave_date_end` (`nullable`, `date`, `after_or_equal:leave_date`).
+  - Implemented multi-day date range insertion within an atomic database transaction in `DoctorScheduleController@storeLeave`.
+  - Added conflict detection checking active `PatientQueueToken` (`waiting`, `in_consultation`) and `AppointmentRequest` (`pending`, `scheduled`) records, returning flash warning with reschedule advice.
+  - Calculated and returned Executive KPI metrics (`total_doctors`, `active_days`, `weekly_hours`, `assigned_chamber`, `upcoming_leaves`).
+- [x] **Task 43.2**: Schedules Workstation Modernization (`resources/js/Pages/Admin/Calendar/Schedules.jsx`)
+  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `📅 Calendar`, `🎟️ Queue`, `📝 Requests`).
+  - Added 5-card Executive KPI summary ribbon.
+  - Implemented real-time Doctor Search Bar with instant filtering and mobile quick-switch `<select>` dropdown.
+  - Built 1-Click Fast-Track Schedule Accelerators (`📋 Copy Sunday to Working Days`, `⚡ Apply Sunday to All Active Days`, `🕌 Set Friday Off`).
+  - Added Chamber Quick Pills (`Chamber 1`, `Chamber 2`, `Chamber 3`, `OPD Room 1`, `Consultation Room`).
+  - Built Multi-Day Leave Range Picker with quick reason chips (*Annual Vacation*, *Medical Leave*, *Conference*, *Emergency*).
+  - Added Mobile Sub-Tab Switcher (`[ 🕒 Weekly Visiting Hours ]` vs `[ 🏖️ Leaves & Holidays ]`) with 44px+ touch targets on screens < 768px.
+- [x] **Task 43.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/DoctorScheduleWorkstationTest.php` with 8 feature tests passing (38 assertions).
+  - Verified full Doctor test suite with zero regressions (109 tests passed, 827 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -1028,3 +1048,23 @@
   - Authored test suite `tests/Feature/GeneralSettingsWorkstationTest.php` (6 tests passing, 43 assertions).
   - Verified regression test `tests/Feature/PatientNumberingWorkflowTest.php` (5 tests passing, 66 assertions; combined 11/11 tests passing, 109 assertions).
   - Formatted code with Pint and compiled frontend assets with Vite (`npm run build`).
+
+### Phase 43: Doctor Visiting Schedules, Chamber Roster & Leave Range Workstation (`/admin/doctor-schedules`) (`[x] COMPLETED`)
+- [x] **Task 43.1**: Backend Multi-Day Leave Ranges & Conflict Detection
+  - Extended `StoreDoctorLeaveRequest` with optional `leave_date_end` (`nullable`, `date`, `after_or_equal:leave_date`).
+  - Implemented multi-day date range insertion within an atomic database transaction in `DoctorScheduleController@storeLeave`.
+  - Added conflict detection checking active `PatientQueueToken` (`waiting`, `in_consultation`) and `AppointmentRequest` (`pending`, `scheduled`) records, returning flash warning with reschedule advice.
+  - Calculated and returned Executive KPI metrics (`total_doctors`, `active_days`, `weekly_hours`, `assigned_chamber`, `upcoming_leaves`).
+- [x] **Task 43.2**: Schedules Workstation Modernization (`resources/js/Pages/Admin/Calendar/Schedules.jsx`)
+  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `📅 Calendar`, `🎟️ Queue`, `📝 Requests`).
+  - Added 5-card Executive KPI summary ribbon.
+  - Implemented real-time Doctor Search Bar with instant filtering and mobile quick-switch `<select>` dropdown.
+  - Built 1-Click Fast-Track Schedule Accelerators (`📋 Copy Sunday to Working Days`, `⚡ Apply Sunday to All Active Days`, `🕌 Set Friday Off`).
+  - Added Chamber Quick Pills (`Chamber 1`, `Chamber 2`, `Chamber 3`, `OPD Room 1`, `Consultation Room`).
+  - Built Multi-Day Leave Range Picker with quick reason chips (*Annual Vacation*, *Medical Leave*, *Conference*, *Emergency*).
+  - Added Mobile Sub-Tab Switcher (`[ 🕒 Weekly Visiting Hours ]` vs `[ 🏖️ Leaves & Holidays ]`) with 44px+ touch targets on screens < 768px.
+- [x] **Task 43.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/DoctorScheduleWorkstationTest.php` with 8 feature tests passing (38 assertions).
+  - Verified full Doctor test suite with zero regressions (109 tests passed, 827 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).

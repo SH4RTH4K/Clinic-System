@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreDoctorLeaveRequest;
 use App\Http\Requests\Admin\StoreDoctorScheduleRequest;
+use App\Models\AppointmentRequest;
 use App\Models\Doctor;
 use App\Models\DoctorLeave;
 use App\Models\DoctorSchedule;
+use App\Models\PatientQueueToken;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,10 +33,30 @@ class DoctorScheduleController extends Controller
         $selectedDoctorId = $request->input('doctor_id', $doctors->first()?->id);
         $selectedDoctor = $doctors->firstWhere('id', $selectedDoctorId) ?? $doctors->first();
 
+        // Calculate Executive KPI metrics for selected doctor
+        $selectedDoctorSchedules = $selectedDoctor ? $selectedDoctor->schedules->where('is_active', true) : collect();
+        $weeklyHours = 0;
+        foreach ($selectedDoctorSchedules as $sch) {
+            if ($sch->start_time && $sch->end_time) {
+                $start = Carbon::parse($sch->start_time);
+                $end = Carbon::parse($sch->end_time);
+                $weeklyHours += $start->diffInMinutes($end) / 60;
+            }
+        }
+
+        $kpis = [
+            'total_doctors' => $doctors->count(),
+            'active_days' => $selectedDoctorSchedules->count(),
+            'weekly_hours' => round($weeklyHours, 1),
+            'assigned_chamber' => $selectedDoctorSchedules->first()?->chamber_no ?? 'Unassigned',
+            'upcoming_leaves' => $selectedDoctor ? $selectedDoctor->leaves->count() : 0,
+        ];
+
         return Inertia::render('Admin/Calendar/Schedules', [
             'doctors' => $doctors,
             'selectedDoctor' => $selectedDoctor,
             'days' => DoctorSchedule::DAYS,
+            'kpis' => $kpis,
         ]);
     }
 
@@ -65,21 +88,65 @@ class DoctorScheduleController extends Controller
     }
 
     /**
-     * Record a doctor's leave / off-day.
+     * Record a doctor's leave / off-day (single day or date range).
      */
     public function storeLeave(StoreDoctorLeaveRequest $request, Doctor $doctor): RedirectResponse
     {
-        DoctorLeave::updateOrCreate(
-            [
-                'doctor_id' => $doctor->id,
-                'leave_date' => $request->validated('leave_date'),
-            ],
-            [
-                'reason' => $request->validated('reason'),
-            ]
-        );
+        $validated = $request->validated();
+        $startDate = Carbon::parse($validated['leave_date']);
+        $endDate = ! empty($validated['leave_date_end']) ? Carbon::parse($validated['leave_date_end']) : $startDate->copy();
 
-        return back()->with('success', "Leave recorded for {$doctor->name}.");
+        $reason = ! empty($validated['reason']) ? $validated['reason'] : 'Official Leave';
+
+        // Check for conflicting active queue tokens or appointment requests
+        $conflictCount = 0;
+        $conflictCount += PatientQueueToken::query()
+            ->where('doctor_id', $doctor->id)
+            ->whereDate('token_date', '>=', $startDate->toDateString())
+            ->whereDate('token_date', '<=', $endDate->toDateString())
+            ->whereIn('status', ['waiting', 'in_consultation'])
+            ->count();
+
+        $conflictCount += AppointmentRequest::query()
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->where(function ($sub) use ($startDate, $endDate) {
+                    $sub->whereDate('scheduled_date', '>=', $startDate->toDateString())
+                        ->whereDate('scheduled_date', '<=', $endDate->toDateString());
+                })->orWhere(function ($sub) use ($startDate, $endDate) {
+                    $sub->whereNull('scheduled_date')
+                        ->whereDate('preferred_date', '>=', $startDate->toDateString())
+                        ->whereDate('preferred_date', '<=', $endDate->toDateString());
+                });
+            })
+            ->whereIn('status', ['pending', 'scheduled'])
+            ->count();
+
+        DB::transaction(function () use ($doctor, $startDate, $endDate, $reason) {
+            $cursor = $startDate->copy();
+            while ($cursor->lte($endDate)) {
+                DoctorLeave::updateOrCreate(
+                    [
+                        'doctor_id' => $doctor->id,
+                        'leave_date' => $cursor->toDateString(),
+                    ],
+                    [
+                        'reason' => $reason,
+                    ]
+                );
+                $cursor->addDay();
+            }
+        });
+
+        $daysCount = $startDate->diffInDays($endDate) + 1;
+        $message = $daysCount > 1
+            ? "Leaves recorded for {$daysCount} days ({$startDate->format('M d')} – {$endDate->format('M d, Y')}) for {$doctor->name}."
+            : "Leave recorded for {$doctor->name} on {$startDate->format('M d, Y')}.";
+
+        if ($conflictCount > 0) {
+            return back()->with('warning', "{$message} Note: {$conflictCount} active booking(s) exist on these dates. Please review the Calendar to reschedule affected patients.");
+        }
+
+        return back()->with('success', $message);
     }
 
     /**

@@ -19,6 +19,7 @@ class StoreDoctorLeaveRequest extends FormRequest
     {
         return [
             'leave_date' => ['required', 'date'],
+            'leave_date_end' => ['nullable', 'date', 'after_or_equal:leave_date'],
             'reason' => ['nullable', 'string', 'max:255'],
         ];
     }
