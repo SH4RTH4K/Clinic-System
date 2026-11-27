@@ -24,6 +24,7 @@ class AppointmentRequest extends Model
         'created_by',
         'scheduled_date',
         'scheduled_time',
+        'converted_patient_id',
     ];
 
     protected $casts = [

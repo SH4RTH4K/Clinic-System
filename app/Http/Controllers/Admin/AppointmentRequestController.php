@@ -8,6 +8,9 @@ use App\Http\Requests\Admin\StoreAppointmentIntakeRequest;
 use App\Http\Requests\Admin\UpdateAppointmentRequest;
 use App\Models\AppointmentRequest;
 use App\Models\AppointmentRequestEvent;
+use App\Models\ClinicSetting;
+use App\Models\Doctor;
+use App\Models\Patient;
 use App\Services\Admin\AppointmentRequestPatientMatcher;
 use App\Services\CommunicationService;
 use Carbon\Carbon;
@@ -123,38 +126,77 @@ class AppointmentRequestController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Admin/AppointmentRequests/Create');
+        $doctors = Doctor::query()
+            ->where('is_active', true)
+            ->with([
+                'schedules' => fn ($q) => $q->where('is_active', true)->orderBy('day_of_week'),
+                'leaves' => fn ($q) => $q->whereDate('leave_date', '>=', now()->toDateString())->orderBy('leave_date'),
+            ])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'name_bn', 'specialty', 'phone']);
+
+        $recentPatients = Patient::query()
+            ->latest('id')
+            ->take(12)
+            ->get(['id', 'name', 'phone', 'patient_no', 'patient_series', 'patient_code', 'gender', 'age_years', 'photo_path']);
+
+        $settings = ClinicSetting::first();
+
+        return Inertia::render('Admin/AppointmentRequests/Create', [
+            'doctors' => $doctors,
+            'recentPatients' => $recentPatients,
+            'clinicVisitingHours' => $settings?->visiting_hours,
+        ]);
     }
 
-    public function store(StoreAppointmentIntakeRequest $request): RedirectResponse
+    public function store(StoreAppointmentIntakeRequest $request, CommunicationService $commService): RedirectResponse
     {
         $validated = $request->validated();
         $actor = $request->user();
+        $scheduleImmediately = (bool) ($validated['schedule_immediately'] ?? false);
 
-        DB::transaction(function () use ($validated, $actor): void {
+        DB::transaction(function () use ($validated, $actor, $scheduleImmediately, $commService): void {
+            $status = $scheduleImmediately ? 'scheduled' : 'pending';
+            $scheduledDate = $scheduleImmediately ? ($validated['scheduled_date'] ?? $validated['preferred_date'] ?? now()->toDateString()) : null;
+            $scheduledTime = $scheduleImmediately ? ($validated['scheduled_time'] ?? $validated['preferred_time'] ?? null) : null;
+
             $appointmentRequest = AppointmentRequest::query()->create([
                 'name' => $validated['name'],
                 'phone' => $validated['phone'],
                 'preferred_date' => $validated['preferred_date'] ?? null,
                 'preferred_time' => $validated['preferred_time'] ?? null,
+                'scheduled_date' => $scheduledDate,
+                'scheduled_time' => $scheduledTime,
                 'message' => $validated['message'] ?? null,
                 'source' => $validated['source'],
                 'created_by' => $actor->id,
-                'status' => 'pending',
+                'handled_by' => $scheduleImmediately ? $actor->id : null,
+                'status' => $status,
+                'converted_patient_id' => $validated['patient_id'] ?? null,
             ]);
 
             $appointmentRequest->events()->create([
                 'performed_by' => $actor->id,
                 'performed_by_name' => $actor->name,
-                'event_type' => 'created',
-                'new_status' => 'pending',
-                'new_scheduled_date' => null,
-                'new_scheduled_time' => null,
+                'event_type' => $scheduleImmediately ? 'scheduled' : 'created',
+                'new_status' => $status,
+                'new_scheduled_date' => $scheduledDate,
+                'new_scheduled_time' => $scheduledTime,
+                'note' => $scheduleImmediately ? 'Immediately scheduled at intake' : 'Recorded at front desk intake',
             ]);
+
+            if ($scheduleImmediately) {
+                $commService->sendAppointmentConfirmation($appointmentRequest, $actor);
+            }
         });
 
+        $msg = $scheduleImmediately
+            ? 'Appointment confirmed and scheduled successfully.'
+            : 'Appointment request recorded. Confirm availability with the patient before scheduling.';
+
         return redirect()->route('admin.appointment_requests.index')
-            ->with('success', 'Appointment request recorded. Confirm availability with the patient before scheduling.');
+            ->with('success', $msg);
     }
 
     public function edit(AppointmentRequest $appointmentRequest): Response

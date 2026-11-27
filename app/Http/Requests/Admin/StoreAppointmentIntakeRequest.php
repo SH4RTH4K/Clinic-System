@@ -32,6 +32,11 @@ class StoreAppointmentIntakeRequest extends FormRequest
             'preferred_time' => ['nullable', 'date_format:H:i'],
             'message' => ['nullable', 'string', 'max:1000'],
             'source' => ['required', Rule::in(['phone', 'walk_in'])],
+            'patient_id' => ['nullable', 'integer', 'exists:patients,id'],
+            'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
+            'schedule_immediately' => ['nullable', 'boolean'],
+            'scheduled_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'scheduled_time' => ['nullable', 'date_format:H:i'],
         ];
     }
 }

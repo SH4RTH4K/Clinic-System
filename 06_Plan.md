@@ -1378,5 +1378,24 @@
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
 
+### Phase 59: Staff Fast-Track Appointment Booking & Duty Roster Preview (`/admin/appointment-requests/create`) (`[x] COMPLETED`)
+- [x] **Task 59.1**: Controller Hardening, Roster Eager-Loading & Dual-Action Submission Engine (`app/Http/Controllers/Admin/AppointmentRequestController.php`, `app/Http/Requests/Admin/StoreAppointmentIntakeRequest.php`, `app/Models/AppointmentRequest.php`)
+  - Enriched `AppointmentRequestController@create` to supply active doctors with their weekly consulting shifts (`DoctorSchedule`) and upcoming leaves/holidays, recent clinic patients, and clinic visiting hours.
+  - Upgraded `StoreAppointmentIntakeRequest` to accept `patient_id`, `doctor_id`, `schedule_immediately`, `scheduled_date`, and `scheduled_time`.
+  - Added `'converted_patient_id'` to `$fillable` in `AppointmentRequest.php`.
+  - Upgraded `AppointmentRequestController@store` with dual-submission engine: saves as `'pending'` enquiry for triage OR instantly confirms and schedules as `'scheduled'`, creates appropriate lifecycle event, and triggers automated SMS confirmation dispatch via `CommunicationService`.
+- [x] **Task 59.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/AppointmentRequests/Create.jsx`)
+  - Integrated RemediQ standard `PageHeader` with title *"Book Appointment Request (নতুন অ্যাপয়েন্টমেন্ট বুকিং)"* and quick link (`[ 📋 Back to Requests ]`).
+  - Implemented 2-Column Responsive Layout:
+    - Left Column: Mode Toggle (`Registered Patient` vs `+ New Patient`), async debounced patient lookup combobox (`/admin/patients/search?q=`), Recent Clinic Patients quick chips, and rich Patient Demographics Card (avatar, name, phone, code, gender, age).
+    - Right Column: Attending Doctor selector, Live Doctor Duty & Roster Card showing weekly consulting shifts and upcoming leaves/off-days, requested appointment date with 1-click quick presets (`Today`, `Tomorrow`, `+2 Days`, `+1 Week`), time picker, and Dual Submit Action buttons (`[ ⚡ Confirm & Schedule Immediately ]` vs `[ 💾 Save as Pending Enquiry ]`).
+  - Streamlined mobile touch layout (< 768px) with 44px+ hit targets on buttons and chips.
+- [x] **Task 59.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/FastTrackAppointmentBookingTest.php` with 4 feature tests passing (36 assertions).
+  - Verified regression safety with `AppointmentRequestWorkstationTest.php` (7 tests, 72 assertions) and `AppointmentRequestWorkflowTest.php` (17 tests, 197 assertions; 28 total passing tests).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
+
+
 
 
