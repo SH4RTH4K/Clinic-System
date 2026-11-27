@@ -23,21 +23,75 @@ class SymptomMedicineMapController extends Controller
 {
     public function index(Request $request, SymptomMedicineMapCsvImportService $importService)
     {
-        $query = SymptomMedicineMap::withTrashed()->with(['symptom', 'medicine']);
+        $search = $request->query('search');
+        $status = $request->query('status', 'all');
+        $priority = $request->query('priority');
+        $category = $request->query('category');
+        $symptomId = $request->query('symptom_id');
+        $medicineId = $request->query('medicine_id');
+        $trashed = $request->query('trashed', 'with');
+
+        $query = SymptomMedicineMap::query()->with(['symptom', 'medicine']);
+
+        if ($trashed === 'only') {
+            $query->onlyTrashed();
+        } elseif ($trashed === 'without') {
+            // standard without trashed
+        } else {
+            $query->withTrashed();
+        }
+
+        $query->search($search)
+            ->filterStatus($status)
+            ->filterPriority($priority)
+            ->filterChapter($category)
+            ->filterSymptom($symptomId)
+            ->filterMedicine($medicineId)
+            ->orderBy('priority', 'asc')
+            ->latest('id');
+
         $previewToken = $request->session()->get('importPreviewToken');
         $preview = $previewToken ? $importService->loadPreview($previewToken, $request->user()->id) : null;
 
+        $kpis = [
+            'total' => SymptomMedicineMap::withTrashed()->count(),
+            'approved' => SymptomMedicineMap::where('review_status', 'approved')->where('is_approved', true)->count(),
+            'pending_review' => SymptomMedicineMap::where('review_status', 'pending_review')->count(),
+            'draft' => SymptomMedicineMap::where('review_status', 'draft')->count(),
+            'inactive' => SymptomMedicineMap::where('review_status', 'inactive')->orWhereNotNull('deleted_at')->count(),
+        ];
+
+        $chapters = Symptom::whereNotNull('category')->distinct()->orderBy('category')->pluck('category');
+
+        $selectedSymptom = $symptomId ? Symptom::find($symptomId, ['id', 'name_en', 'name_bn', 'code', 'category']) : null;
+        $selectedMedicine = $medicineId ? Medicine::find($medicineId, ['id', 'name', 'potency']) : null;
+
         return Inertia::render('Admin/SymptomMedicineMap/Index', [
-            'maps' => $query->paginate(15),
+            'maps' => $query->paginate(15)->withQueryString(),
             'importPreview' => $preview,
+            'kpis' => $kpis,
+            'chapters' => $chapters,
+            'selectedSymptom' => $selectedSymptom,
+            'selectedMedicine' => $selectedMedicine,
+            'filters' => [
+                'search' => $search ?? '',
+                'status' => $status,
+                'priority' => $priority ?? '',
+                'category' => $category ?? '',
+                'symptom_id' => $symptomId ? (string) $symptomId : '',
+                'medicine_id' => $medicineId ? (string) $medicineId : '',
+                'trashed' => $trashed,
+            ],
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         return Inertia::render('Admin/SymptomMedicineMap/Create', [
-            'symptoms' => Symptom::where('is_active', true)->orderBy('name_en')->get(),
-            'medicines' => Medicine::where('is_active', true)->orderBy('name')->get(),
+            'symptoms' => Symptom::where('is_active', true)->orderBy('name_en')->get(['id', 'name_en', 'name_bn', 'code', 'category', 'modalities']),
+            'medicines' => Medicine::where('is_active', true)->orderBy('name')->get(['id', 'name', 'common_name', 'potency', 'form']),
+            'preselectedSymptomId' => $request->query('symptom_id'),
+            'preselectedMedicineId' => $request->query('medicine_id'),
         ]);
     }
 

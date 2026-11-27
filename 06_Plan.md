@@ -30,6 +30,7 @@
 | **34** | Manufacturers & Suppliers Master | `[x] COMPLETED` | Company directory, MR contacts, inventory intake combobox |
 | **35** | Diagnostic Lab Investigations | `[x] COMPLETED` | 35 pre-seeded tests, specimen types, fees, responsive cards |
 | **36** | Kent Repertory Symptoms Catalog | `[x] COMPLETED` | 50 Kent rubrics, 11 chapters, CDSS links, responsive touch cards |
+| **37** | Repertory Knowledge Graph | `[x] COMPLETED` | Multi-filter search, Grade 1-4, review queue, responsive cards |
 
 ---
 
@@ -558,6 +559,32 @@
   - Created `tests/Feature/SymptomManagementTest.php` with 10 comprehensive tests covering index KPI metrics, search, chapter filters, validation, deactivation safety, and CDSS repertorization suggestions.
   - Verified zero regressions across `SymptomMedicineMapGovernanceTest` and `DoctorDefaultPermissionsTest`.
   - Formatted with Pint and compiled assets with Vite (`npm run build`).
+
+### Phase 37: Homeopathic Repertory Knowledge Graph & Mapping Workstation (`/admin/symptom_medicine_map`) (`[x] COMPLETED`)
+- [x] **Task 37.1**: Backend Controller & Local Query Scopes
+  - Added query scopes to `SymptomMedicineMap.php`: `scopeSearch`, `scopeFilterStatus`, `scopeFilterPriority`, `scopeFilterChapter`, `scopeFilterSymptom`, `scopeFilterMedicine`.
+  - Upgraded `SymptomMedicineMapController::index` with multi-field debounced search, status tabs, grade filtering, chapter filtering, active filter detection, and KPI metrics aggregation (`total`, `approved`, `pending_review`, `draft`, `inactive`).
+  - Added pre-selection support on `create()` (`preselectedSymptomId`, `preselectedMedicineId`).
+- [x] **Task 37.2**: Responsive Workstation & Filter Controls (`Index.jsx`)
+  - Built executive KPI metric ribbon displaying Total References, Active in CDSS, Pending Review, Drafts, and Inactive.
+  - Added 300ms debounced search bar with instant clear (`✕`) button.
+  - Implemented Review status tabs (`All`, `Approved ✅`, `Pending Review ⏳`, `Drafts 📝`, `Inactive 🚫`) with real-time counter badges.
+  - Implemented Kent Chapter and Grade (1–4) selector dropdowns.
+  - Added active filter dismiss banners for cross-module deep links from `/admin/symptoms` and `/admin/medicines`.
+  - Upgraded batch CSV import workstation with collapsible toggle to preserve screen space.
+- [x] **Task 37.3**: Multi-Screen Responsive Touch Cards (`Index.jsx`)
+  - Implemented high-density mobile touch cards (`block md:hidden`) alongside desktop `DataTable` with rubric/remedy tags, grade stars, source citations, status badges, and 44px+ touch-friendly action buttons (`Review`, `Edit`, `Restore`, `Delete`).
+- [x] **Task 37.4**: Creation & Editing Studio Upgrades (`Create.jsx` & `Edit.jsx`)
+  - Integrated with RemediQ design system and standard `PageHeader`.
+  - Added filterable selectors for symptoms and homeopathic medicines.
+  - Added visual Grade 1–4 radio selector with clinical descriptions (Ordinary, Moderate, Strong, Keynote).
+  - Added 1-Click Classical Literature Presets toolbar (*Kent Repertory*, *Boericke Materia Medica*, *Boger Boenninghausen*, *Allen's Keynotes*).
+- [x] **Task 37.5**: Automated Feature Verification & Testing
+  - Expanded `SymptomMedicineMapGovernanceTest.php` with 3 new comprehensive tests verifying search, status filtering, deep linking, chapter filtering, and grade filtering.
+  - All 16 tests in `SymptomMedicineMapGovernanceTest` passing (205 assertions).
+  - All 10 tests in `SymptomManagementTest` passing (119 assertions).
+  - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`).
+  - Frontend production assets compiled with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -772,3 +799,29 @@
   - Created `tests/Feature/SymptomManagementTest.php` with 10 comprehensive tests covering index KPI metrics, search, chapter filters, validation, deactivation safety, and CDSS repertorization suggestions.
   - Verified zero regressions across `SymptomMedicineMapGovernanceTest` and `DoctorDefaultPermissionsTest`.
   - Formatted with Pint and compiled assets with Vite (`npm run build`).
+
+### Phase 37: Homeopathic Repertory Knowledge Graph & Mapping Workstation (`/admin/symptom_medicine_map`) (`[x] COMPLETED`)
+- [x] **Task 37.1**: Backend Controller & Local Query Scopes
+  - Added query scopes to `SymptomMedicineMap.php`: `scopeSearch`, `scopeFilterStatus`, `scopeFilterPriority`, `scopeFilterChapter`, `scopeFilterSymptom`, `scopeFilterMedicine`.
+  - Upgraded `SymptomMedicineMapController::index` with multi-field debounced search, status tabs, grade filtering, chapter filtering, active filter detection, and KPI metrics aggregation (`total`, `approved`, `pending_review`, `draft`, `inactive`).
+  - Added pre-selection support on `create()` (`preselectedSymptomId`, `preselectedMedicineId`).
+- [x] **Task 37.2**: Responsive Workstation & Filter Controls (`Index.jsx`)
+  - Built executive KPI metric ribbon displaying Total References, Active in CDSS, Pending Review, Drafts, and Inactive.
+  - Added 300ms debounced search bar with instant clear (`✕`) button.
+  - Implemented Review status tabs (`All`, `Approved ✅`, `Pending Review ⏳`, `Drafts 📝`, `Inactive 🚫`) with real-time counter badges.
+  - Implemented Kent Chapter and Grade (1–4) selector dropdowns.
+  - Added active filter dismiss banners for cross-module deep links from `/admin/symptoms` and `/admin/medicines`.
+  - Upgraded batch CSV import workstation with collapsible toggle to preserve screen space.
+- [x] **Task 37.3**: Multi-Screen Responsive Touch Cards (`Index.jsx`)
+  - Implemented high-density mobile touch cards (`block md:hidden`) alongside desktop `DataTable` with rubric/remedy tags, grade stars, source citations, status badges, and 44px+ touch-friendly action buttons (`Review`, `Edit`, `Restore`, `Delete`).
+- [x] **Task 37.4**: Creation & Editing Studio Upgrades (`Create.jsx` & `Edit.jsx`)
+  - Integrated with RemediQ design system and standard `PageHeader`.
+  - Added filterable selectors for symptoms and homeopathic medicines.
+  - Added visual Grade 1–4 radio selector with clinical descriptions (Ordinary, Moderate, Strong, Keynote).
+  - Added 1-Click Classical Literature Presets toolbar (*Kent Repertory*, *Boericke Materia Medica*, *Boger Boenninghausen*, *Allen's Keynotes*).
+- [x] **Task 37.5**: Automated Feature Verification & Testing
+  - Expanded `SymptomMedicineMapGovernanceTest.php` with 3 new comprehensive tests verifying search, status filtering, deep linking, chapter filtering, and grade filtering.
+  - All 16 tests in `SymptomMedicineMapGovernanceTest` passing (205 assertions).
+  - All 10 tests in `SymptomManagementTest` passing (119 assertions).
+  - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`).
+  - Frontend production assets compiled with Vite (`npm run build`).

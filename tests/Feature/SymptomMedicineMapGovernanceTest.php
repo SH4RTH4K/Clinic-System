@@ -395,6 +395,130 @@ class SymptomMedicineMapGovernanceTest extends TestCase
             ->assertExactJson([]);
     }
 
+    public function test_user_can_view_index_with_kpi_metrics_and_search(): void
+    {
+        $viewer = $this->userWithPermissions(['symptom_medicine_map.view', 'visits.view']);
+        $symptomA = Symptom::create(['name_en' => 'Restless anxiety', 'category' => 'mind', 'is_active' => true]);
+        $symptomB = Symptom::create(['name_en' => 'Throbbing headache', 'category' => 'head', 'is_active' => true]);
+        $medA = Medicine::create(['name' => 'Aconitum Napellus', 'potency' => '30C', 'form' => 'drops', 'is_active' => true]);
+        $medB = Medicine::create(['name' => 'Belladonna', 'potency' => '200C', 'form' => 'drops', 'is_active' => true]);
+
+        SymptomMedicineMap::create([
+            'symptom_id' => $symptomA->id,
+            'medicine_id' => $medA->id,
+            'priority' => 1,
+            'review_status' => 'approved',
+            'is_approved' => true,
+            'source_title' => 'Kent Repertory',
+        ]);
+
+        SymptomMedicineMap::create([
+            'symptom_id' => $symptomB->id,
+            'medicine_id' => $medB->id,
+            'priority' => 2,
+            'review_status' => 'pending_review',
+            'is_approved' => false,
+            'source_title' => 'Boericke Materia Medica',
+        ]);
+
+        $response = $this->actingAs($viewer)->get(route('admin.symptom_medicine_map.index'));
+        $response->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/SymptomMedicineMap/Index')
+                ->has('maps.data', 2)
+                ->where('kpis.approved', 1)
+                ->where('kpis.pending_review', 1)
+                ->has('chapters')
+            );
+
+        // Search by medicine name
+        $searchResponse = $this->actingAs($viewer)->get(route('admin.symptom_medicine_map.index', ['search' => 'Aconitum']));
+        $searchResponse->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('maps.data', 1)
+                ->where('maps.data.0.medicine.name', 'Aconitum Napellus')
+            );
+
+        // Filter by status
+        $statusResponse = $this->actingAs($viewer)->get(route('admin.symptom_medicine_map.index', ['status' => 'pending_review']));
+        $statusResponse->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('maps.data', 1)
+                ->where('maps.data.0.review_status', 'pending_review')
+            );
+    }
+
+    public function test_user_can_filter_mappings_by_symptom_id_and_medicine_id(): void
+    {
+        $viewer = $this->userWithPermissions(['symptom_medicine_map.view', 'visits.view']);
+        $symptom = Symptom::create(['name_en' => 'Burning stomach pain', 'category' => 'digestion', 'is_active' => true]);
+        $med = Medicine::create(['name' => 'Arsenicum Album', 'potency' => '30C', 'form' => 'drops', 'is_active' => true]);
+
+        $mapping = SymptomMedicineMap::create([
+            'symptom_id' => $symptom->id,
+            'medicine_id' => $med->id,
+            'priority' => 1,
+            'review_status' => 'approved',
+            'is_approved' => true,
+        ]);
+
+        // Deep link from /admin/symptoms
+        $response = $this->actingAs($viewer)->get(route('admin.symptom_medicine_map.index', ['symptom_id' => $symptom->id]));
+        $response->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('maps.data', 1)
+                ->where('selectedSymptom.id', $symptom->id)
+                ->where('maps.data.0.id', $mapping->id)
+            );
+
+        // Deep link by medicine_id
+        $medResponse = $this->actingAs($viewer)->get(route('admin.symptom_medicine_map.index', ['medicine_id' => $med->id]));
+        $medResponse->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('maps.data', 1)
+                ->where('selectedMedicine.id', $med->id)
+            );
+    }
+
+    public function test_user_can_filter_by_chapter_and_priority_grade(): void
+    {
+        $viewer = $this->userWithPermissions(['symptom_medicine_map.view', 'visits.view']);
+        $symptomMind = Symptom::create(['name_en' => 'Fear of death', 'category' => 'mind', 'is_active' => true]);
+        $symptomHead = Symptom::create(['name_en' => 'Congestive headache', 'category' => 'head', 'is_active' => true]);
+        $medA = Medicine::create(['name' => 'Aconite', 'potency' => '30C', 'form' => 'drops', 'is_active' => true]);
+        $medB = Medicine::create(['name' => 'Belladonna', 'potency' => '30C', 'form' => 'drops', 'is_active' => true]);
+
+        SymptomMedicineMap::create([
+            'symptom_id' => $symptomMind->id,
+            'medicine_id' => $medA->id,
+            'priority' => 1,
+            'review_status' => 'approved',
+            'is_approved' => true,
+        ]);
+
+        SymptomMedicineMap::create([
+            'symptom_id' => $symptomHead->id,
+            'medicine_id' => $medB->id,
+            'priority' => 3,
+            'review_status' => 'approved',
+            'is_approved' => true,
+        ]);
+
+        $chapterResponse = $this->actingAs($viewer)->get(route('admin.symptom_medicine_map.index', ['category' => 'mind']));
+        $chapterResponse->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('maps.data', 1)
+                ->where('maps.data.0.symptom.name_en', 'Fear of death')
+            );
+
+        $gradeResponse = $this->actingAs($viewer)->get(route('admin.symptom_medicine_map.index', ['priority' => 3]));
+        $gradeResponse->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('maps.data', 1)
+                ->where('maps.data.0.priority', 3)
+            );
+    }
+
     /** @param array<string, mixed> $overrides */
     private function mapping(array $overrides = []): SymptomMedicineMap
     {

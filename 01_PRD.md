@@ -116,8 +116,17 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Symptom Master Catalog**: Hierarchical Kent Repertory rubrics catalog categorized across 11 classical chapters (`mind`, `head`, `eyes_ent`, `digestion`, `abdomen_stool`, `urinary`, `respiratory`, `extremities`, `skin`, `fever`, `generalities`).
 - `[x] Done` **Standardized Rubric Attributes**: Code identifiers (e.g. `MIND-01`, `FEV-01`), bilingual titles (English & Bengali), and clinical modalities (`<` / `>`).
 - `[x] Done` **Homeopathic Remedy Database**: Comprehensive catalog containing remedy scientific names, common names, origin, and standard potencies.
-- `[x] Done` **Rubric-to-Remedy Mapping**: Grading system (Grades 1 to 4) mapping remedies to specific symptoms with source attribution (Kent Repertory).
-- `[x] Done` **Repertory Review & Versioning**: Multi-tier review workflow supporting Draft, Pending Review, Approved, and Deprecated statuses.
+- `[x] Done` **Rubric-to-Remedy Mapping**: Grading system (Grades 1 to 4: Ordinary, Moderate, Strong, Keynote) mapping remedies to specific symptoms with classical literature citation (Kent, Boericke, Boger, Allen).
+- `[x] Done` **Repertory Knowledge Graph Workstation (`/admin/symptom_medicine_map`)**:
+  - Top executive KPI ribbon: Total References, Active in CDSS, Pending Review queue, Drafts, Inactive.
+  - Multi-parameter search & filtering: 300ms debounced search matching rubric English/Bengali, code, remedy name, potency, notes, and source citation.
+  - Review lifecycle tabs: `All`, `Approved (Active CDSS) ✅`, `Pending Review ⏳`, `Drafts 📝`, `Inactive 🚫`.
+  - Kent Repertory chapter and Grade (1–4) dropdown filters.
+  - Cross-module deep linking: seamless filter isolation when navigated via `?symptom_id={id}` or `?medicine_id={id}` with dismissible active filter badges.
+  - Multi-screen responsive layout: desktop `DataTable` alongside high-density mobile touch cards (`block md:hidden`) with 44px+ touch-friendly actions (`Review`, `Edit`, `Restore`, `Delete`).
+  - Collapsible CSV batch ingestion workstation with validation summary and row error inspector.
+  - Fast-Track 1-Click Classical Literature Presets in Create and Edit studios (*Kent*, *Boericke*, *Boger*, *Allen*).
+- `[x] Done` **Repertory Review & Versioning**: Multi-tier review workflow supporting Draft, Pending Review, Approved, and Deprecated statuses with immutable `SymptomMedicineMapVersion` historical auditing.
 - `[x] Done` **Live Repertory Suggestions**: Selecting symptoms dynamically surfaces the most indicated remedies ranked by cumulative grade.
 - `[x] Done` **Bulk CSV Import**: Preview and batch import repertory mappings with validation.
 - `[x] Done` **Responsive Directory & Ergonomics**:

@@ -43,6 +43,85 @@ class SymptomMedicineMap extends Model
         return $this->hasMany(SymptomMedicineMapVersion::class)->orderByDesc('version_number');
     }
 
+    public function scopeSearch($query, ?string $search)
+    {
+        if (blank($search)) {
+            return $query;
+        }
+
+        $search = trim($search);
+
+        return $query->where(function ($q) use ($search) {
+            $q->whereHas('symptom', function ($sq) use ($search) {
+                $sq->where('name_en', 'like', "%{$search}%")
+                    ->orWhere('name_bn', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            })->orWhereHas('medicine', function ($mq) use ($search) {
+                $mq->where('name', 'like', "%{$search}%")
+                    ->orWhere('common_name', 'like', "%{$search}%")
+                    ->orWhere('potency', 'like', "%{$search}%");
+            })->orWhere('note', 'like', "%{$search}%")
+                ->orWhere('source_title', 'like', "%{$search}%")
+                ->orWhere('source_author', 'like', "%{$search}%");
+        });
+    }
+
+    public function scopeFilterStatus($query, ?string $status)
+    {
+        if (blank($status) || $status === 'all') {
+            return $query;
+        }
+
+        if ($status === 'approved') {
+            return $query->where('review_status', 'approved')->where('is_approved', true);
+        }
+
+        if ($status === 'inactive') {
+            return $query->where(function ($q) {
+                $q->where('review_status', 'inactive')
+                    ->orWhereNotNull('deleted_at');
+            });
+        }
+
+        return $query->where('review_status', $status);
+    }
+
+    public function scopeFilterPriority($query, ?string $priority)
+    {
+        if (blank($priority) || $priority === 'all') {
+            return $query;
+        }
+
+        return $query->where('priority', (int) $priority);
+    }
+
+    public function scopeFilterChapter($query, ?string $chapter)
+    {
+        if (blank($chapter) || $chapter === 'all') {
+            return $query;
+        }
+
+        return $query->whereHas('symptom', fn ($sq) => $sq->where('category', $chapter));
+    }
+
+    public function scopeFilterSymptom($query, $symptomId)
+    {
+        if (blank($symptomId)) {
+            return $query;
+        }
+
+        return $query->where('symptom_id', $symptomId);
+    }
+
+    public function scopeFilterMedicine($query, $medicineId)
+    {
+        if (blank($medicineId)) {
+            return $query;
+        }
+
+        return $query->where('medicine_id', $medicineId);
+    }
+
     public function preserveVersion(int $actorId): void
     {
         $versionNumber = (int) $this->versions()->max('version_number') + 1;
