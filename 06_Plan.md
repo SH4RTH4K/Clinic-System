@@ -1125,3 +1125,23 @@
   - Verified full appointment test suite with zero regressions (34 tests passed, 359 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 46: Clinic Master Settings, Practice Mode & Multi-Screen Workstation (`/admin/settings`) (`[x] COMPLETED`)
+- [x] **Task 46.1**: FormRequest & Controller Hardening (`UpdateClinicSettingsRequest.php`, `ClinicSettingController.php`)
+  - Added validation rule for `bkash_number` (`nullable|string|max:50`) in `UpdateClinicSettingsRequest`.
+  - Upgraded `ClinicSettingController@edit` to calculate and return executive KPI metrics: `practice_type`, `practice_label`, `auto_deduct_inventory`, `default_consultation_fee`, `has_custom_logo`, `has_custom_favicon`, `schedule_mode`, and `active_days_count`.
+  - Preserved strict Super Admin protection and authorization checks (`role:Super Admin`, `permission:clinic_settings.view|update`).
+- [x] **Task 46.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Settings/Edit.jsx`)
+  - Integrated RemediQ `PageHeader` with quick navigation links (`🔢 Patient Numbering`, `📝 Rx Presets`, `👨‍⚕️ Doctors`, `🎟️ Queue`).
+  - Added 5-card Executive KPI summary ribbon with real-time operational status.
+  - Implemented real-time in-page search bar (300ms debounce) matching all setting titles, labels, descriptions, and values with clear button (`✕`) and visual emerald glow highlighting.
+  - Added Category Filter Tabs Strip (`All Settings`, `🩺 Practice Mode`, `📦 Stock & Pharmacy`, `🧾 Billing & bKash`, `🎨 Branding`, `🏥 General Info`, `🕒 Visiting Hours`, `🌐 Website & About`).
+  - Added dedicated bKash / Mobile Financial Services (MFS) card in Billing section for token and POS invoice cashless payments.
+  - Added 1-Click Fast-Track Practice Mode Presets Toolbar (`🌿 Classical Pack`, `💊 General Pack`, `⚖️ Dual Pack`).
+  - Added 1-Click Visiting Hours schedule accelerators (`📋 Copy Sunday to Working Days`, `🕌 Set Friday Closed`, `⚡ Standard 9am-9pm OPD`).
+  - Implemented responsive multi-screen layout with adaptive input stacking (`grid-cols-1 sm:grid-cols-2`) and floating Sticky Bottom Save Drawer on mobile viewports (< 640px).
+- [x] **Task 46.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/ClinicSettingsWorkstationTest.php` with 5 feature tests passing (47 assertions).
+  - Verified full settings test suite with zero regressions (50 tests passed, 250 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).

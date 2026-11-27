@@ -18,8 +18,40 @@ class ClinicSettingController extends Controller
     {
         $settings = ClinicSetting::first();
 
+        $schedule = $settings?->visiting_hours_schedule;
+        $scheduleMode = $schedule['mode'] ?? 'selected_hours';
+        $activeDaysCount = 0;
+        if (! empty($schedule['days']) && is_array($schedule['days'])) {
+            foreach ($schedule['days'] as $slots) {
+                if (! empty($slots) && is_array($slots)) {
+                    $activeDaysCount++;
+                }
+            }
+        }
+
+        $practiceType = $settings?->practice_type ?? 'homeopathy';
+        $practiceLabel = match ($practiceType) {
+            'homeopathy' => '🌿 Classical Homeopathy',
+            'general_practice' => '💊 General Practice',
+            'integrative_dual' => '⚖️ Integrative Dual',
+            default => '🌿 Classical Homeopathy',
+        };
+
+        $kpis = [
+            'practice_type' => $practiceType,
+            'practice_label' => $practiceLabel,
+            'auto_deduct_inventory' => (bool) ($settings?->auto_deduct_inventory ?? false),
+            'default_consultation_fee' => (float) ($settings?->default_consultation_fee ?? 500),
+            'has_custom_logo' => ! empty($settings?->logo_path),
+            'has_custom_favicon' => ! empty($settings?->favicon_path),
+            'schedule_mode' => $scheduleMode,
+            'active_days_count' => $activeDaysCount,
+            'bkash_number' => $settings?->bkash_number ?? null,
+        ];
+
         return Inertia::render('Admin/Settings/Edit', [
             'settings' => $settings,
+            'kpis' => $kpis,
             'logoUrl' => $settings?->logo_path ? route('clinic.logo') : null,
             'faviconUrl' => $settings?->favicon_path ? route('clinic.favicon') : null,
         ]);

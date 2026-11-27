@@ -26,6 +26,7 @@ class UpdateClinicSettingsRequest extends FormRequest
             'clinic_name_en' => ['required', 'string', 'max:255'],
             'clinic_name_bn' => ['nullable', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:255'],
+            'bkash_number' => ['nullable', 'string', 'max:50'],
             'address' => ['required', 'string'],
             'visiting_hours' => ['nullable', 'string'],
             'practice_type' => ['nullable', 'string', 'in:homeopathy,general_practice,integrative_dual'],

@@ -61,6 +61,14 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Security Audit Logging**: Powered by `spatie/laravel-activitylog`. Captures all critical actions with non-sensitive metadata.
 - `[x] Done` **Staff Profile Management**: Staff users can update name, email, and password. Profile self-deletion is disabled; staff deactivation is strictly reserved for Super Admin.
 - `[x] Done` **Dynamic Clinic Branding & Language-Wise Browser Tab Titles**: Browser tab titles and sidebar navigation dynamically display the configured Clinic Name from Clinic Settings (`/admin/settings`) according to active language version (`clinic_name_en` for English and `clinic_name_bn` for Bangla), completely replacing static default titles (`- Laravel`). Includes 1-click Language Switcher (`বাং` / `EN`) in topbar navigation.
+- `[x] Done` **Clinic Master Settings & Practice Policies Workstation (`/admin/settings`)**:
+  - **Executive KPI Summary Ribbon**: 5 operational indicators (Active Practice Mode, FIFO Inventory Auto-Deduct, Default OPD Consultation Fee, Branding Asset Status, and Weekly Visiting Schedule Mode).
+  - **Universal In-Page Real-Time Search**: 300ms debounced setting search with instant match counter, clear button (`✕`), and dynamic emerald glow highlight across matching cards and inputs.
+  - **Category Navigation Tabs Strip**: 1-Click section switching (`All Settings`, `🩺 Practice Mode`, `📦 Stock & Pharmacy`, `🧾 Billing & bKash`, `🎨 Branding`, `🏥 General Info`, `🕒 Visiting Hours`, `🌐 Website & About`).
+  - **Mobile Financial Service (MFS) Integration**: Exposes and validates `bkash_number` in `UpdateClinicSettingsRequest` with dedicated bKash cashless payment card for patient token slips and POS invoices.
+  - **1-Click Practice Mode & Schedule Accelerators**: Fast presets (*Classical Homeopathy*, *General Practice*, *Integrative Dual*) and schedule copy shortcuts (*Copy Sunday to Working Days*, *Set Friday Closed*, *Standard 9am-9pm OPD*).
+  - **Multi-Screen Ergonomics & Mobile Sticky Save Drawer**: Responsive input stacking and floating sticky bottom save bar on mobile viewports (< 640px) with 44px+ touch targets.
+  - **Strict Super Admin Invariant**: Access strictly guarded by `['auth', 'role:Super Admin', 'permission:clinic_settings.view|update']`.
 
 ---
 
