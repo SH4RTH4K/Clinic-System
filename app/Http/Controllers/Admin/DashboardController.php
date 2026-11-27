@@ -16,6 +16,7 @@ use App\Models\Visit;
 use App\Services\InventoryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,32 +45,47 @@ class DashboardController extends Controller
         ];
 
         if ($access['patients']) {
-            $props['metrics']['total_patients'] = Patient::count();
-            $props['metrics']['new_patients_this_month'] = Patient::where('created_at', '>=', now()->startOfMonth())->count();
+            $props['metrics']['total_patients'] = $this->safeQuery(fn () => Patient::count(), 0);
+            $props['metrics']['new_patients_this_month'] = $this->safeQuery(
+                fn () => Patient::where('created_at', '>=', now()->startOfMonth())->count(),
+                0
+            );
         }
 
         if ($access['queue']) {
-            $props['metrics']['waiting_queue_count'] = PatientQueueToken::whereDate('created_at', Carbon::today())
-                ->whereIn('status', ['waiting', 'calling'])
-                ->count();
+            $props['metrics']['waiting_queue_count'] = $this->safeQuery(
+                fn () => PatientQueueToken::whereDate('created_at', Carbon::today())
+                    ->whereIn('status', ['waiting', 'calling'])
+                    ->count(),
+                0
+            );
         }
 
         if ($access['billing']) {
-            $props['metrics']['today_revenue'] = (float) Invoice::whereDate('invoice_date', Carbon::today())->sum('paid_amount');
-            $props['metrics']['due_invoices_count'] = Invoice::due()->count();
+            $props['metrics']['today_revenue'] = (float) $this->safeQuery(
+                fn () => Invoice::whereDate('invoice_date', Carbon::today())->sum('paid_amount'),
+                0.0
+            );
+            $props['metrics']['due_invoices_count'] = $this->safeQuery(
+                fn () => Invoice::due()->count(),
+                0
+            );
         }
 
-        $clinicSetting = ClinicSetting::first();
+        $clinicSetting = $this->safeQuery(fn () => ClinicSetting::first());
         $props['practice_type'] = $clinicSetting?->practice_type ?? 'homeopathy';
         $props['clinic_name'] = $clinicSetting?->clinic_name_en ?? 'RemediQ Clinic';
 
         if ($access['visits']) {
             $today = Carbon::today();
             $weekStart = $today->copy()->subDays(6);
-            $weeklyVisitCounts = Visit::selectRaw('DATE(visit_date) as visit_day, count(*) as total')
-                ->whereBetween('visit_date', [$weekStart->toDateString(), $today->toDateString()])
-                ->groupBy('visit_day')
-                ->pluck('total', 'visit_day');
+            $weeklyVisitCounts = $this->safeQuery(
+                fn () => Visit::selectRaw('DATE(visit_date) as visit_day, count(*) as total')
+                    ->whereBetween('visit_date', [$weekStart->toDateString(), $today->toDateString()])
+                    ->groupByRaw('DATE(visit_date)')
+                    ->pluck('total', 'visit_day'),
+                collect()
+            );
             $weeklyVisits = collect(range(6, 0))->map(function (int $daysAgo) use ($today, $weeklyVisitCounts): array {
                 $date = $today->copy()->subDays($daysAgo);
 
@@ -80,27 +96,31 @@ class DashboardController extends Controller
                 ];
             });
 
-            $props['metrics']['todays_visits'] = Visit::whereDate('visit_date', $today)->count();
+            $props['metrics']['todays_visits'] = $this->safeQuery(fn () => Visit::whereDate('visit_date', $today)->count(), 0);
             $props['metrics']['weekly_visits_total'] = (int) $weeklyVisits->sum('total');
-            $props['metrics']['draft_visits'] = Visit::where('status', 'draft')->count();
-            $props['metrics']['finalized_visits'] = Visit::where('status', 'finalized')->count();
+            $props['metrics']['draft_visits'] = $this->safeQuery(fn () => Visit::where('status', 'draft')->count(), 0);
+            $props['metrics']['finalized_visits'] = $this->safeQuery(fn () => Visit::where('status', 'finalized')->count(), 0);
             $props['weekly_visits'] = $weeklyVisits;
-            $props['recent_visits'] = $this->recentVisits($access['patients']);
+            $props['recent_visits'] = $this->safeQuery(fn () => $this->recentVisits($access['patients']), []);
 
             if ($access['top_medicines']) {
-                $topMedicines = PrescriptionItem::with('medicine:id,name,potency')
-                    ->selectRaw('medicine_id, count(*) as count')
-                    ->where('created_at', '>=', now()->subDays(30))
-                    ->groupBy('medicine_id')
-                    ->orderByDesc('count')
-                    ->limit(5)
-                    ->get()
-                    ->map(fn (PrescriptionItem $item): array => [
-                        'medicine_id' => $item->medicine_id,
-                        'name' => $item->medicine?->name ?? 'Unknown medicine',
-                        'potency' => $item->medicine?->potency,
-                        'count' => (int) $item->count,
-                    ]);
+                $topMedicines = $this->safeQuery(
+                    fn () => PrescriptionItem::with('medicine:id,name,potency')
+                        ->selectRaw('medicine_id, count(*) as count')
+                        ->whereNotNull('medicine_id')
+                        ->where('created_at', '>=', now()->subDays(30))
+                        ->groupBy('medicine_id')
+                        ->orderByRaw('count(*) desc')
+                        ->limit(5)
+                        ->get()
+                        ->map(fn (PrescriptionItem $item): array => [
+                            'medicine_id' => $item->medicine_id,
+                            'name' => $item->medicine?->name ?? 'Unknown medicine',
+                            'potency' => $item->medicine?->potency,
+                            'count' => (int) $item->count,
+                        ]),
+                    collect()
+                );
 
                 $props['top_medicines'] = $topMedicines;
                 $props['top_medicine_max'] = max((int) $topMedicines->max('count'), 1);
@@ -108,10 +128,13 @@ class DashboardController extends Controller
         }
 
         if ($access['appointments']) {
-            $appointmentStatusCounts = AppointmentRequest::select('status')
-                ->selectRaw('count(*) as total')
-                ->groupBy('status')
-                ->pluck('total', 'status');
+            $appointmentStatusCounts = $this->safeQuery(
+                fn () => AppointmentRequest::select('status')
+                    ->selectRaw('count(*) as total')
+                    ->groupBy('status')
+                    ->pluck('total', 'status'),
+                collect()
+            );
 
             $props['metrics']['pending_requests'] = (int) ($appointmentStatusCounts['pending'] ?? 0);
             $props['appointment_status'] = [
@@ -120,33 +143,61 @@ class DashboardController extends Controller
                 'scheduled' => (int) ($appointmentStatusCounts['scheduled'] ?? 0),
                 'cancelled' => (int) ($appointmentStatusCounts['cancelled'] ?? 0),
             ];
-            $props['recent_requests'] = AppointmentRequest::latest()
-                ->limit(5)
-                ->get(['id', 'name', 'phone', 'preferred_date', 'preferred_time', 'status', 'created_at']);
+            $props['recent_requests'] = $this->safeQuery(
+                fn () => AppointmentRequest::latest()
+                    ->limit(5)
+                    ->get(['id', 'name', 'phone', 'preferred_date', 'preferred_time', 'status', 'created_at']),
+                collect()
+            );
         }
 
         if ($access['doctors']) {
-            $props['metrics']['active_doctors'] = Doctor::where('is_active', true)->count();
+            $props['metrics']['active_doctors'] = $this->safeQuery(fn () => Doctor::where('is_active', true)->count(), 0);
         }
 
         if ($access['medicines']) {
-            $props['metrics']['total_medicines'] = Medicine::count();
-            $props['metrics']['active_medicines'] = Medicine::where('is_active', true)->count();
+            $props['metrics']['total_medicines'] = $this->safeQuery(fn () => Medicine::count(), 0);
+            $props['metrics']['active_medicines'] = $this->safeQuery(fn () => Medicine::where('is_active', true)->count(), 0);
         }
 
         $access['inventory'] = $this->canView($user, 'inventory.view');
         if ($access['inventory']) {
-            $inventoryService = app(InventoryService::class);
-            $invMetrics = $inventoryService->getDashboardMetrics();
-            $props['inventory_metrics'] = [
-                'low_stock_count' => $invMetrics['low_stock_count'] ?? 0,
-                'expiring_soon_count' => $invMetrics['expiring_count'] ?? 0,
-                'expired_count' => $invMetrics['expired_count'] ?? 0,
-                'total_batches' => $invMetrics['total_batches'] ?? 0,
-            ];
+            $props['inventory_metrics'] = $this->safeQuery(function (): array {
+                $inventoryService = app(InventoryService::class);
+                $invMetrics = $inventoryService->getDashboardMetrics();
+
+                return [
+                    'low_stock_count' => $invMetrics['low_stock_count'] ?? 0,
+                    'expiring_soon_count' => $invMetrics['expiring_count'] ?? 0,
+                    'expired_count' => $invMetrics['expired_count'] ?? 0,
+                    'total_batches' => $invMetrics['total_batches'] ?? 0,
+                ];
+            }, [
+                'low_stock_count' => 0,
+                'expiring_soon_count' => 0,
+                'expired_count' => 0,
+                'total_batches' => 0,
+            ]);
         }
 
         return Inertia::render('Admin/Dashboard', $props);
+    }
+
+    /**
+     * Safely run a metric query with error capture and fallback.
+     */
+    private function safeQuery(callable $callback, mixed $default = null): mixed
+    {
+        try {
+            return $callback();
+        } catch (\Throwable $e) {
+            Log::warning('Dashboard metric failed: '.$e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile().':'.$e->getLine(),
+            ]);
+
+            return $default;
+        }
     }
 
     private function canView(User $user, string $permission): bool
@@ -166,7 +217,7 @@ class DashboardController extends Controller
             $query->with('patient:id,name,patient_no,patient_series,patient_code');
         }
 
-        return $query->get(['id', 'patient_id', 'visit_date', 'status', 'chief_complaint'])
+        return $query->get(['id', 'patient_id', 'visit_date', 'status', 'chief_complaint', 'share_token'])
             ->map(fn (Visit $visit): array => [
                 'id' => $visit->id,
                 'visit_date' => $visit->visit_date?->toDateString(),

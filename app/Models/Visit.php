@@ -150,7 +150,13 @@ class Visit extends Model
     {
         if (empty($this->share_token)) {
             $this->share_token = bin2hex(random_bytes(16));
-            $this->saveQuietly();
+            if ($this->exists) {
+                try {
+                    $this->saveQuietly();
+                } catch (\Throwable) {
+                    // Safe write protection during read/serialization operations
+                }
+            }
         }
 
         return $this->share_token;
@@ -158,6 +164,6 @@ class Visit extends Model
 
     public function getShareUrlAttribute(): string
     {
-        return url('/rx/'.$this->ensureShareToken());
+        return ! empty($this->share_token) ? url('/rx/'.$this->share_token) : '';
     }
 }

@@ -47,15 +47,15 @@ class HandleInertiaRequests extends Middleware
             'clinic' => function () {
                 $settings = ClinicSetting::query()->first();
                 $locale = app()->getLocale();
-                $nameEn = $settings->clinic_name_en ?? config('app.name', 'RemediQ Clinic');
-                $nameBn = $settings->clinic_name_bn ?? null;
+                $nameEn = $settings?->clinic_name_en ?? config('app.name', 'RemediQ Clinic');
+                $nameBn = $settings?->clinic_name_bn ?? null;
                 $activeName = ($locale === 'bn' && ! empty($nameBn)) ? $nameBn : $nameEn;
 
                 return [
                     'name' => $activeName,
                     'name_en' => $nameEn,
                     'name_bn' => $nameBn,
-                    'practice_type' => $settings->practice_type ?? 'homeopathy',
+                    'practice_type' => $settings?->practice_type ?? 'homeopathy',
                     'logo_url' => $settings?->logo_path ? route('clinic.logo') : null,
                     'favicon_url' => $settings?->favicon_path ? route('clinic.favicon') : null,
                 ];
