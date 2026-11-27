@@ -381,3 +381,8 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 
 ### Module 14: Clinical, Financial & Operational Analytics Reports
 - `[x] Done` **Multi-Dimensional Reports Suite & Analytics Dashboard (`/admin/reports`)**: Multi-column smart search (patient name, phone, patient code, diagnosis, complaint), Attending Doctor filter, 1-click tactile date presets (`Today`, `Yesterday`, `This Week`, `This Month`, `This Year`), executive KPI banner tiles (Total Consultations, Unique Patients, Finalized Rx, Daily Average, Prescribed Rx Items), categorized analytical tabs (`Clinical Consultations & Morbidity`, `Doctor Productivity`, `Pharmacy Top Dispensed Remedies`), streaming CSV data export (`/admin/reports/export`), and responsive executive mobile touch cards (`block md:hidden`).
+
+---
+
+### Module 15: Executive Command Dashboard & 1-Click Clinical Launchers
+- `[x] Done` **Executive Command Dashboard (`/admin/dashboard`)**: Centralized operational cockpit with RemediQ standard `PageHeader`, practice mode badge (`🌿 Classical Homeopathy`, `🩺 Allopathy`, `🌐 Integrative Dual Practice`), 6-Tile Operational KPI Ribbon (`Waiting in Queue ⏳`, `Today's Consultations 🩺`, `Pending Enquiries 📅`, `Today's Revenue 💵`, `Inventory Low Stock ⚠️`, `Total Registered Patients 👥`), 1-Click Clinical Action Launchers Strip (`+ New Consultation`, `🎫 Issue Token`, `👤 New Patient`, `💳 POS Billing`, `📅 Book Appointment`, `📊 View Reports`), weekly consultation volume chart, appointment triage stream, and touch-optimized responsive layout.

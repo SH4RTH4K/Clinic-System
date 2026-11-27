@@ -1396,6 +1396,24 @@
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
 
+### Phase 60: Executive Command Dashboard & 1-Click Launchers Modernization (`/admin/dashboard`) (`[x] COMPLETED`)
+- [x] **Task 60.1**: Controller Hardening, Metric Expansion & Practice Type Metadata (`app/Http/Controllers/Admin/DashboardController.php`)
+  - Enriched `DashboardController@index` with operational metrics for Queue (`waiting_queue_count`), Billing (`today_revenue`, `due_invoices_count`), and Reports.
+  - Added strict server-side authorization gates (`access.queue`, `access.billing`, `access.reports`) ensuring staff without proper permissions cannot inspect operational or financial data.
+  - Passed `practice_type` and `clinic_name` from `ClinicSetting` to enable dynamic clinical interface branding.
+  - Preserved strict clinical chart privacy invariants (`clinical_records.view` + `visits.view`).
+- [x] **Task 60.2**: Frontend Dashboard Modernization & 1-Click Launchers (`resources/js/Pages/Admin/Dashboard.jsx`)
+  - Replaced legacy interface with standard RemediQ `PageHeader` featuring clinic branding and practice mode badge (`🌿 Classical Homeopathy`, `🩺 Allopathy`, `🌐 Integrative Dual Practice`).
+  - Implemented 6-Tile Operational KPI Ribbon (`Waiting in Queue ⏳`, `Today's Consultations 🩺`, `Pending Enquiries 📅`, `Today's Revenue 💵`, `Inventory Low Stock ⚠️`, `Total Registered Patients 👥`).
+  - Built 1-Click Clinical Action Launchers Strip (`+ New Consultation`, `🎫 Issue Token`, `👤 New Patient`, `💳 POS Billing`, `📅 Book Appointment`, `📊 View Reports`).
+  - Built responsive consultation trend visualizer, high-density appointment triage feed, and touch-optimized layout for mobile and tablet screens.
+- [x] **Task 60.3**: Automated Testing & Suite Verification
+  - Authored dedicated feature test `tests/Feature/ExecutiveDashboardTest.php` (2 tests, 51 assertions passing).
+  - Verified regression safety with `DashboardAuthorizationTest.php` (6 tests, 148 assertions passing).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
+
+
 
 
 

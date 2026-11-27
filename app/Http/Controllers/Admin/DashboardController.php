@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppointmentRequest;
+use App\Models\ClinicSetting;
 use App\Models\Doctor;
+use App\Models\Invoice;
 use App\Models\Medicine;
 use App\Models\Patient;
+use App\Models\PatientQueueToken;
 use App\Models\PrescriptionItem;
 use App\Models\User;
 use App\Models\Visit;
@@ -29,6 +32,9 @@ class DashboardController extends Controller
             'appointments' => $this->canView($user, 'appointments.view'),
             'doctors' => $this->canView($user, 'doctors.view'),
             'medicines' => $this->canView($user, 'medicines.view'),
+            'queue' => $this->canView($user, 'queue.view'),
+            'billing' => $this->canView($user, 'billing.view'),
+            'reports' => $this->canView($user, 'reports.view'),
         ];
         $access['top_medicines'] = $access['visits'] && $access['medicines'];
 
@@ -41,6 +47,21 @@ class DashboardController extends Controller
             $props['metrics']['total_patients'] = Patient::count();
             $props['metrics']['new_patients_this_month'] = Patient::where('created_at', '>=', now()->startOfMonth())->count();
         }
+
+        if ($access['queue']) {
+            $props['metrics']['waiting_queue_count'] = PatientQueueToken::whereDate('created_at', Carbon::today())
+                ->whereIn('status', ['waiting', 'calling'])
+                ->count();
+        }
+
+        if ($access['billing']) {
+            $props['metrics']['today_revenue'] = (float) Invoice::whereDate('invoice_date', Carbon::today())->sum('paid_amount');
+            $props['metrics']['due_invoices_count'] = Invoice::due()->count();
+        }
+
+        $clinicSetting = ClinicSetting::first();
+        $props['practice_type'] = $clinicSetting?->practice_type ?? 'homeopathy';
+        $props['clinic_name'] = $clinicSetting?->clinic_name_en ?? 'RemediQ Clinic';
 
         if ($access['visits']) {
             $today = Carbon::today();
