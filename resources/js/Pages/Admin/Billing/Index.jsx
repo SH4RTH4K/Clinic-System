@@ -24,19 +24,23 @@ const methodIcons = {
 };
 
 export default function Index({ invoices = { data: [] }, filters = {}, metrics = {} }) {
+    const safeInvoices = invoices || { data: [] };
+    const safeMetrics = metrics || {};
+    const safeFilters = filters || {};
+
     const can = usePermission();
     const canCreate = can('billing.create');
     const canUpdate = can('billing.update');
 
     // Filter states
-    const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [selectedStatus, setSelectedStatus] = useState(filters.status || 'all');
-    const [selectedMethod, setSelectedMethod] = useState(filters.payment_method || 'all');
-    const [selectedPreset, setSelectedPreset] = useState(filters.date_preset || '');
-    const [startDate, setStartDate] = useState(filters.start_date || '');
-    const [endDate, setEndDate] = useState(filters.end_date || '');
-    const [selectedSort, setSelectedSort] = useState(filters.sort || 'latest');
-    const [perPage, setPerPage] = useState(filters.per_page || '15');
+    const [searchTerm, setSearchTerm] = useState(safeFilters.search || '');
+    const [selectedStatus, setSelectedStatus] = useState(safeFilters.status || 'all');
+    const [selectedMethod, setSelectedMethod] = useState(safeFilters.payment_method || 'all');
+    const [selectedPreset, setSelectedPreset] = useState(safeFilters.date_preset || '');
+    const [startDate, setStartDate] = useState(safeFilters.start_date || '');
+    const [endDate, setEndDate] = useState(safeFilters.end_date || '');
+    const [selectedSort, setSelectedSort] = useState(safeFilters.sort || 'latest');
+    const [perPage, setPerPage] = useState(safeFilters.per_page || '15');
 
     // Quick Due Collection Modal state
     const [payingInvoice, setPayingInvoice] = useState(null);
@@ -425,7 +429,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                         : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
                                 }`}
                             >
-                                ⚠️ Has Due ({metrics.due_invoices_count || 0})
+                                ⚠️ Has Due ({safeMetrics?.due_invoices_count || 0})
                             </button>
                             <button
                                 type="button"
@@ -436,7 +440,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                         : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
                                 }`}
                             >
-                                ✅ Fully Paid ({metrics.paid_invoices_count || 0})
+                                ✅ Fully Paid ({safeMetrics?.paid_invoices_count || 0})
                             </button>
                             <button
                                 type="button"
@@ -693,11 +697,11 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                     <div className="grid grid-cols-3 gap-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 text-center font-mono">
                                         <div>
                                             <span className="text-[10px] text-gray-400 block uppercase">Billed</span>
-                                            <span className="text-xs font-bold text-gray-900">৳{Number(inv.total_amount).toFixed(2)}</span>
+                                            <span className="text-xs font-bold text-gray-900">৳{Number(inv.total_amount || 0).toFixed(2)}</span>
                                         </div>
                                         <div>
                                             <span className="text-[10px] text-emerald-600 block uppercase">Paid</span>
-                                            <span className="text-xs font-bold text-emerald-700">৳{Number(inv.paid_amount).toFixed(2)}</span>
+                                            <span className="text-xs font-bold text-emerald-700">৳{Number(inv.paid_amount || 0).toFixed(2)}</span>
                                         </div>
                                         <div>
                                             <span className="text-[10px] text-rose-600 block uppercase">Due</span>
@@ -800,7 +804,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                 <div className="text-right">
                                     <span className="text-[11px] text-rose-600 uppercase block font-bold">Outstanding Due</span>
                                     <span className="text-lg font-bold text-rose-700 font-mono">
-                                        ৳{Number(payingInvoice.due_amount).toFixed(2)}
+                                        ৳{Number(payingInvoice?.due_amount || 0).toFixed(2)}
                                     </span>
                                 </div>
                             </div>
@@ -816,7 +820,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                         type="number"
                                         step="0.01"
                                         min="0.01"
-                                        max={payingInvoice.due_amount}
+                                        max={payingInvoice?.due_amount || 0}
                                         value={payData.amount}
                                         onChange={(e) => setPayData('amount', e.target.value)}
                                         className="w-full rounded-lg border-gray-300 pl-8 pr-3 text-sm font-bold font-mono focus:border-emerald-500 focus:ring-emerald-500"
@@ -829,18 +833,18 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                 <div className="flex items-center gap-1.5 pt-1">
                                     <button
                                         type="button"
-                                        onClick={() => setPayData('amount', Number(payingInvoice.due_amount).toFixed(2))}
+                                        onClick={() => setPayData('amount', Number(payingInvoice?.due_amount || 0).toFixed(2))}
                                         className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition"
                                     >
-                                        Full Due (৳{Number(payingInvoice.due_amount).toFixed(2)})
+                                        Full Due (৳{Number(payingInvoice?.due_amount || 0).toFixed(2)})
                                     </button>
-                                    {Number(payingInvoice.due_amount) > 100 && (
+                                    {Number(payingInvoice?.due_amount || 0) > 100 && (
                                         <button
                                             type="button"
-                                            onClick={() => setPayData('amount', (Number(payingInvoice.due_amount) / 2).toFixed(2))}
+                                            onClick={() => setPayData('amount', (Number(payingInvoice?.due_amount || 0) / 2).toFixed(2))}
                                             className="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition"
                                         >
-                                            50% (৳{(Number(payingInvoice.due_amount) / 2).toFixed(2)})
+                                            50% (৳{(Number(payingInvoice?.due_amount || 0) / 2).toFixed(2)})
                                         </button>
                                     )}
                                 </div>

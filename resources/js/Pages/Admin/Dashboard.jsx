@@ -223,7 +223,7 @@ export default function Dashboard({
                                 <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
                             </div>
                             <div className="text-2xl font-bold text-gray-900 mt-1">
-                                {metrics.waiting_queue_count ?? 0}
+                                {safeMetrics.waiting_queue_count ?? 0}
                             </div>
                             <div className="text-[10px] text-sky-600 mt-0.5">ওয়েটিং রুমে অপেক্ষমান</div>
                         </Link>
@@ -239,10 +239,10 @@ export default function Dashboard({
                                 Today Visits 🩺
                             </div>
                             <div className="text-2xl font-bold text-emerald-800 mt-1">
-                                {metrics.todays_visits ?? 0}
+                                {safeMetrics.todays_visits ?? 0}
                             </div>
                             <div className="text-[10px] text-emerald-600 mt-0.5">
-                                {metrics.weekly_visits_total ?? 0} last 7 days
+                                {safeMetrics.weekly_visits_total ?? 0} last 7 days
                             </div>
                         </Link>
                     )}
@@ -257,7 +257,7 @@ export default function Dashboard({
                                 Pending Intake 📅
                             </div>
                             <div className="text-2xl font-bold text-rose-800 mt-1">
-                                {metrics.pending_requests ?? 0}
+                                {safeMetrics.pending_requests ?? 0}
                             </div>
                             <div className="text-[10px] text-rose-600 mt-0.5">অনুসরণ প্রয়োজন</div>
                         </Link>
@@ -273,10 +273,10 @@ export default function Dashboard({
                                 Today Revenue 💰
                             </div>
                             <div className="text-xl font-bold text-purple-900 mt-1">
-                                ৳{Number(metrics.today_revenue || 0).toLocaleString()}
+                                ৳{Number(safeMetrics.today_revenue || 0).toLocaleString()}
                             </div>
                             <div className="text-[10px] text-purple-600 mt-0.5">
-                                {metrics.due_invoices_count ?? 0} unpaid invoices
+                                {safeMetrics.due_invoices_count ?? 0} unpaid invoices
                             </div>
                         </Link>
                     )}
@@ -291,10 +291,10 @@ export default function Dashboard({
                                 Stock Alerts ⚠️
                             </div>
                             <div className="text-2xl font-bold text-amber-900 mt-1">
-                                {(inventory_metrics.low_stock_count || 0) + (inventory_metrics.expiring_soon_count || 0)}
+                                {(inventory_metrics?.low_stock_count || 0) + (inventory_metrics?.expiring_soon_count || 0)}
                             </div>
                             <div className="text-[10px] text-amber-600 mt-0.5">
-                                {inventory_metrics.low_stock_count || 0} low, {inventory_metrics.expiring_soon_count || 0} expiring
+                                {inventory_metrics?.low_stock_count || 0} low, {inventory_metrics?.expiring_soon_count || 0} expiring
                             </div>
                         </Link>
                     )}
@@ -309,10 +309,10 @@ export default function Dashboard({
                                 Total Patients 👥
                             </div>
                             <div className="text-2xl font-bold text-blue-900 mt-1">
-                                {Number(metrics.total_patients || 0).toLocaleString()}
+                                {Number(safeMetrics.total_patients || 0).toLocaleString()}
                             </div>
                             <div className="text-[10px] text-blue-600 mt-0.5">
-                                +{metrics.new_patients_this_month ?? 0} this month
+                                +{safeMetrics.new_patients_this_month ?? 0} this month
                             </div>
                         </Link>
                     )}
@@ -329,7 +329,7 @@ export default function Dashboard({
                                         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
                                             <span>📊</span> Weekly Consultation Volume (সাপ্তাহিক ভিজিট)
                                         </h3>
-                                        <p className="text-xs text-gray-500 mt-0.5">{metrics.weekly_visits_total ?? 0} visits in the last 7 days</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{safeMetrics.weekly_visits_total ?? 0} visits in the last 7 days</p>
                                     </div>
                                     <Link
                                         href={route('admin.visits.index')}
@@ -378,7 +378,7 @@ export default function Dashboard({
 
                                 <div className="space-y-3 pt-1">
                                     {appointmentStatuses.map((item) => {
-                                        const count = appointment_status[item.key] ?? 0;
+                                        const count = safeAppointmentStatus[item.key] ?? 0;
                                         const width = appointmentTotal ? (count / appointmentTotal) * 100 : 0;
 
                                         return (

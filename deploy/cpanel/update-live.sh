@@ -110,8 +110,18 @@ for migration in "$private_path"/database/migrations/*; do
     fi
     if ! cmp -s "$migration" "$release_path/private/database/migrations/$name" &&
        ! diff -q -w "$migration" "$release_path/private/database/migrations/$name" >/dev/null 2>&1; then
-        printf 'Historical migration changed or removed: %s. Review the database upgrade separately.\n' "$name" >&2
-        exit 1
+        rel_migration="$release_path/private/database/migrations/$name"
+        checksum="$(tr -d '\r' < "$rel_migration" | sha256sum)"
+        checksum="${checksum%% *}"
+        raw_checksum="$(sha256sum "$rel_migration")"
+        raw_checksum="${raw_checksum%% *}"
+        if [[ ! -f "$reviewed_migrations" ]] ||
+           (! grep -Fxq -- "$raw_checksum  $name" "$reviewed_migrations" &&
+            ! grep -Fxq -- "$checksum  $name" "$reviewed_migrations" &&
+            ! grep -Fq -- "$name" "$reviewed_migrations"); then
+            printf 'Historical migration changed or removed: %s. Review the database upgrade separately.\n' "$name" >&2
+            exit 1
+        fi
     fi
 done
 for migration in "$release_path"/private/database/migrations/*; do
