@@ -102,8 +102,10 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|patient_config.delete
 // Medicines
 Route::middleware(['auth', 'permission:medicines.create'])
     ->group(fn () => Route::resource('medicines', MedicineController::class)->only(['create', 'store']));
-Route::middleware(['auth', 'permission:medicines.view'])
-    ->group(fn () => Route::resource('medicines', MedicineController::class)->only(['index', 'show']));
+Route::middleware(['auth', 'permission:medicines.view'])->group(function () {
+    Route::get('medicines/export', [MedicineController::class, 'export'])->name('medicines.export');
+    Route::resource('medicines', MedicineController::class)->only(['index', 'show']);
+});
 Route::middleware(['auth', 'permission:medicines.update'])
     ->group(fn () => Route::resource('medicines', MedicineController::class)->only(['edit', 'update']));
 Route::middleware(['auth', 'permission:medicines.delete'])

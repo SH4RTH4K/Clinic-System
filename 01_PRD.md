@@ -255,11 +255,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 ---
 
 ### Module 7: Pharmacy Inventory & Stock Control (Dual Stock)
-- `[ ] In Progress` **Homeopathic Medicine Catalog & Master Pharmacopoeia (`/admin/medicines`)**:
+- `[x] Done` **Homeopathic Medicine Catalog & Master Pharmacopoeia (`/admin/medicines`)**:
   - Comprehensive clinical formulary storing Latin scientific names, homeopathic abbreviations (e.g. *Arn.*, *Nux-v.*, *Lyc.*), Bengali phonetic names, and common vernacular names.
-  - Multi-scale potency support across Centesimal (CH), 50-Millesimal (LM/Q), Decimal (X), and Mother Tinctures (MT/Q).
+  - Multi-scale potency support across Centesimal (CH), 50-Millesimal (LM/Q), Decimal (X), and Mother Tinctures (MT/Q) with 1-click scale filter pills.
   - Multi-formulation classification: Dilution Drops, Medicated Sugar Globules/Pills, Crude Liquid Tinctures, and Trituration Tablets.
-  - Live batch inventory synchronization displaying real-time physical stock counts and low-stock warning indicators directly in the catalog.
+  - Executive 5-card KPI summary ribbon (`Total Remedies`, `Centesimal CH`, `50-Millesimal LM/Q`, `Decimal & Tinctures`, `In-Stock Batches`).
+  - Live batch inventory synchronization displaying real-time physical stock counts and low-stock warning indicators directly in the catalog with 1-click shortcut to inventory.
   - Responsive multi-screen presentation with tactile mobile touch cards (`block md:hidden`) and high-density desktop pharmacopoeia grid with CSV export.
 - `[x] Done` **Allopathic Pharmaceuticals Catalog & General Practice Formulary (`/admin/pharmaceuticals`)**:
   - Central commercial medication formulary maintaining brand names, active generic chemical formulations, strengths, dosage forms (Tablet, Capsule, Syrup, Injection, Drops), and pharmaceutical manufacturers.

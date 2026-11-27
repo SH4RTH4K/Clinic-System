@@ -1257,3 +1257,22 @@
   - Verified full system health suite with zero regressions (65 tests passed, 380 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 53: Homeopathic Medicine Catalog, Pharmacopoeia Search & Batch Inventory Integration (`/admin/medicines`) (`[x] COMPLETED`)
+- [x] **Task 53.1**: Controller Hardening, Potency Scopes & Batch Stock Aggregation (`MedicineController.php`, `Medicine.php`)
+  - Added `batches()` relationship on `Medicine` and aggregated active physical batch stock using `withSum(['batches as total_stock' => fn ($q) => $q->active()], 'current_quantity')` and active batches count.
+  - Added `scopeSearch` supporting multi-nomenclature search (Latin scientific name, potency, formulation, default instruction) and `scopeScale` categorizing potencies into Centesimal (CH), 50-Millesimal (LM/Q), Decimal (X), and Mother Tinctures (Q/MT).
+  - Computed 5 executive KPI summary counters (`total_remedies`, `ch_count`, `lm_count`, `x_count`, `mother_tincture_count`, `in_stock_count`).
+  - Added streaming CSV export endpoint (`GET /admin/medicines/export`) protected by `permission:medicines.view`.
+- [x] **Task 53.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Medicines/Index.jsx`)
+  - Integrated RemediQ standard `PageHeader` with quick links (`💊 Pharmaceuticals`, `📦 Pharmacy Inventory`, `🏭 Manufacturers`, `📥 Export CSV`, `➕ New Medicine`).
+  - Implemented 5-card Executive KPI summary ribbon with responsive grid layout and semantic tones (`Sky`, `Blue`, `Purple`, `Amber`, `Emerald`).
+  - Added 300ms debounced search bar with instant reset button (`✕`).
+  - Added 1-Click Potency Scale filter pills strip (`All Scales`, `🔵 Centesimal / CH`, `🟣 50-Millesimal / LM`, `🟢 Decimal / X`, `🟡 Mother Tincture / Q`).
+  - Added formulation filter pills strip (`💧 Drops`, `⚪ Pills / Globules`, `🧪 Liquid Dilution`) and dropdown filters for Status, Stock Status, and Per Page pagination.
+  - Added live batch inventory stock badge (`In Stock: XX units`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={name}` for rapid stock replenishment.
+  - Built Dual-Mode Presentation: Desktop structured `DataTable` (`hidden md:block`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly actions (`Edit Remedy`, `View Batches`, `Deactivate`).
+- [x] **Task 53.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/MedicineWorkstationTest.php` with 7 feature tests passing (94 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
