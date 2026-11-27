@@ -79,6 +79,30 @@ class SystemHealthTest extends TestCase
         ]);
     }
 
+    public function test_system_health_index_succeeds_even_when_backup_path_is_inside_public_path(): void
+    {
+        $role = Role::findOrCreate('Super Admin', 'web');
+        $user = User::factory()->create(['is_active' => true, 'must_change_password' => false]);
+        $user->assignRole($role);
+
+        $originalPublicPath = $this->app->publicPath();
+        $this->app->usePublicPath(base_path());
+
+        try {
+            $this->withoutVite()
+                ->actingAs($user)
+                ->get(route('admin.system_health.index'))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->component('Admin/SystemHealth')
+                    ->where('health.application', 'Running')
+                    ->has('backups')
+                    ->has('backupCapabilities'));
+        } finally {
+            $this->app->usePublicPath($originalPublicPath);
+        }
+    }
+
     public function test_user_with_manage_permission_can_view_system_health(): void
     {
         $user = $this->userWithSystemHealthPermission();

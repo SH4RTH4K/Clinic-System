@@ -30,21 +30,81 @@ class SystemHealthController extends Controller
         SystemHealthSnapshotService $healthService,
         DatabaseBackupService $backupService,
     ): InertiaResponse {
-        $health = $healthService->snapshot();
-        $isSuperAdmin = request()->user()?->hasRole('Super Admin') ?? false;
+        try {
+            $health = $healthService->snapshot();
+        } catch (Throwable $e) {
+            Log::warning('System health snapshot retrieval failed: '.$e->getMessage(), ['exception' => $e]);
+            $health = [
+                'application' => 'Running',
+                'environment' => app()->environment(),
+                'debug' => (bool) config('app.debug'),
+                'php_version' => PHP_VERSION,
+                'laravel_version' => app()->version(),
+                'database' => ['status' => 'Unavailable', 'size_bytes' => null, 'name' => null, 'table_count' => null, 'view_count' => null],
+                'private_storage' => 'Check permissions',
+                'backup_storage' => 'Check permissions',
+                'migrations' => ['applied' => null, 'total' => 0, 'pending' => null, 'status' => 'Unavailable'],
+                'storage' => [
+                    'uploads' => ['files' => 0, 'bytes' => 0],
+                    'private' => ['files' => 0, 'bytes' => 0],
+                    'logs' => ['files' => 0, 'bytes' => 0],
+                    'framework_cache' => ['files' => 0, 'bytes' => 0],
+                    'build_assets' => ['files' => 0, 'bytes' => 0],
+                    'total' => ['files' => 0, 'bytes' => 0],
+                ],
+                'scheduler' => [
+                    'configured' => false,
+                    'enabled' => false,
+                    'backup_time' => '02:00',
+                    'timezone' => 'UTC',
+                    'summary' => 'System diagnostics unavailable.',
+                    'backup_type' => 'full',
+                ],
+                'backup_retention' => 'Retention: 14 days.',
+            ];
+        }
+
+        $isSuperAdmin = false;
+        try {
+            $isSuperAdmin = request()->user()?->hasRole('Super Admin') ?? false;
+        } catch (Throwable) {
+            $isSuperAdmin = false;
+        }
+
         $restoreTarget = $isSuperAdmin
             ? ($health['database']['name'] ?? null)
             : null;
         unset($health['database']['name']);
 
-        $backupCapabilities = $backupService->capabilities();
-        $backups = $backupService->history();
+        try {
+            $backupCapabilities = $backupService->capabilities();
+        } catch (Throwable $e) {
+            Log::warning('System health backup capabilities check failed: '.$e->getMessage());
+            $backupCapabilities = [
+                'database' => false,
+                'media' => false,
+                'full' => false,
+                'cpanel' => false,
+                'restore' => [
+                    'database' => false,
+                    'media' => false,
+                    'full' => false,
+                ],
+            ];
+        }
+
+        try {
+            $backups = $backupService->history();
+        } catch (Throwable $e) {
+            Log::warning('System health backup history check failed: '.$e->getMessage());
+            $backups = [];
+        }
 
         if (! $isSuperAdmin) {
             $backupCapabilities['cpanel'] = false;
             $backups = array_values(array_filter(
                 $backups,
-                static fn (array $backup): bool => $backup['type'] !== 'cpanel',
+                static fn (array $backup): bool => ($backup['type'] ?? '') !== 'cpanel',
             ));
         }
 

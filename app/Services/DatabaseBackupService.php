@@ -69,7 +69,11 @@ class DatabaseBackupService
     /** @return list<array{type: string, filename: string, size_bytes: int, created_at: string}> */
     public function history(): array
     {
-        $root = $this->backupRoot(false);
+        try {
+            $root = $this->backupRoot(false);
+        } catch (Throwable) {
+            return [];
+        }
 
         if ($root === null) {
             return [];
@@ -77,24 +81,28 @@ class DatabaseBackupService
 
         $files = [];
 
-        foreach (glob($root.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
-            $filename = basename($path);
+        try {
+            foreach (glob($root.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
+                $filename = basename($path);
 
-            if (! is_file($path) || preg_match('/^(database|media|full|cpanel)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename, $matches) !== 1) {
-                continue;
+                if (! is_file($path) || preg_match('/^(database|media|full|cpanel)-\d{8}-\d{6}-[a-f0-9]{16}\.(?:sql\.gz|zip)$/', $filename, $matches) !== 1) {
+                    continue;
+                }
+
+                $files[] = [
+                    'type' => $matches[1],
+                    'filename' => $filename,
+                    'size_bytes' => (int) @filesize($path),
+                    'created_at' => date(DATE_ATOM, (int) @filemtime($path)),
+                ];
             }
 
-            $files[] = [
-                'type' => $matches[1],
-                'filename' => $filename,
-                'size_bytes' => (int) filesize($path),
-                'created_at' => date(DATE_ATOM, (int) filemtime($path)),
-            ];
+            usort($files, static fn (array $first, array $second): int => strcmp($second['created_at'], $first['created_at']));
+
+            return array_slice($files, 0, 30);
+        } catch (Throwable) {
+            return [];
         }
-
-        usort($files, static fn (array $first, array $second): int => strcmp($second['created_at'], $first['created_at']));
-
-        return array_slice($files, 0, 30);
     }
 
     public function privateBackupDirectory(): string
@@ -119,7 +127,7 @@ class DatabaseBackupService
             return file_exists($parent) && is_writable($parent)
                 ? 'Ready to create'
                 : 'Check permissions';
-        } catch (RuntimeException) {
+        } catch (Throwable) {
             return 'Check permissions';
         }
     }
@@ -604,9 +612,16 @@ class DatabaseBackupService
 
     private function backupRoot(bool $create = true): ?string
     {
-        $backupRoot = $this->configuredBackupPath();
+        try {
+            $backupRoot = $this->configuredBackupPath();
+        } catch (Throwable $e) {
+            if (! $create) {
+                return null;
+            }
+            throw $e;
+        }
 
-        if ($create && ! is_dir($backupRoot) && ! mkdir($backupRoot, 0700, true) && ! is_dir($backupRoot)) {
+        if ($create && ! is_dir($backupRoot) && ! @mkdir($backupRoot, 0700, true) && ! is_dir($backupRoot)) {
             throw new RuntimeException('Private backup storage is unavailable.');
         }
 
@@ -618,12 +633,18 @@ class DatabaseBackupService
         $realPublicRoot = realpath(public_path());
 
         if ($realBackupRoot === false || $realPublicRoot === false) {
+            if (! $create) {
+                return null;
+            }
             throw new RuntimeException('Could not verify the private backup location.');
         }
 
         $publicPrefix = rtrim($realPublicRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
 
         if ($realBackupRoot === $realPublicRoot || str_starts_with($realBackupRoot.DIRECTORY_SEPARATOR, $publicPrefix)) {
+            if (! $create) {
+                return null;
+            }
             throw new RuntimeException('The configured backup path is publicly accessible.');
         }
 

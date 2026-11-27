@@ -17,11 +17,43 @@ class SystemHealthSnapshotService
     /** @return array<string, mixed> */
     public function snapshot(): array
     {
-        $database = $this->databaseStatus();
-        $backupSchedule = $this->backupScheduleService->settings();
-        $privateRoot = Storage::disk('local')->path('');
-        $uploadRoot = Storage::disk('public')->path('');
+        try {
+            $database = $this->databaseStatus();
+        } catch (Throwable) {
+            $database = ['status' => 'Unavailable', 'size_bytes' => null, 'name' => null, 'table_count' => null, 'view_count' => null];
+        }
+
+        try {
+            $backupSchedule = $this->backupScheduleService->settings();
+        } catch (Throwable) {
+            $backupSchedule = ['valid' => false, 'enabled' => false, 'time' => '02:00', 'timezone' => config('app.timezone', 'UTC'), 'source' => 'default'];
+        }
+
+        try {
+            $privateRoot = Storage::disk('local')->path('');
+        } catch (Throwable) {
+            $privateRoot = storage_path('app/private');
+        }
+
+        try {
+            $uploadRoot = Storage::disk('public')->path('');
+        } catch (Throwable) {
+            $uploadRoot = storage_path('app/public');
+        }
+
         $storageRoot = storage_path();
+
+        try {
+            $backupStorageStatus = $this->backupService->backupStorageStatus();
+        } catch (Throwable) {
+            $backupStorageStatus = 'Check permissions';
+        }
+
+        try {
+            $retentionDays = $this->backupService->retentionDays();
+        } catch (Throwable) {
+            $retentionDays = 14;
+        }
 
         return [
             'application' => 'Running',
@@ -31,8 +63,8 @@ class SystemHealthSnapshotService
             'laravel_version' => app()->version(),
             'database' => $database,
             'private_storage' => is_dir($privateRoot) && is_writable($privateRoot) ? 'Writable' : 'Check permissions',
-            'backup_storage' => $this->backupService->backupStorageStatus(),
-            'migrations' => $database['status'] === 'Connected'
+            'backup_storage' => $backupStorageStatus,
+            'migrations' => ($database['status'] ?? '') === 'Connected'
                 ? $this->migrationStatus()
                 : ['applied' => null, 'total' => $this->migrationFileCount(), 'pending' => null, 'status' => 'Unavailable'],
             'storage' => [
@@ -44,18 +76,18 @@ class SystemHealthSnapshotService
                 'total' => $this->directorySummary($storageRoot),
             ],
             'scheduler' => [
-                'configured' => $backupSchedule['valid'],
-                'enabled' => $backupSchedule['enabled'],
-                'backup_time' => $backupSchedule['time'],
-                'timezone' => $backupSchedule['timezone'],
-                'summary' => ! $backupSchedule['valid']
+                'configured' => (bool) ($backupSchedule['valid'] ?? false),
+                'enabled' => (bool) ($backupSchedule['enabled'] ?? false),
+                'backup_time' => $backupSchedule['time'] ?? '02:00',
+                'timezone' => $backupSchedule['timezone'] ?? 'UTC',
+                'summary' => ! ($backupSchedule['valid'] ?? false)
                     ? 'Automatic backup scheduling is disabled because its private settings file is invalid. Save valid settings to resume it.'
-                    : ($backupSchedule['enabled']
-                        ? "A full database and media backup runs daily at {$backupSchedule['time']} ({$backupSchedule['timezone']}); expired archives are pruned after a successful run."
+                    : (($backupSchedule['enabled'] ?? false)
+                        ? 'A full database and media backup runs daily at '.($backupSchedule['time'] ?? '02:00').' ('.($backupSchedule['timezone'] ?? 'UTC').'); expired archives are pruned after a successful run.'
                         : 'Automatic full backups are disabled. Manual backups remain available.'),
                 'backup_type' => 'full',
             ],
-            'backup_retention' => "Retention: {$this->backupService->retentionDays()} days. Generated backup archives older than this are removed after a successful backup run.",
+            'backup_retention' => "Retention: {$retentionDays} days. Generated backup archives older than this are removed after a successful backup run.",
         ];
     }
 
@@ -171,6 +203,10 @@ class SystemHealthSnapshotService
 
                 $files++;
                 $bytes += (int) $entry->getSize();
+
+                if ($files >= 5000) {
+                    break;
+                }
             }
         } catch (Throwable) {
             return ['files' => 0, 'bytes' => 0];
