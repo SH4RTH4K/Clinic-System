@@ -1240,3 +1240,20 @@
   - Verified full clinical access audit and patient privacy test suite with zero regressions.
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 52: System Health, Backups & Disaster Recovery Workstation (`/admin/system-health`) (`[x] COMPLETED`)
+- [x] **Task 52.1**: Controller Hardening & Health KPI Aggregation (`SystemHealthController.php`)
+  - Enriched `SystemHealthController@index` to compute consolidated executive health KPI metrics (`overall_status`, `database_healthy`, `storage_healthy`, `migrations_healthy`, `total_backups_count`, `total_backups_bytes`, `database_size_bytes`, `uploads_size_bytes`, `uploads_files_count`, `scheduler_enabled`, `scheduler_time`, `scheduler_timezone`).
+  - Maintained strict security invariants: cPanel bundle creation and download guarded for Super Admin; disaster recovery restore and `reset_as_new` strictly role-restricted.
+- [x] **Task 52.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/SystemHealth.jsx`)
+  - Integrated RemediQ standard `PageHeader` with sibling governance links (`👥 Staff Users`, `🛡️ Roles`, `🔑 Permissions`, `📜 Security Logs`).
+  - Built 5-card Executive KPI summary ribbon with live status badges (`Overall System Health 🏥`, `Database Engine 🗄️`, `Media & Uploads 📁`, `Backup Archive 📦`, `Automated Backup 🕒`).
+  - Implemented Segmented Workstation Navigation Tabs (`📊 Diagnostics`, `⚡ Backup & Archive`, `🔄 Disaster Recovery`, `🧹 Maintenance & Reset`) to eliminate long vertical scrolling.
+  - Added real-time 300ms debounced search and 1-click filter pills (`All Backups`, `🗄️ Database`, `📁 Media`, `📦 Full Archive`, `⚡ cPanel Bundle`) for saved backup archives.
+  - Built Dual-Mode Presentation: Desktop structured data table alongside High-Density **Mobile Touch Cards** with 44px+ hit targets for touch screen tablets and phones.
+  - Refined safety callouts and visual feedback for disaster recovery restores (`Restore to Empty Target` vs `Overwrite Existing Target` with safety recovery backup) and `Reset As New`.
+- [x] **Task 52.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/SystemHealthWorkstationTest.php` with 6 feature tests passing (51 assertions).
+  - Verified full system health suite with zero regressions (65 tests passed, 380 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).

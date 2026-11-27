@@ -48,11 +48,33 @@ class SystemHealthController extends Controller
             ));
         }
 
+        $totalBackupBytes = array_sum(array_column($backups, 'size_bytes'));
+        $databaseHealthy = ($health['database']['status'] ?? '') === 'Connected';
+        $storageHealthy = in_array($health['backup_storage'] ?? '', ['Writable', 'Ready to create'], true)
+            && ($health['private_storage'] ?? '') === 'Writable';
+        $migrationsHealthy = ($health['migrations']['status'] ?? '') === 'Up to date';
+
+        $kpis = [
+            'overall_status' => ($databaseHealthy && $storageHealthy && $migrationsHealthy) ? 'healthy' : 'warning',
+            'database_healthy' => $databaseHealthy,
+            'storage_healthy' => $storageHealthy,
+            'migrations_healthy' => $migrationsHealthy,
+            'total_backups_count' => count($backups),
+            'total_backups_bytes' => $totalBackupBytes,
+            'database_size_bytes' => $health['database']['size_bytes'] ?? 0,
+            'uploads_size_bytes' => $health['storage']['uploads']['bytes'] ?? 0,
+            'uploads_files_count' => $health['storage']['uploads']['files'] ?? 0,
+            'scheduler_enabled' => (bool) ($health['scheduler']['enabled'] ?? false),
+            'scheduler_time' => $health['scheduler']['backup_time'] ?? '02:00',
+            'scheduler_timezone' => $health['scheduler']['timezone'] ?? 'UTC',
+        ];
+
         return Inertia::render('Admin/SystemHealth', [
             'health' => $health,
             'backups' => $backups,
             'backupCapabilities' => $backupCapabilities,
             'restoreTarget' => $restoreTarget,
+            'kpis' => $kpis,
             'csrfToken' => csrf_token(),
         ]);
     }

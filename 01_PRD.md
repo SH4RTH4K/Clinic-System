@@ -310,6 +310,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 
 ### Module 9: System Health, In-App Deployments & Backups
 - `[x] Done` **System Health Dashboard**: Real-time display of PHP version, server memory limit, disk space, database connection, and cache status.
+- `[x] Done` **System Health & Disaster Recovery Modernized Workstation (`/admin/system-health`)**:
+  - **Executive 5-Card Health KPI Ribbon**: Overall Health Status (`Optimal & Ready` vs `Attention Needed`), Database Engine & Size (`table_count`), Media & Uploads Storage footprint, Backup Archive Count & Disk space, and Automated Daily Schedule status.
+  - **Segmented Workstation Navigation**: `📊 Diagnostics`, `⚡ Backup & Archive`, `🔄 Disaster Recovery`, and `🧹 Maintenance & Reset` eliminating long vertical scrolling.
+  - **Searchable Backup Archive with 1-Click Type Filters**: 300ms debounced search matching filename, type, size, or date, with filter pills (`All`, `Database`, `Media`, `Full`, `cPanel`).
+  - **Dual-Mode Presentation**: Responsive desktop table alongside High-Density Mobile Touch Cards with 44px+ touch-friendly actions (`Download`, `Delete`).
+  - **Disaster Recovery Safeguards**: Strict validation and color-coded safety indicators for `Restore to Empty Target` vs `Overwrite Existing Target` (with pre-restore recovery backup) and `Reset As New`.
 - `[x] Done` **In-App Private Backups**: Create, list, download, and delete database SQL dumps, media files, or full system backups directly inside private storage.
 - `[x] Done` **cPanel Deployment Package**: One-click generation and download of complete cPanel deployment zip bundles.
 - `[x] Done` **In-App Git Repository Manager**: Super Admin can check for updates from remote GitHub repository, inspect commits, pull updates, run database migrations, and clear application caches directly from the UI without SSH.
