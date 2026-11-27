@@ -469,6 +469,7 @@ class ClinicSetting extends Model
                 'appointment_confirmed' => 'Dear {patient_name}, your appointment with {doctor_name} at {clinic_name} is confirmed for {date} at {time}. Helpline: {phone}',
                 'queue_token_issued' => 'Token {token_code} issued for {patient_name} at {clinic_name}. Assigned to {doctor_name} ({service_room}). Please watch waiting room display.',
                 'prescription_ready' => 'Dear {patient_name}, your digital prescription from {clinic_name} by {doctor_name} is ready. View online: {prescription_url}',
+                'whatsapp_prescription' => "Dear {patient_name},\n\nHere is your Digital Prescription from {clinic_name} prescribed by {doctor_name} on {date}:\n👉 View & Download: {prescription_url}\n\nFor any query, contact our clinic at {phone}.\n\n— {clinic_name}",
             ],
         ];
     }

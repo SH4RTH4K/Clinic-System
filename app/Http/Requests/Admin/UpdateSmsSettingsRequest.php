@@ -30,6 +30,7 @@ class UpdateSmsSettingsRequest extends FormRequest
             'templates.appointment_confirmed' => ['nullable', 'string', 'max:500'],
             'templates.queue_token_issued' => ['nullable', 'string', 'max:500'],
             'templates.prescription_ready' => ['nullable', 'string', 'max:500'],
+            'templates.whatsapp_prescription' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }

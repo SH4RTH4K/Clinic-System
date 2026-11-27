@@ -105,13 +105,65 @@ class CommunicationController extends Controller
     /**
      * Display SMS gateway and template configuration page.
      */
-    public function settings(): Response
+    public function settings(CommunicationService $commService): Response
     {
         $settings = ClinicSetting::first();
         $smsConfig = $settings ? $settings->getSmsConfig() : ClinicSetting::defaultSmsConfig();
 
+        $totalSent = PatientNotification::where('status', 'sent')->count();
+        $totalFailed = PatientNotification::where('status', 'failed')->count();
+        $totalDispatches = $totalSent + $totalFailed;
+
+        $metrics = [
+            'total_dispatches' => $totalDispatches,
+            'total_sms' => PatientNotification::where('channel', 'sms')->count(),
+            'total_whatsapp' => PatientNotification::where('channel', 'whatsapp')->count(),
+            'total_sent' => $totalSent,
+            'total_failed' => $totalFailed,
+            'delivery_rate' => $totalDispatches > 0 ? round(($totalSent / $totalDispatches) * 100, 1) : 100,
+            'today_dispatched' => PatientNotification::whereDate('created_at', Carbon::today())->count(),
+        ];
+
         return Inertia::render('Admin/Communications/Settings', [
             'config' => $smsConfig,
+            'metrics' => $metrics,
+            'initialBalance' => $commService->checkBalance(),
+        ]);
+    }
+
+    /**
+     * Fetch real-time gateway credit balance from provider API.
+     */
+    public function gatewayBalance(CommunicationService $commService): JsonResponse
+    {
+        return response()->json($commService->checkBalance());
+    }
+
+    /**
+     * Send a single live test SMS to verify gateway connectivity.
+     */
+    public function testSms(Request $request, CommunicationService $commService): JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'min:11', 'max:20'],
+            'message' => ['required', 'string', 'max:500'],
+        ]);
+
+        $notification = $commService->sendSms(
+            $validated['phone'],
+            $validated['message'],
+            'test_dispatch',
+            null,
+            $request->user()
+        );
+
+        return response()->json([
+            'status' => $notification->status,
+            'gateway_provider' => $notification->gateway_provider,
+            'gateway_response' => $notification->gateway_response,
+            'message' => $notification->status === 'sent'
+                ? "Test SMS dispatched successfully to {$validated['phone']}!"
+                : "Gateway dispatch failed: {$notification->gateway_response}",
         ]);
     }
 
@@ -120,7 +172,14 @@ class CommunicationController extends Controller
      */
     public function updateSettings(UpdateSmsSettingsRequest $request): RedirectResponse
     {
-        $settings = ClinicSetting::first() ?? ClinicSetting::create([]);
+        $settings = ClinicSetting::first() ?? ClinicSetting::create([
+            'clinic_name_en' => 'RemediQ Healthcare',
+            'clinic_name_bn' => 'রেমেডিক হেলথকেয়ার',
+            'doctor_name' => 'Dr. Clinic Doctor',
+            'doctor_credentials' => 'BHMS, MD',
+            'address' => 'Dhaka, Bangladesh',
+            'phone' => '01888000000',
+        ]);
         $settings->update([
             'sms_config' => $request->validated(),
         ]);

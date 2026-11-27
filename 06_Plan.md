@@ -1358,4 +1358,25 @@
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
 
+### Phase 58: Gateway Balance Check & Template Studio Upgrade (`/admin/communications/settings`) (`[x] COMPLETED`)
+- [x] **Task 58.1**: Gateway Balance Engine, Test SMS Dispatch API & Dynamic WhatsApp Generator (`app/Services/CommunicationService.php`, `app/Http/Controllers/Admin/CommunicationController.php`, `routes/admin.php`)
+  - Added live gateway credit balance checker `CommunicationService::checkBalance()` querying Greenweb and MimSMS balance endpoints with graceful fallback for local log drivers and custom gateways.
+  - Registered route `GET /admin/communications/gateway-balance` (`admin.communications.gateway_balance`).
+  - Added live single test SMS dispatch endpoint `POST /admin/communications/test-sms` (`admin.communications.test_sms`).
+  - Added customizable WhatsApp digital prescription template `'whatsapp_prescription'` in `ClinicSetting::defaultSmsConfig()` and `CommunicationService::generateWhatsAppShareUrl`.
+  - Added `communications.manage` security guards across all gateway management and balance inspection endpoints.
+- [x] **Task 58.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Communications/Settings.jsx`)
+  - Integrated RemediQ standard `PageHeader` with title *"SMS Gateway & Communication Studio (যোগাযোগ ও এসএমএস গেটওয়ে)"* and quick links (`[ 📜 Notification Logs ]`, `[ ⚙️ Clinic Settings ]`, `[ 🧪 Send Test SMS ]`).
+  - Added 5-Card Communication KPI Ribbon (`Total Dispatches 📡`, `SMS Dispatches 💬`, `WhatsApp Alerts 📱`, `Delivery Rate % ✅`, `Today Dispatched 🕒`).
+  - Implemented Live Gateway Balance Card with real-time balance indicator, active status badge, and `[ 🔄 Refresh Balance ]` action.
+  - Built interactive Live Test SMS Modal with custom test number input, message editor, and live result feedback.
+  - Built Interactive Message Template Studio with 1-click tactile variable chips toolbar (`+ Patient Name`, `+ Doctor Name`, `+ Clinic Name`, `+ Date`, `+ Time`, `+ Token Code`, `+ Service Room`, `+ Rx Link`, `+ Phone`).
+  - Added Dynamic Character & Segment Counter detecting GSM 7-bit (160 chars/part) vs Unicode/Bengali (70 chars/part) with visual multi-part SMS indicator.
+- [x] **Task 58.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/CommunicationGatewayTest.php` with 6 feature tests passing (52 assertions).
+  - Verified regression safety with existing `AutomatedPatientCommunicationsTest.php` (9 tests, 77 assertions passing).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
+
+
 

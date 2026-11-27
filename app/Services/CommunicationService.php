@@ -157,12 +157,109 @@ class CommunicationService
     }
 
     /**
+     * Check gateway balance or connectivity for the active SMS provider.
+     *
+     * @return array{status: string, provider: string, balance: string, unit: string, is_active: bool}
+     */
+    public function checkBalance(): array
+    {
+        $settings = ClinicSetting::first();
+        $smsConfig = $settings ? $settings->getSmsConfig() : ClinicSetting::defaultSmsConfig();
+        $provider = $smsConfig['sms_provider'] ?? 'log';
+        $apiKey = $smsConfig['api_key'] ?? '';
+        $isActive = (bool) ($smsConfig['sms_enabled'] ?? false);
+
+        if ($provider === 'log') {
+            return [
+                'status' => 'success',
+                'provider' => 'System Log (Local Mock)',
+                'balance' => 'Unlimited',
+                'unit' => 'Local development driver — zero SMS cost',
+                'is_active' => $isActive,
+            ];
+        }
+
+        if (empty($apiKey)) {
+            return [
+                'status' => 'warning',
+                'provider' => ucfirst($provider),
+                'balance' => 'No API Key Set',
+                'unit' => 'Configure gateway token in settings below',
+                'is_active' => $isActive,
+            ];
+        }
+
+        try {
+            if ($provider === 'greenweb') {
+                $response = Http::timeout(8)->get('https://api.greenweb.com.bd/greb_sms_qty.php', [
+                    'token' => $apiKey,
+                ]);
+
+                if ($response->successful()) {
+                    $body = trim($response->body());
+
+                    return [
+                        'status' => 'success',
+                        'provider' => 'Greenweb Bangladesh',
+                        'balance' => is_numeric($body) ? number_format((float) $body) : $body,
+                        'unit' => 'Remaining SMS Credits',
+                        'is_active' => $isActive,
+                    ];
+                }
+            } elseif ($provider === 'mimsms') {
+                $url = ! empty($smsConfig['api_url']) ? rtrim($smsConfig['api_url'], '/').'/balance' : 'https://api.mimsms.com/api/v3/balance';
+                $response = Http::timeout(8)->post($url, [
+                    'api_key' => $apiKey,
+                ]);
+
+                if ($response->successful()) {
+                    $json = $response->json();
+                    $balance = $json['balance'] ?? $json['data']['balance'] ?? $response->body();
+
+                    return [
+                        'status' => 'success',
+                        'provider' => 'MimSMS Bangladesh',
+                        'balance' => is_numeric($balance) ? number_format((float) $balance, 2) : (string) $balance,
+                        'unit' => 'Account Balance BDT',
+                        'is_active' => $isActive,
+                    ];
+                }
+            } elseif ($provider === 'generic_http') {
+                return [
+                    'status' => 'success',
+                    'provider' => 'Generic Custom Gateway',
+                    'balance' => 'Connected',
+                    'unit' => 'Endpoint: '.($smsConfig['api_url'] ?: 'Not configured'),
+                    'is_active' => $isActive,
+                ];
+            }
+        } catch (\Throwable $e) {
+            return [
+                'status' => 'error',
+                'provider' => ucfirst($provider),
+                'balance' => 'Unavailable',
+                'unit' => 'Gateway error: '.$e->getMessage(),
+                'is_active' => $isActive,
+            ];
+        }
+
+        return [
+            'status' => 'warning',
+            'provider' => ucfirst($provider),
+            'balance' => 'Unknown',
+            'unit' => 'Unable to determine remaining balance',
+            'is_active' => $isActive,
+        ];
+    }
+
+    /**
      * Generate WhatsApp Click-to-Chat sharing URL with prefilled message.
      */
     public function generateWhatsAppShareUrl(Visit $visit): string
     {
         $visit->loadMissing(['patient', 'doctor']);
         $settings = ClinicSetting::first();
+        $smsConfig = $settings ? $settings->getSmsConfig() : ClinicSetting::defaultSmsConfig();
 
         $patientPhone = $visit->patient?->phone ?: '';
         $cleanPhone = $this->cleanPhoneNumberForWhatsApp($patientPhone);
@@ -174,11 +271,14 @@ class CommunicationService
         $rxUrl = $visit->share_url;
         $visitDate = $visit->visit_date ? $visit->visit_date->format('d M, Y') : date('d M, Y');
 
-        $text = "Dear {$patientName},\n\n";
-        $text .= "Here is your Digital Prescription from {$clinicName} prescribed by {$doctorName} on {$visitDate}:\n";
-        $text .= "👉 View & Download: {$rxUrl}\n\n";
-        $text .= "Please follow the prescribed medicine dosages and instructions. For any query, contact our clinic at {$clinicPhone}.\n\n";
-        $text .= "— {$clinicName}";
+        $template = $smsConfig['templates']['whatsapp_prescription'] ??
+            "Dear {patient_name},\n\nHere is your Digital Prescription from {clinic_name} prescribed by {doctor_name} on {date}:\n👉 View & Download: {prescription_url}\n\nPlease follow the prescribed medicine dosages and instructions. For any query, contact our clinic at {phone}.\n\n— {clinic_name}";
+
+        $text = str_replace(
+            ['{patient_name}', '{doctor_name}', '{clinic_name}', '{date}', '{prescription_url}', '{phone}'],
+            [$patientName, $doctorName, $clinicName, $visitDate, $rxUrl, $clinicPhone],
+            $template
+        );
 
         return 'https://api.whatsapp.com/send?phone='.urlencode($cleanPhone).'&text='.urlencode($text);
     }

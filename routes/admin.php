@@ -455,4 +455,6 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|communications.send']
 Route::middleware(['auth', 'role_or_permission:Super Admin|communications.manage'])->group(function () {
     Route::get('/communications/settings', [CommunicationController::class, 'settings'])->name('communications.settings');
     Route::put('/communications/settings', [CommunicationController::class, 'updateSettings'])->name('communications.settings.update');
+    Route::get('/communications/gateway-balance', [CommunicationController::class, 'gatewayBalance'])->name('communications.gateway_balance');
+    Route::post('/communications/test-sms', [CommunicationController::class, 'testSms'])->name('communications.test_sms');
 });
