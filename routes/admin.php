@@ -311,8 +311,10 @@ Route::middleware([
     'permission:patients.view',
     'permission:visits.view',
     'permission:reports.view',
-])
-    ->group(fn () => Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'));
+])->group(function () {
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+});
 
 // Activity Logs
 Route::middleware(['auth', 'permission:activity_logs.view', 'role:Super Admin'])->group(function () {

@@ -1336,3 +1336,26 @@
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
 
+### Phase 57: Multi-Dimensional Clinical & Financial Analytics Reports Suite (`/admin/reports`) (`[x] COMPLETED`)
+- [x] **Task 57.1**: Controller Hardening, 5-Card KPIs & Streaming CSV Export (`app/Http/Controllers/Admin/ReportController.php`, `routes/admin.php`)
+  - Upgraded `ReportController@index` to support multi-parameter search (patient name, phone, code, diagnosis, complaint, doctor), attending doctor filtering (`doctor_id`), and 1-click tactile date presets (`today`, `yesterday`, `this_week`, `this_month`, `this_year`, `custom`).
+  - Computed 5 executive KPI summary counters (`total_consultations`, `unique_patients`, `finalized_prescriptions`, `daily_average`, `total_remedies_prescribed`).
+  - Implemented Segmented Analytics Data Engines:
+    - Tab 1: Clinical Consultations & Morbidity (paginated visits with vitals and Rx count, plus top 6 diagnoses morbidity breakdown).
+    - Tab 2: Doctor Productivity Breakdown (consultation volume, finalized Rx count, unique patients treated, completion rate %).
+    - Tab 3: Prescribed Remedies & Formulary Breakdown (top 20 prescribed homeopathic potencies and allopathic pharmaceuticals with times prescribed and unique patient counts).
+  - Added streaming CSV data export (`GET /admin/reports/export`) with UTF-8 BOM, protected by `permission:reports.export` and `role:Super Admin`.
+- [x] **Task 57.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Reports/Index.jsx`)
+  - Integrated RemediQ standard `PageHeader` with title *"Clinical & Operational Reports (ক্লিনিক্যাল ও অপারেশনাল রিপোর্ট)"* and quick navigation links (`[ 🩺 Visits ]`, `[ 👥 Patients ]`, `[ 📋 Invoices ]`, `[ 📥 Export CSV ]`, `[ 🖨️ Print ]`).
+  - Built 5-card Executive Clinical KPI Ribbon (`Consultations 🩺`, `Unique Patients 👤`, `Finalized Rx ✅`, `Daily Average 📈`, `Rx Items Dispensed 💊`).
+  - Implemented 300ms debounced search bar with clear button (`✕`), Doctor selector dropdown, Status selector, and 1-Click Date Presets strip (`Today`, `Yesterday`, `This Week`, `This Month`, `This Year`, `Custom Range`).
+  - Implemented Segmented Analytical Tabs Navigation (`[ 🩺 Consultations & Morbidity ]`, `[ 👨‍⚕️ Doctor Productivity & Workload ]`, `[ 💊 Prescribed Remedies & Formulary ]`).
+  - Built Dual-Mode Presentation: Desktop structured data tables alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ hit targets.
+  - Added clean `@media print` styling for executive browser report printing.
+- [x] **Task 57.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/ReportWorkstationTest.php` with 9 passing feature tests (142 assertions).
+  - Verified regression safety with `PatientClinicalAccessTest.php` (9 tests, 269 assertions passing).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
+
+
