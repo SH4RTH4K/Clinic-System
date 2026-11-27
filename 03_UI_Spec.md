@@ -62,7 +62,7 @@ The Doctor Workbench (`resources/js/Pages/Visits/Create.jsx` and `Edit.jsx`) inc
   - Frequency & Duration pills.
   - Bengali instructions & Dietary restrictions checklist.
 
-### 3.2 Mode 2: General Practice (Allopathy) Workbench (`[ ] Planned`)
+### 3.2 Mode 2: General Practice (Allopathy) Workbench (`[x] Implemented`)
 - **Clinical Left Column**:
   - Patient Vitals Strip: BP (`120/80 mmHg`), Pulse (`76 bpm`), Temp (`98.4 °F`), Weight (`68 kg`), Blood Sugar (`6.2 mmol/L`).
   - Chief complaints & Onset duration.
@@ -77,7 +77,7 @@ The Doctor Workbench (`resources/js/Pages/Visits/Create.jsx` and `Edit.jsx`) inc
   - Meal relation: Before meal / After meal / With meal (Bilingual English/Bengali).
   - General lifestyle advice.
 
-### 3.3 Mode 3: Integrative / Dual Workbench (`[ ] Planned`)
+### 3.3 Mode 3: Integrative / Dual Workbench (`[x] Implemented`)
 - Tabbed interface allowing the practitioner to switch between "Homeopathic Repertorization" and "Conventional Clinical Diagnosis".
 - The prescription items grid allows adding both conventional medications and homeopathic remedies in designated sections.
 
@@ -114,9 +114,9 @@ The Doctor Workbench (`resources/js/Pages/Visits/Create.jsx` and `Edit.jsx`) inc
 - **Layout Adaptivity**:
   - **Homeopathy Prescription**:
     - Patient Info Header -> Chief Complaints -> Rx Remedies (Name, Potency, Dosage, Bengali instructions) -> Dietary Restrictions -> Signature.
-  - **General Practice Prescription (`[ ] Planned`)**:
+  - **General Practice Prescription (`[x] Implemented`)**:
     - Patient Info Header & Vitals Bar -> Clinical Diagnosis -> Rx Medications (Brand/Generic, Strength, Form, Frequency, Duration, Instructions) -> Advised Lab Tests -> Next Visit Follow-up Date -> Signature.
-- **Pre-Printed Stationery Mode (`[ ] Planned`)**:
+- **Pre-Printed Stationery Mode (`[x] Implemented`)**:
   ```css
   @media print {
     body.pre-printed-pad .clinic-header-block {
