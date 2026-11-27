@@ -81,7 +81,13 @@ export default function Index({ roles = [], permissions = [] }) {
     const can = usePermission();
     const canCreateRole = can('roles.create');
     const canUpdateRoles = can('roles.update');
-    const [selectedRoleId, setSelectedRoleId] = useState(roles[0] ? String(roles[0].id) : '');
+    const initialRoleId = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('role')
+        : null;
+    const defaultRoleId = roles.some((r) => String(r.id) === initialRoleId)
+        ? initialRoleId
+        : (roles[0] ? String(roles[0].id) : '');
+    const [selectedRoleId, setSelectedRoleId] = useState(defaultRoleId);
     const [search, setSearch] = useState('');
     const [roleDrafts, setRoleDrafts] = useState({});
     const selectedRole = roles.find((role) => String(role.id) === selectedRoleId);

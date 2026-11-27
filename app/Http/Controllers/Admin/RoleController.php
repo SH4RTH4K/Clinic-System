@@ -6,19 +6,59 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreRoleRequest;
 use App\Http\Requests\Admin\UpdateRoleRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim((string) $request->input('search', ''));
+        $filter = (string) $request->input('filter', 'all');
+
+        $query = Role::query()->withCount(['users', 'permissions']);
+
+        if ($search !== '') {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($filter === 'protected') {
+            $query->where('name', 'Super Admin');
+        } elseif ($filter === 'custom') {
+            $query->where('name', '!=', 'Super Admin');
+        } elseif ($filter === 'assigned') {
+            $query->has('users');
+        } elseif ($filter === 'unassigned') {
+            $query->doesntHave('users')->where('name', '!=', 'Super Admin');
+        }
+
+        $roles = $query->orderBy('name')->get();
+
+        // Calculate system-wide KPIs across all roles
+        $allRoles = Role::query()->withCount(['users', 'permissions'])->get();
+        $totalRoles = $allRoles->count();
+        $totalAssignments = (int) $allRoles->sum('users_count');
+        $customRolesCount = $allRoles->where('name', '!=', 'Super Admin')->count();
+        $unassignedRolesCount = $allRoles->where('name', '!=', 'Super Admin')->where('users_count', 0)->count();
+        $protectedRolesCount = $allRoles->where('name', 'Super Admin')->count();
+
+        $kpis = [
+            'total_roles' => $totalRoles,
+            'total_assignments' => $totalAssignments,
+            'custom_roles_count' => $customRolesCount,
+            'unassigned_roles_count' => $unassignedRolesCount,
+            'protected_roles_count' => $protectedRolesCount,
+        ];
+
         return Inertia::render('Admin/Roles/Index', [
-            'roles' => Role::query()
-                ->withCount(['users', 'permissions'])
-                ->orderBy('name')
-                ->get(),
+            'roles' => $roles,
+            'kpis' => $kpis,
+            'filters' => [
+                'search' => $search,
+                'filter' => $filter,
+            ],
         ]);
     }
 

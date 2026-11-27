@@ -61,6 +61,14 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Security Audit Logging**: Powered by `spatie/laravel-activitylog`. Captures all critical actions with non-sensitive metadata.
 - `[x] Done` **Staff Profile Management**: Staff users can update name, email, and password. Profile self-deletion is disabled; staff deactivation is strictly reserved for Super Admin.
 - `[x] Done` **Dynamic Clinic Branding & Language-Wise Browser Tab Titles**: Browser tab titles and sidebar navigation dynamically display the configured Clinic Name from Clinic Settings (`/admin/settings`) according to active language version (`clinic_name_en` for English and `clinic_name_bn` for Bangla), completely replacing static default titles (`- Laravel`). Includes 1-click Language Switcher (`বাং` / `EN`) in topbar navigation.
+- `[x] Done` **Role Management & Access Control Workstation (`/admin/roles`)**:
+  - **Executive KPI Summary Ribbon (5 Cards)**: Total Configured Roles (🛡️), Active Staff Assignments (👥), Custom Clinical Roles (⚙️), Unassigned/Dormant Roles (⚪ - Audit Alert), and System Protected Profiles (👑).
+  - **Universal Real-Time Search**: 300ms debounced search matching role names with instant match counter and `✕` clear action.
+  - **Fast-Track Filter Pills Strip**: 1-Click quick filter pills (`All Roles`, `👑 System Protected`, `🛡️ Custom Roles`, `👥 Assigned`, `⚪ Unassigned (0 Staff)`).
+  - **1-Click Clinical Agility Deep-Links**: Direct link `[ ⚙️ Permissions Matrix → ]` on every role row navigating straight to `/admin/permissions?role={id}` with that role auto-selected. Direct link `[ 👥 View Staff → ]` on every role row navigating to `/admin/users?role={name}`.
+  - **Smart Reassignment Deletion Modal**: Clarifies deletion blocks when `users_count > 0` and provides a direct 1-click CTA button `[ 👥 View & Reassign Staff Users → ]` redirecting to the staff directory.
+  - **Dual-Mode Multi-Type Screen Views**: Clean high-density desktop data table (`hidden md:block`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with avatar initials, role status badges, 2-column metrics grid, and 44px+ touch-friendly action buttons.
+  - **Strict Security Invariants**: 100% preservation of immutable `Super Admin` role protection (`abort_if($role->name === 'Super Admin', 403)`) and database assignment integrity checks.
 - `[x] Done` **Staff Users & Access Control Workstation (`/admin/users`)**:
   - **Executive KPI Summary Ribbon (5 Cards)**: Total Staff Accounts, Active Staff (🟢), Super Admins (👑), Practicing Doctors (🩺), and Support Staff (📋).
   - **Universal Multi-Factor Search**: 300ms debounced search matching user full name, unique username (`@user`), email address, and mobile phone number with instant match counter and `✕` clear button.

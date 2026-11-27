@@ -1183,3 +1183,23 @@
   - Verified full user authorization test suite with zero regressions (22 tests passed, 133 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 49: Role Management & Access Control Workstation (`/admin/roles`) (`[x] COMPLETED`)
+- [x] **Task 49.1**: Controller Hardening & KPI Aggregation (`RoleController.php`)
+  - Upgraded `RoleController@index` to accept `search` and `filter` query parameters (`all`, `protected`, `custom`, `assigned`, `unassigned`).
+  - Added real-time database query filtering using `where('name', 'like', ...)`, `has('users')`, and `doesntHave('users')`.
+  - Aggregated 5 system-wide KPI metrics (`total_roles`, `total_assignments`, `custom_roles_count`, `unassigned_roles_count`, `protected_roles_count`) passed directly into Inertia props.
+  - Upgraded `Admin/Permissions/Index.jsx` to honor incoming `?role={id}` query parameter, automatically pre-selecting the target role in the Permissions Matrix tab.
+- [x] **Task 49.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Roles/Index.jsx`)
+  - Integrated RemediQ standard `PageHeader` with quick links (`👥 Staff Users`, `🔑 Permissions Matrix`, `📜 Security Logs`, `➕ Create Role`).
+  - Embedded standard `AccessControlNavigation` tab navigation.
+  - Implemented 5-card Executive KPI summary ribbon with responsive grid layout and semantic tones (`Sky`, `Emerald`, `Violet`, `Amber`, `Rose`).
+  - Added 300ms debounced real-time search with clear (`✕`) action and match indicator.
+  - Implemented 1-Click Fast-Track Filter Pills Strip (`All Roles`, `👑 Protected`, `🛡️ Custom Roles`, `👥 Assigned`, `⚪ Unassigned`).
+  - Built Dual-Mode Presentation: Desktop structured table (`hidden md:block`) with Avatar badge, staff user link (`admin.users.index?role={name}`), permissions count, and deep-link to Matrix (`admin.permissions.index?role={id}`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly buttons.
+  - Upgraded `ConfirmDialog` to provide actionable guidance and 1-click CTA button (`[ 👥 View & Reassign Staff Users → ]`) when role deletion is blocked by assigned users.
+- [x] **Task 49.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/RoleManagementWorkstationTest.php` with 8 feature tests passing (25 assertions).
+  - Verified full role and user permission management test suite with zero regressions (179 tests passed, 1261 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
