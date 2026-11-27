@@ -10,6 +10,7 @@ use App\Models\AppointmentRequest;
 use App\Models\AppointmentRequestEvent;
 use App\Services\Admin\AppointmentRequestPatientMatcher;
 use App\Services\CommunicationService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,12 +22,57 @@ class AppointmentRequestController extends Controller
 {
     public function index(Request $request, AppointmentRequestPatientMatcher $patientMatcher): Response
     {
+        $status = $request->input('status');
+        $search = trim($request->input('search', ''));
+        $datePreset = $request->input('date_preset', 'all');
+
         $query = AppointmentRequest::query()
             ->with(['creator:id,name', 'handler:id,name'])
             ->latest();
 
-        if ($request->status) {
-            $query->where('status', $request->status);
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('message', 'like', "%{$search}%");
+            });
+        }
+
+        $today = Carbon::today()->toDateString();
+        $tomorrow = Carbon::tomorrow()->toDateString();
+        $startOfWeek = Carbon::now()->startOfWeek()->toDateString();
+        $endOfWeek = Carbon::now()->endOfWeek()->toDateString();
+
+        if ($datePreset === 'today') {
+            $query->where(function ($q) use ($today) {
+                $q->whereDate('scheduled_date', $today)
+                    ->orWhere(function ($sub) use ($today) {
+                        $sub->whereNull('scheduled_date')
+                            ->whereDate('preferred_date', $today);
+                    });
+            });
+        } elseif ($datePreset === 'tomorrow') {
+            $query->where(function ($q) use ($tomorrow) {
+                $q->whereDate('scheduled_date', $tomorrow)
+                    ->orWhere(function ($sub) use ($tomorrow) {
+                        $sub->whereNull('scheduled_date')
+                            ->whereDate('preferred_date', $tomorrow);
+                    });
+            });
+        } elseif ($datePreset === 'this_week') {
+            $query->where(function ($q) use ($startOfWeek, $endOfWeek) {
+                $q->whereBetween('scheduled_date', [$startOfWeek, $endOfWeek])
+                    ->orWhere(function ($sub) use ($startOfWeek, $endOfWeek) {
+                        $sub->whereNull('scheduled_date')
+                            ->whereBetween('preferred_date', [$startOfWeek, $endOfWeek]);
+                    });
+            });
+        } elseif ($datePreset === 'pending') {
+            $query->where('status', 'pending');
         }
 
         $requests = $query->paginate(15)->withQueryString();
@@ -56,9 +102,22 @@ class AppointmentRequestController extends Controller
             });
         }
 
+        $kpis = [
+            'total_requests' => AppointmentRequest::count(),
+            'pending_triage' => AppointmentRequest::where('status', 'pending')->count(),
+            'contacted' => AppointmentRequest::where('status', 'contacted')->count(),
+            'scheduled_today' => AppointmentRequest::whereDate('scheduled_date', $today)->count(),
+            'converted_patients' => AppointmentRequest::whereNotNull('converted_patient_id')->count(),
+        ];
+
         return Inertia::render('Admin/AppointmentRequests/Index', [
             'requests' => $requests,
-            'filters' => $request->only(['status']),
+            'kpis' => $kpis,
+            'filters' => [
+                'status' => $status,
+                'search' => $search,
+                'date_preset' => $datePreset,
+            ],
         ]);
     }
 
@@ -196,6 +255,35 @@ class AppointmentRequestController extends Controller
 
         return redirect()->route('admin.appointment_requests.edit', $appointmentRequest)
             ->with('success', 'Appointment request updated.');
+    }
+
+    public function quickStatus(Request $request, AppointmentRequest $appointmentRequest): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:pending,contacted,scheduled,cancelled'],
+        ]);
+
+        $actor = $request->user();
+
+        DB::transaction(function () use ($appointmentRequest, $validated, $actor): void {
+            $previousStatus = $appointmentRequest->status;
+            $appointmentRequest->update([
+                'status' => $validated['status'],
+                'handled_by' => $actor->id,
+            ]);
+
+            $appointmentRequest->events()->create([
+                'performed_by' => $actor->id,
+                'performed_by_name' => $actor->name,
+                'event_type' => 'status_changed',
+                'previous_status' => $previousStatus,
+                'new_status' => $validated['status'],
+                'new_scheduled_date' => $appointmentRequest->scheduled_date,
+                'new_scheduled_time' => $appointmentRequest->scheduled_time,
+            ]);
+        });
+
+        return back()->with('success', "Appointment request #{$appointmentRequest->id} updated to {$validated['status']}.");
     }
 
     public function convertToPatient(Request $request, AppointmentRequest $appointmentRequest, AppointmentRequestPatientMatcher $patientMatcher): RedirectResponse

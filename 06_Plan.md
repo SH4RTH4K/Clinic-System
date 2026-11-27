@@ -1104,3 +1104,24 @@
   - Authored comprehensive test suite `tests/Feature/CalendarWorkstationTest.php` with 6 feature tests passing (74 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 45: Appointment Requests & Intake Triage Workstation (`/admin/appointment-requests`) (`[x] COMPLETED`)
+- [x] **Task 45.1**: Backend Controller & Fast-Track Triage API (`AppointmentRequestController.php`)
+  - Upgraded `AppointmentRequestController@index` with universal `search` across patient name, phone, request ID, and notes.
+  - Implemented 1-click `date_preset` filters (`all`, `today`, `tomorrow`, `this_week`, `pending`).
+  - Added executive KPI metric counters: `total_requests`, `pending_triage`, `contacted`, `scheduled_today`, and `converted_patients`.
+  - Added `PATCH /admin/appointment-requests/{appointmentRequest}/quick-status` (`appointment_requests.quick_status`) with database transaction and audit event logging (`AppointmentRequestEvent`).
+- [x] **Task 45.2**: Modernized Intake Triage Workstation (`resources/js/Pages/Admin/AppointmentRequests/Index.jsx`)
+  - Integrated RemediQ `PageHeader` with contextual action (`+ New Request`) and navigation tabs.
+  - Added 5-card Executive KPI summary ribbon with responsive grid layout.
+  - Built real-time 300ms debounced search bar with instant clear button (`✕`) and match counter.
+  - Added 1-Click Date Preset Filter Pills (`All Requests`, `📅 Today's Bookings`, `🌅 Tomorrow`, `🗓️ This Week`, `⏳ Pending Triage`).
+  - Added Today's Appointment highlight badge (`📅 TODAY`) with emerald border and soft emerald background.
+  - Added 1-Click `[ 📞 Contacted ]` action button with live server-side update.
+  - Added 1-Tap phone dialing (`tel:`) and pre-filled WhatsApp click-to-chat links (`https://wa.me/...`).
+  - Implemented High-Density Mobile Touch Cards (`block md:hidden`) with 44px+ touch targets and expandable triage notes.
+- [x] **Task 45.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/AppointmentRequestWorkstationTest.php` with 6 feature tests passing (44 assertions).
+  - Verified full appointment test suite with zero regressions (34 tests passed, 359 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
