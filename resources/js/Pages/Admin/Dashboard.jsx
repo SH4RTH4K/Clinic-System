@@ -97,7 +97,7 @@ export default function Dashboard({
                                 {practiceBadge.label}
                             </span>
                             <Link
-                                href={typeof route === 'function' && route().has('admin.settings.edit') ? route('admin.settings.edit') : (typeof route === 'function' && route().has('admin.settings') ? route('admin.settings') : '/admin/settings')}
+                                href={typeof route === 'function' && route().has('admin.settings.edit') ? route('admin.settings.edit') : '/admin/settings'}
                                 className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition shadow-2xs inline-flex items-center gap-1.5"
                             >
                                 <span>⚙️</span> Clinic Settings

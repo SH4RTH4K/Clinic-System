@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('advice_items', function (Blueprint $table) {
             $table->id();
-            $table->string('text_en')->nullable();
+            $table->string('text_en');
             $table->string('text_bn')->nullable();
             $table->boolean('is_default')->default(false);
             $table->timestamps();
