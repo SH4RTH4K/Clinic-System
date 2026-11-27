@@ -38,4 +38,36 @@ class User extends Authenticatable
     {
         return $this->hasOne(Doctor::class);
     }
+
+    public function scopeSearch($query, ?string $term)
+    {
+        return $query->when($term, function ($q, $term) {
+            $q->where(function ($sub) use ($term) {
+                $sub->where('name', 'like', "%{$term}%")
+                    ->orWhere('username', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%")
+                    ->orWhere('phone', 'like', "%{$term}%");
+            });
+        });
+    }
+
+    public function scopeRoleFilter($query, ?string $role)
+    {
+        return $query->when($role && $role !== 'all', function ($q) use ($role) {
+            $q->whereHas('roles', function ($sub) use ($role) {
+                $sub->where('name', $role);
+            });
+        });
+    }
+
+    public function scopeStatus($query, ?string $status)
+    {
+        return $query->when($status && $status !== 'all', function ($q) use ($status) {
+            if ($status === 'active') {
+                $q->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $q->where('is_active', false);
+            }
+        });
+    }
 }

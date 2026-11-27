@@ -16,12 +16,40 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('roles')->get();
+        $search = $request->string('search')->trim()->value();
+        $role = $request->string('role')->trim()->value();
+        $status = $request->string('status', 'all')->trim()->value();
+
+        $users = User::query()
+            ->with('roles')
+            ->search($search)
+            ->roleFilter($role)
+            ->status($status)
+            ->orderByDesc('id')
+            ->get();
+
+        $allUsers = User::with('roles')->get();
+        $kpis = [
+            'total_users' => $allUsers->count(),
+            'active_users' => $allUsers->where('is_active', true)->count(),
+            'super_admins_count' => $allUsers->filter(fn ($u) => $u->hasRole('Super Admin'))->count(),
+            'doctors_count' => $allUsers->filter(fn ($u) => $u->hasRole('Doctor'))->count(),
+            'support_staff_count' => $allUsers->filter(fn ($u) => ! $u->hasRole('Super Admin') && ! $u->hasRole('Doctor'))->count(),
+        ];
+
+        $roles = Role::query()->orderBy('name')->pluck('name');
 
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
+            'kpis' => $kpis,
+            'filters' => [
+                'search' => $search,
+                'role' => $role,
+                'status' => $status,
+            ],
+            'availableRoles' => $roles,
         ]);
     }
 
@@ -126,6 +154,37 @@ class UserController extends Controller
         }
 
         return redirect()->route('admin.users.index')->with('success', 'User updated.');
+    }
+
+    public function toggleStatus(Request $request, User $user): RedirectResponse
+    {
+        $error = DB::transaction(function () use ($request, $user): ?string {
+            $superAdminRole = $this->lockSuperAdminRole();
+            $this->lockActiveSuperAdminActor($request->user()->id, $superAdminRole);
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedUser->is_active && $lockedUser->hasRole($superAdminRole)) {
+                $activeSuperAdmins = $this->lockActiveSuperAdmins($superAdminRole);
+
+                if ($activeSuperAdmins->count() <= 1) {
+                    return 'Cannot deactivate the last remaining active Super Admin.';
+                }
+            }
+
+            $lockedUser->update([
+                'is_active' => ! $lockedUser->is_active,
+            ]);
+
+            return null;
+        });
+
+        if ($error) {
+            return back()->withErrors(['is_active' => $error]);
+        }
+
+        $statusText = $user->fresh()->is_active ? 'activated' : 'deactivated';
+
+        return back()->with('success', "User \"{$user->name}\" {$statusText} successfully.");
     }
 
     public function destroy(Request $request, User $user): RedirectResponse

@@ -36,9 +36,12 @@ use Illuminate\Support\Facades\Route;
 
 // User administration is restricted to the Super Admin role.
 Route::middleware(['auth', 'role:Super Admin'])
-    ->group(fn () => Route::resource('users', UserController::class)->only([
-        'create', 'store', 'index', 'show', 'edit', 'update', 'destroy',
-    ]));
+    ->group(function () {
+        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle_status');
+        Route::resource('users', UserController::class)->only([
+            'create', 'store', 'index', 'show', 'edit', 'update', 'destroy',
+        ]);
+    });
 
 // Roles (Super Admin only)
 Route::middleware(['auth', 'role:Super Admin', 'permission:roles.create'])

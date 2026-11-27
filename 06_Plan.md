@@ -1164,3 +1164,22 @@
   - Verified full patient form config test suite with zero regressions (26 tests passed, 169 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 48: Staff Users & Access Control Workstation (`/admin/users`) (`[x] COMPLETED`)
+- [x] **Task 48.1**: Model & Controller Hardening (`User.php`, `UserController.php`, `routes/admin.php`)
+  - Added query scopes on `User.php`: `scopeSearch` (name, username, email, phone), `scopeRoleFilter`, and `scopeStatus`.
+  - Upgraded `UserController@index` to accept `search`, `role`, and `status`, computing executive KPI counters (`total_users`, `active_users`, `super_admins_count`, `doctors_count`, `support_staff_count`).
+  - Added `toggleStatus(Request $request, User $user)` method with database transaction, row-locking (`lockForUpdate()`), and strict defense preventing deactivation of the last remaining active Super Admin.
+  - Registered route `PATCH /admin/users/{user}/toggle-status` under `role:Super Admin`.
+- [x] **Task 48.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Users/Index.jsx`)
+  - Integrated RemediQ standard `PageHeader` with navigation links (`🛡️ Roles & Permissions`, `📜 Security Logs`, `🏥 System Health`, `➕ Create User`).
+  - Added 5-card Executive KPI summary ribbon with real-time operational metrics.
+  - Implemented 300ms debounced search bar matching user name, username, email, and phone with match counter and `✕` clear button.
+  - Added 1-Click Role & Status Filter Pills Strip (`All Staff`, `Active 🟢`, `Inactive ⏸️`, `Super Admin 👑`, `Doctor 🩺`, `Receptionist 📋`, `Accountant 💵`).
+  - Implemented 1-Click Fast-Track Status Toggle action with optimistic feedback.
+  - Built responsive dual presentation: Desktop structured `DataTable` (`hidden md:block`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with avatar initials, role pills, 1-tap phone `tel:`, email `mailto:`, and 44px+ touch-friendly action buttons.
+- [x] **Task 48.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/UserManagementWorkstationTest.php` with 6 feature tests passing (92 assertions).
+  - Verified full user authorization test suite with zero regressions (22 tests passed, 133 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).

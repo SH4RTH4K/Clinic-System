@@ -61,6 +61,13 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Security Audit Logging**: Powered by `spatie/laravel-activitylog`. Captures all critical actions with non-sensitive metadata.
 - `[x] Done` **Staff Profile Management**: Staff users can update name, email, and password. Profile self-deletion is disabled; staff deactivation is strictly reserved for Super Admin.
 - `[x] Done` **Dynamic Clinic Branding & Language-Wise Browser Tab Titles**: Browser tab titles and sidebar navigation dynamically display the configured Clinic Name from Clinic Settings (`/admin/settings`) according to active language version (`clinic_name_en` for English and `clinic_name_bn` for Bangla), completely replacing static default titles (`- Laravel`). Includes 1-click Language Switcher (`বাং` / `EN`) in topbar navigation.
+- `[x] Done` **Staff Users & Access Control Workstation (`/admin/users`)**:
+  - **Executive KPI Summary Ribbon (5 Cards)**: Total Staff Accounts, Active Staff (🟢), Super Admins (👑), Practicing Doctors (🩺), and Support Staff (📋).
+  - **Universal Multi-Factor Search**: 300ms debounced search matching user full name, unique username (`@user`), email address, and mobile phone number with instant match counter and `✕` clear button.
+  - **Role & Status Filter Pills Strip**: 1-Click fast-track filtering (`All Staff`, `Active 🟢`, `Inactive ⏸️`, `Super Admins 👑`, `Doctors 🩺`, `Receptionists 📋`, `Accountants 💵`).
+  - **1-Click Quick Status Toggle (`PATCH /admin/users/{user}/toggle-status`)**: Fast-track button with optimistic UI and row-locking defense preventing deactivation of the last remaining active Super Admin.
+  - **Dual-Mode Multi-Type Screen Views**: Desktop structured `DataTable` (`hidden md:block`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with avatar, initials, role badges, 1-tap phone dialing (`tel:`), email (`mailto:`), and 44px+ touch-friendly action buttons.
+  - **Enhanced Security Navigation**: Direct quick-links to sibling security modules (`[ 🛡️ Roles & Permissions ]`, `[ 📜 Security Logs ]`, `[ 🏥 System Health ]`).
 - `[x] Done` **Clinic Master Settings & Practice Policies Workstation (`/admin/settings`)**:
   - **Executive KPI Summary Ribbon**: 5 operational indicators (Active Practice Mode, FIFO Inventory Auto-Deduct, Default OPD Consultation Fee, Branding Asset Status, and Weekly Visiting Schedule Mode).
   - **Universal In-Page Real-Time Search**: 300ms debounced setting search with instant match counter, clear button (`✕`), and dynamic emerald glow highlight across matching cards and inputs.
