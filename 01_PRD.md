@@ -281,12 +281,12 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Quick-preset accelerator for top Bangladeshi and international laboratories with instant category pills (`💊 Allopathy Pharma`, `🌿 Homeopathy Lab`, `🏥 Dual Practice`, `🩺 Surgical & Diag.`).
   - Native integration with `/admin/pharmaceuticals/create` and `Edit.jsx` via HTML5 datalist, quick chips, and inline `+ Add New Company` shortcut.
   - Dedicated search autocomplete endpoint (`/admin/manufacturers/search`) and safe reversible deactivation.
-- `[ ] In Progress` **Pharmacy Multi-Batch Inventory & Stock Control Workstation (`/admin/inventory`)**:
+- `[x] Done` **Pharmacy Multi-Batch Inventory & Stock Control Workstation (`/admin/inventory`)**:
   - Central operational command center managing Homeopathic potencies (CH, LM, X, MT) and Allopathic pharmaceuticals across active batches.
   - Multi-attribute search matching remedy Latin/common name, pharma brand, generic, potency, strength (mg/ml), batch number, and supplier name.
   - FEFO (First-Expired, First-Out) shelf rotation sorting and lowest stock reorder prioritization.
-  - Offline physical audit stocktake CSV export.
-  - Safe soft deactivation preventing cascade deletion of stock transactions.
+  - Offline physical audit stocktake CSV export with cost and retail valuation.
+  - Safe stock adjustments (`adjustment`, `wastage`, `return`, `purchase`) with audit ledger movement records.
   - Tactile mobile touch cards (`block md:hidden`) replacing horizontal table scrolling.
 - `[x] Done` **Dual Stock Management**:
   - Homeopathic inventory: Dilutions, Mother Tinctures (30ml, 100ml, 450ml), Globules, and Biochemic preparations.

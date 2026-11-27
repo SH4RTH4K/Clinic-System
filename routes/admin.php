@@ -151,6 +151,7 @@ Route::middleware(['auth', 'permission:manufacturers.delete'])
 // Pharmacy Inventory & Stock Control
 Route::middleware(['auth', 'permission:inventory.view'])->group(function () {
     Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('inventory/export', [InventoryController::class, 'export'])->name('inventory.export');
     Route::get('inventory/transactions', [InventoryController::class, 'transactions'])->name('inventory.transactions');
 });
 Route::middleware(['auth', 'permission:inventory.create'])->group(function () {

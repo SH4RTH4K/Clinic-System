@@ -1276,3 +1276,25 @@
   - Authored comprehensive test suite `tests/Feature/MedicineWorkstationTest.php` with 7 feature tests passing (94 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 54: Pharmacy Multi-Batch Inventory, FEFO Sorting & Stocktake Audit Workstation (`/admin/inventory`) (`[x] COMPLETED`)
+- [x] **Task 54.1**: Controller Hardening, FEFO Sorting Engine & Stocktake CSV Export (`app/Http/Controllers/Admin/InventoryController.php`, `routes/admin.php`)
+  - Implemented multi-parameter search matching batch number, supplier name, remedy Latin name, pharmaceutical brand, generic molecule, strength, and manufacturer.
+  - Added FEFO (First-Expired, First-Out) sorting engine (`expiry_asc`) ordering earliest expiring batches first with null expiry dates sorted last.
+  - Added multi-level filtering (`type`, `status`, `stock_level`, `expiry_status`, `sort`, `per_page`).
+  - Added streaming CSV stocktake audit export (`GET /admin/inventory/export`) with UTF-8 BOM, purchase cost valuation, and retail selling valuation.
+- [x] **Task 54.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Inventory/Index.jsx`)
+  - Integrated RemediQ standard `PageHeader` with direct quick links (`[ 🌿 Homeo Remedies ]`, `[ 💊 Pharmaceuticals ]`, `[ 🏭 Manufacturers ]`, `[ 📜 Stock Ledger ]`, `[ 📥 Stocktake CSV ]`, `[ ➕ Receive Stock ]`).
+  - Implemented 5-Card Inventory KPI Summary Ribbon (`Active Batches 📦`, `Stock Valuation 💰`, `Low Stock Items ⚠️`, `Near Expiry (≤30d) ⏳`, `Expired Batches 🛑`).
+  - Implemented 300ms debounced search bar with instant clear button (`✕`).
+  - Added 1-Click Dispensary Filter Pills strip (`All Batches`, `🌿 Homeopathic Remedies`, `💊 Conventional Pharma`, `⏳ Near Expiry`, `⚠️ Low Stock`, `🛑 Expired`).
+  - Retained fast-action Quick Stock Adjustment modal with reason and movement type.
+  - Built Dual-Mode Presentation: Desktop structured table alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly actions (`Adjust Stock`, `Edit Batch`, `Delete`).
+- [x] **Task 54.3**: Permissions Matrix Category Layout Hardening (`resources/js/Pages/Admin/Permissions/Index.jsx`)
+  - Replaced horizontal pill row with a 6-Card Responsive Grid (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2`) resolving text clipping (`Billing & Cash Re...`), harsh black stadium styling, and multi-screen layout breakage.
+  - Added clinical domain icons, clean titles, live granted/total badges, and micro progress bars for each category.
+- [x] **Task 54.4**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/InventoryWorkstationTest.php` with 6 feature tests passing (52 assertions).
+  - Validated permission test suite (105 tests passing, 727 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).

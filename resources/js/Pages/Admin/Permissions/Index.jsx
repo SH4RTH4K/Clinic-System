@@ -64,6 +64,8 @@ const PERMISSION_CATEGORIES = [
     {
         key: 'clinical_operations',
         label: 'Clinical Care & OPD (চিকিৎসা ও চেম্বার)',
+        shortLabel: 'Clinical & OPD',
+        shortLabelBn: 'চিকিৎসা ও চেম্বার',
         description: 'Patient records, consultation visits, clinical chart, appointments, queue, calendar, and reports.',
         icon: '🩺',
         modules: ['patients', 'clinical_records', 'visits', 'appointments', 'calendar', 'queue', 'attachments', 'reports'],
@@ -71,6 +73,8 @@ const PERMISSION_CATEGORIES = [
     {
         key: 'medicines_repertory',
         label: 'Pharmacy, Medicines & Repertory (ঔষধ ও লক্ষণ ভাণ্ডার)',
+        shortLabel: 'Pharmacy & Stock',
+        shortLabelBn: 'ঔষধ ও স্টক',
         description: 'Homeopathic catalog, pharmaceuticals, symptom repertory, rubric map, advice, food restrictions, and inventory.',
         icon: '💊',
         modules: ['medicines', 'pharmaceuticals', 'symptoms', 'symptom_medicine_map', 'advice_items', 'food_restrictions', 'prescription_options', 'manufacturers', 'inventory'],
@@ -78,6 +82,8 @@ const PERMISSION_CATEGORIES = [
     {
         key: 'diagnostics_investigations',
         label: 'Diagnostics & Lab Tests (ডায়াগনস্টিক ও ল্যাব)',
+        shortLabel: 'Diagnostics & Labs',
+        shortLabelBn: 'ডায়াগনস্টিক ও ল্যাব',
         description: 'Diagnostic test catalog, investigation orders, normal reference ranges, and test results.',
         icon: '🔬',
         modules: ['lab_investigations'],
@@ -85,6 +91,8 @@ const PERMISSION_CATEGORIES = [
     {
         key: 'billing_pos',
         label: 'Billing & Cash Register (বিলিং ও ক্যাশ)',
+        shortLabel: 'Billing & Cash',
+        shortLabelBn: 'বিলিং ও ক্যাশ',
         description: 'Chamber fees, patient billing, POS receipt printing, and bKash MFS payment records.',
         icon: '🧾',
         modules: ['billing'],
@@ -92,6 +100,8 @@ const PERMISSION_CATEGORIES = [
     {
         key: 'administration',
         label: 'Clinic Administration & Governance (প্রশাসন ও নিরাপত্তা)',
+        shortLabel: 'Admin & Security',
+        shortLabelBn: 'প্রশাসন ও রোল',
         description: 'Doctor profiles, master settings, patient configuration, staff user accounts, role definitions, system health, and audit logs.',
         icon: '⚙️',
         modules: ['doctors', 'clinic_settings', 'general_settings', 'patient_config', 'system_health', 'users', 'roles', 'activity_logs', 'communications', 'settings'],
@@ -737,66 +747,130 @@ export default function Index({ roles = [], permissions = [], kpis = {}, filters
                                     </div>
                                 </section>
 
-                                {/* Redesigned Category Navigation Tabs Bar */}
-                                <section className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-2xs space-y-2.5">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
-                                        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-                                            <span>📑</span>
-                                            <span>Module Category Filter (ক্লিনিক্যাল ক্যাটাগরি ফিল্টার)</span>
-                                        </span>
-                                        {selectedCategory !== 'all' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedCategory('all')}
-                                                className="text-xs text-primary-700 hover:text-primary-800 hover:underline font-bold transition"
-                                            >
-                                                View All Categories ({PERMISSION_CATEGORIES.length}) →
-                                            </button>
-                                        )}
+                                {/* Multi-Screen Category Command Matrix */}
+                                <section className="rounded-xl border border-gray-200 bg-white p-3.5 sm:p-4 shadow-2xs space-y-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-50 text-xs font-bold text-primary-700 border border-primary-200">
+                                                📑
+                                            </span>
+                                            <div>
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">
+                                                    Clinical Category Matrix (ক্লিনিক্যাল ক্যাটাগরি ফিল্টার)
+                                                </h3>
+                                                <p className="text-[11px] text-gray-500">
+                                                    {selectedCategory === 'all'
+                                                        ? `Showing all ${PERMISSION_CATEGORIES.length} domains (${permissions.length} total actions)`
+                                                        : `Viewing ${CATEGORY_LABELS[selectedCategory]} only`}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {selectedCategory !== 'all' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedCategory('all')}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 transition"
+                                                >
+                                                    <span>🌐</span>
+                                                    <span>Show All Domains</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="flex flex-wrap items-center gap-2">
+                                    {/* 6-Card Responsive Grid: 2 cols on mobile, 3 on tablet, 6 on desktop */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+                                        {/* All Categories Master Card */}
                                         <button
                                             type="button"
                                             onClick={() => setSelectedCategory('all')}
-                                            className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                            className={`relative flex flex-col justify-between p-2.5 rounded-xl border text-left transition-all ${
                                                 selectedCategory === 'all'
-                                                    ? 'bg-primary-600 text-white font-bold shadow-2xs'
-                                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                    ? 'bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/30'
+                                                    : 'bg-gray-50/80 hover:bg-gray-100/90 text-gray-800 border-gray-200 hover:border-gray-300'
                                             }`}
                                         >
-                                            <span>🌐</span>
-                                            <span>All Categories</span>
-                                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                                                selectedCategory === 'all' ? 'bg-primary-700 text-white' : 'bg-gray-200 text-gray-700'
-                                            }`}>
-                                                {PERMISSION_CATEGORIES.length}
-                                            </span>
+                                            <div className="flex items-center justify-between gap-1 w-full">
+                                                <span className="text-base">🌐</span>
+                                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                                                    selectedCategory === 'all'
+                                                        ? 'bg-primary-700/90 text-white'
+                                                        : 'bg-gray-200/90 text-gray-700'
+                                                }`}>
+                                                    {totalSelected}/{permissions.length}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 min-w-0">
+                                                <div className="text-xs font-bold truncate">All Categories</div>
+                                                <div className={`text-[10px] truncate ${selectedCategory === 'all' ? 'text-primary-100' : 'text-gray-500'}`}>
+                                                    সব ক্যাটাগরি ({PERMISSION_CATEGORIES.length})
+                                                </div>
+                                            </div>
+                                            {/* Micro progress bar */}
+                                            <div className="mt-2 h-1 w-full rounded-full bg-black/10 overflow-hidden">
+                                                <div
+                                                    className={`h-full transition-all duration-300 ${selectedCategory === 'all' ? 'bg-white' : 'bg-primary-600'}`}
+                                                    style={{ width: `${coveragePercent}%` }}
+                                                />
+                                            </div>
                                         </button>
 
+                                        {/* Category Specific Cards */}
                                         {PERMISSION_CATEGORIES.map((cat) => {
                                             const isCatSelected = selectedCategory === cat.key;
                                             const catPerms = permissions.filter((p) => cat.modules.includes(p.name.split('.')[0]));
                                             const catGranted = catPerms.filter((p) => data.permissions.includes(p.name)).length;
+                                            const catPercent = catPerms.length > 0 ? Math.round((catGranted / catPerms.length) * 100) : 0;
+                                            const isFull = catGranted === catPerms.length && catPerms.length > 0;
 
                                             return (
                                                 <button
                                                     key={cat.key}
                                                     type="button"
                                                     onClick={() => setSelectedCategory(cat.key)}
-                                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                                    className={`relative flex flex-col justify-between p-2.5 rounded-xl border text-left transition-all ${
                                                         isCatSelected
-                                                            ? 'bg-primary-600 text-white font-bold shadow-2xs'
-                                                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                            ? 'bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/30'
+                                                            : 'bg-gray-50/80 hover:bg-gray-100/90 text-gray-800 border-gray-200 hover:border-gray-300'
                                                     }`}
                                                 >
-                                                    <span>{cat.icon}</span>
-                                                    <span>{cat.label.split('(')[0].trim()}</span>
-                                                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                                                        isCatSelected ? 'bg-primary-700 text-white' : 'bg-gray-200 text-gray-600'
-                                                    }`}>
-                                                        {catGranted}/{catPerms.length}
-                                                    </span>
+                                                    <div className="flex items-center justify-between gap-1 w-full">
+                                                        <span className="text-base">{cat.icon}</span>
+                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                                                            isCatSelected
+                                                                ? 'bg-primary-700/90 text-white'
+                                                                : isFull
+                                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                                    : catGranted > 0
+                                                                        ? 'bg-primary-50 text-primary-800 border border-primary-200'
+                                                                        : 'bg-gray-200/90 text-gray-600'
+                                                        }`}>
+                                                            {catGranted}/{catPerms.length}
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-2 min-w-0">
+                                                        <div className="text-xs font-bold truncate" title={cat.label}>
+                                                            {cat.shortLabel || cat.label.split('(')[0].trim()}
+                                                        </div>
+                                                        <div className={`text-[10px] truncate ${isCatSelected ? 'text-primary-100' : 'text-gray-500'}`}>
+                                                            {cat.shortLabelBn || `${cat.modules.length} মডিউল`}
+                                                        </div>
+                                                    </div>
+                                                    {/* Micro progress bar */}
+                                                    <div className="mt-2 h-1 w-full rounded-full bg-black/10 overflow-hidden">
+                                                        <div
+                                                            className={`h-full transition-all duration-300 ${
+                                                                isCatSelected
+                                                                    ? 'bg-white'
+                                                                    : isFull
+                                                                        ? 'bg-emerald-500'
+                                                                        : 'bg-primary-600'
+                                                            }`}
+                                                            style={{ width: `${catPercent}%` }}
+                                                        />
+                                                    </div>
                                                 </button>
                                             );
                                         })}
