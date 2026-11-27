@@ -17,10 +17,31 @@ class PatientConfigController extends Controller
 {
     public function edit(): Response
     {
+        $fields = ClinicSetting::currentPatientFormConfig();
+        $relationships = ClinicSetting::currentPatientRelationshipOptions();
+        $sections = ClinicSetting::currentPatientFormSections();
+
+        $visibleFields = collect($fields)->where('visible', true)->count();
+        $requiredFields = collect($fields)->where('required', true)->count();
+        $activeSections = collect($sections)->where('visible', true)->count();
+        $migrationSection = collect($sections)->firstWhere('key', 'legacy_migration');
+        $isMigrationActive = (bool) ($migrationSection['visible'] ?? false);
+
+        $kpis = [
+            'total_sections' => count($sections),
+            'active_sections' => $activeSections,
+            'total_fields' => count($fields),
+            'visible_fields' => $visibleFields,
+            'required_fields' => $requiredFields,
+            'total_relationships' => count($relationships),
+            'is_migration_active' => $isMigrationActive,
+        ];
+
         return Inertia::render('Admin/PatientConfig/Edit', [
-            'fields' => ClinicSetting::currentPatientFormConfig(),
-            'relationships' => ClinicSetting::currentPatientRelationshipOptions(),
-            'sections' => ClinicSetting::currentPatientFormSections(),
+            'fields' => $fields,
+            'relationships' => $relationships,
+            'sections' => $sections,
+            'kpis' => $kpis,
         ]);
     }
 

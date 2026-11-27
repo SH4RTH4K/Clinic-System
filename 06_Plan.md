@@ -1145,3 +1145,22 @@
   - Verified full settings test suite with zero regressions (50 tests passed, 250 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 47: Patient Registration Form Configuration Workstation (`/admin/patient-config`) (`[x] COMPLETED`)
+- [x] **Task 47.1**: Controller Hardening & KPI Metric Aggregation (`PatientConfigController.php`)
+  - Upgraded `PatientConfigController@edit` to compute executive KPI metrics: `total_sections`, `active_sections`, `total_fields`, `visible_fields`, `required_fields`, `total_relationships`, and `is_migration_active`.
+  - Preserved RBAC security guards (`role_or_permission:Super Admin|patient_config.view|create|update|order|delete`).
+  - Preserved foreign database usage checks on relationship deletion preventing accidental orphan states in `Patient` records.
+- [x] **Task 47.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/PatientConfig/Edit.jsx`)
+  - Integrated RemediQ standard `PageHeader` with title *"Patient Registration Form Configuration (রোগী নিবন্ধন ফর্ম বিন্যাস)"* and quick navigation links (`👥 Patients`, `➕ Register Patient`, `🔢 Numbering Profiles`, `⚙️ Clinic Settings`).
+  - Added 5-card Executive KPI summary ribbon with real-time operational status.
+  - Implemented real-time in-page search bar (300ms debounce) matching all field names, keys, custom labels, section names, and relationships with clear button (`✕`) and visual emerald glow highlighting.
+  - Added Category Navigation Tabs Strip (`All Sections`, `👤 Identity`, `🩺 Medical`, `📞 Contact`, `📜 Migration`, `👨‍👩‍👦 Relationships`).
+  - Added 1-Click Clinical Form Presets Toolbar (`🌿 Standard OPD Intake`, `⚡ Fast-Track Minimal OPD`, `📜 Historical Migration Pack`).
+  - Added Quick-Add Relationship Chips (`+ Step-Father`, `+ Step-Mother`, `+ Foster Parent`, `+ Hostel Warden`, `+ Colleague`).
+  - Implemented responsive touch card layout with generous 44px+ tap targets and floating Mobile Sticky Save Drawer on viewports < 640px.
+- [x] **Task 47.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/PatientConfigWorkstationTest.php` with 6 feature tests passing (42 assertions).
+  - Verified full patient form config test suite with zero regressions (26 tests passed, 169 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
