@@ -1,4 +1,4 @@
-﻿# Master Implementation Plan & Roadmap (06_Plan.md)
+# Master Implementation Plan & Roadmap (06_Plan.md)
 ## RemediQ - Dual-Purpose Practice Management System
 *(Classical Homeopathy, General Medicine & Integrative Clinics)*
 
