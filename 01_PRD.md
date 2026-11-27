@@ -113,12 +113,19 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 ### Module 4: Dual Medication & Repertory Database
 
 #### 4.1 Homeopathy Domain
-- `[x] Done` **Symptom Master Catalog**: Hierarchical symptom dictionary categorized by anatomical rubrics.
+- `[x] Done` **Symptom Master Catalog**: Hierarchical Kent Repertory rubrics catalog categorized across 11 classical chapters (`mind`, `head`, `eyes_ent`, `digestion`, `abdomen_stool`, `urinary`, `respiratory`, `extremities`, `skin`, `fever`, `generalities`).
+- `[x] Done` **Standardized Rubric Attributes**: Code identifiers (e.g. `MIND-01`, `FEV-01`), bilingual titles (English & Bengali), and clinical modalities (`<` / `>`).
 - `[x] Done` **Homeopathic Remedy Database**: Comprehensive catalog containing remedy scientific names, common names, origin, and standard potencies.
-- `[x] Done` **Rubric-to-Remedy Mapping**: Grading system (Grades 1 to 4) mapping remedies to specific symptoms.
+- `[x] Done` **Rubric-to-Remedy Mapping**: Grading system (Grades 1 to 4) mapping remedies to specific symptoms with source attribution (Kent Repertory).
 - `[x] Done` **Repertory Review & Versioning**: Multi-tier review workflow supporting Draft, Pending Review, Approved, and Deprecated statuses.
 - `[x] Done` **Live Repertory Suggestions**: Selecting symptoms dynamically surfaces the most indicated remedies ranked by cumulative grade.
 - `[x] Done` **Bulk CSV Import**: Preview and batch import repertory mappings with validation.
+- `[x] Done` **Responsive Directory & Ergonomics**:
+  - Top executive KPI ribbon (Total Symptoms, Active, Mapped to Remedies, Unmapped, Repertory Chapters).
+  - 300ms debounced search matching code, English rubric, Bengali rubric, category, and modalities with instant clear (`✕`).
+  - 1-click Chapter Tab Pills and Mapping Status filters (`Mapped`, `Unmapped`).
+  - High-density mobile touch cards (`block md:hidden`) alongside desktop `DataTable`.
+  - 1-Click Kent Rubric Presets Toolbar on creation studio.
 - `[ ] Pending` **Homeopathic Scale Specifications**: Native support for Centesimal (CH), Decimal (X), 50-Millesimal (LM/Q), and Mother Tinctures (Q/MT).
 
 #### 4.2 General Medicine / Allopathy Domain

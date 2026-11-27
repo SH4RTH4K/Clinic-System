@@ -27,6 +27,9 @@
 | **11** | Billing, Invoicing & Daily POS | `[x] COMPLETED` | Fees, Medicine billing, bKash/Cash, 80mm receipts, Cash ledger |
 | **12** | Waiting Room Queue & Calendar | `[x] COMPLETED` | Interactive calendar, TV Queue screen, Token calling chime |
 | **13** | Automated Patient Communications | `[x] COMPLETED` | SMS appointment confirmation, WhatsApp prescription share |
+| **34** | Manufacturers & Suppliers Master | `[x] COMPLETED` | Company directory, MR contacts, inventory intake combobox |
+| **35** | Diagnostic Lab Investigations | `[x] COMPLETED` | 35 pre-seeded tests, specimen types, fees, responsive cards |
+| **36** | Kent Repertory Symptoms Catalog | `[x] COMPLETED` | 50 Kent rubrics, 11 chapters, CDSS links, responsive touch cards |
 
 ---
 
@@ -523,6 +526,38 @@
   - Pass registered manufacturers to `InventoryController@create` and `@edit`.
   - Upgrade `supplier_name` into a Category-Aware Datalist Combobox dynamically prioritizing homeopathic vs allopathic suppliers based on selected item category.
   - Add quick-select chips and inline `+ Add Company` shortcut link to `/admin/manufacturers/create`.
+
+### Phase 35: Diagnostic Lab Investigations Master Catalog (`/admin/lab-investigations`) (`[x] COMPLETED`)
+- [x] **Task 35.1**: Schema & Model Architecture
+  - Database table `lab_investigations` with code, name_en, name_bn, category, specimen, standard_fee, turnaround_hours, instructions, is_active.
+  - Model `LabInvestigation` with scopes and Spatie activity logging.
+  - FormRequests `StoreLabInvestigationRequest` and `UpdateLabInvestigationRequest`.
+- [x] **Task 35.2**: Pre-Seeded Diagnostic Catalog
+  - Seeded 35 high-yield clinical investigations across Hematology, Biochemistry, Imaging/Radiology, Ultrasound, Urine, and Serology via `LabInvestigationSeeder`.
+- [x] **Task 35.3**: Responsive Workstation & Clinical Presets
+  - Index view with KPI ribbon, 300ms debounced search, category filter pills, desktop DataTable, and mobile touch cards (`block md:hidden`).
+  - Create view with 1-Click Clinical Presets Toolbar (Lipid Profile, Thyroid Panel, Dengue NS1, etc.).
+- [x] **Task 35.4**: Automated Verification & Regression Testing
+  - Feature test suite `tests/Feature/LabInvestigationManagementTest.php` passing all 10 tests (91 assertions).
+
+### Phase 36: Homeopathic Symptoms & Kent Repertory Rubrics Catalog (`/admin/symptoms`) (`[x] COMPLETED`)
+- [x] **Task 36.1**: Database Schema & Clinical Attribute Migration
+  - Migration `2026_11_27_182001_add_clinical_attributes_to_symptoms_table.php` adding `code`, `modalities`, and database indexes on `code` and `category`.
+  - Hardened `Symptom` model with `medicines()` BelongsToMany, `symptomMedicineMaps()` HasMany, `visits()` BelongsToMany, local query scopes (`search`, `category`, `active`), and Spatie activity logging.
+- [x] **Task 36.2**: Kent Repertory Seeders & Clinical Knowledge Graph
+  - Created `SymptomSeeder` pre-seeding 50 classical Kent repertory rubrics across 11 chapters (`Mind`, `Head`, `Eyes/ENT`, `Digestion`, `Abdomen/Stool`, `Urinary`, `Respiratory`, `Extremities`, `Skin`, `Fever`, `Generalities`).
+  - Created `SymptomMedicineMapSeeder` linking rubrics to top 45 homeopathic polychrests with Grade 1-3 priorities and Kent Repertory citation.
+- [x] **Task 36.3**: Form Requests & Controller Hardening
+  - Created `StoreSymptomRequest` and `UpdateSymptomRequest` with strict validation for `name_en`, `code`, `name_bn`, `category`, `modalities`, and `is_active`.
+  - Upgraded `SymptomController`: eager-loads `withCount('medicines')`, calculates executive KPI metrics, supports debounced multi-field search and chapter filtering, and enforces safe deactivation if linked to visits or remedy mappings.
+- [x] **Task 36.4**: Responsive Multi-Screen Workstation & Ergonomics
+  - `Symptoms/Index.jsx`: Header KPI ribbon (Total, Active, Mapped, Repertory Chapters), 300ms debounced search with `✕`, 1-click Chapter Tab Pills, Mapping Status dropdown, Desktop DataTable with `💊 X Meds ↗` link, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `Symptoms/Create.jsx`: RemediQ PageHeader, 1-Click Kent Rubric Presets Toolbar (auto-fills English, Bengali, chapter, modalities), and chapter selector.
+  - `Symptoms/Edit.jsx`: Mapped remedies banner with direct link to knowledge graph (`/admin/symptom-medicine-map?symptom_id={id}`), chapter selector, and modalities editor.
+- [x] **Task 36.5**: Automated Verification & Regression Testing
+  - Created `tests/Feature/SymptomManagementTest.php` with 10 comprehensive tests covering index KPI metrics, search, chapter filters, validation, deactivation safety, and CDSS repertorization suggestions.
+  - Verified zero regressions across `SymptomMedicineMapGovernanceTest` and `DoctorDefaultPermissionsTest`.
+  - Formatted with Pint and compiled assets with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -705,3 +740,35 @@
   - Pass registered manufacturers to `InventoryController@create` and `@edit`.
   - Upgrade `supplier_name` into a Category-Aware Datalist Combobox dynamically prioritizing homeopathic vs allopathic suppliers based on selected item category.
   - Add quick-select chips and inline `+ Add Company` shortcut link to `/admin/manufacturers/create`.
+
+### Phase 35: Diagnostic Lab Investigations Master Catalog (`/admin/lab-investigations`) (`[x] COMPLETED`)
+- [x] **Task 35.1**: Schema & Model Architecture
+  - Database table `lab_investigations` with code, name_en, name_bn, category, specimen, standard_fee, turnaround_hours, instructions, is_active.
+  - Model `LabInvestigation` with scopes and Spatie activity logging.
+  - FormRequests `StoreLabInvestigationRequest` and `UpdateLabInvestigationRequest`.
+- [x] **Task 35.2**: Pre-Seeded Diagnostic Catalog
+  - Seeded 35 high-yield clinical investigations across Hematology, Biochemistry, Imaging/Radiology, Ultrasound, Urine, and Serology via `LabInvestigationSeeder`.
+- [x] **Task 35.3**: Responsive Workstation & Clinical Presets
+  - Index view with KPI ribbon, 300ms debounced search, category filter pills, desktop DataTable, and mobile touch cards (`block md:hidden`).
+  - Create view with 1-Click Clinical Presets Toolbar (Lipid Profile, Thyroid Panel, Dengue NS1, etc.).
+- [x] **Task 35.4**: Automated Verification & Regression Testing
+  - Feature test suite `tests/Feature/LabInvestigationManagementTest.php` passing all 10 tests (91 assertions).
+
+### Phase 36: Homeopathic Symptoms & Kent Repertory Rubrics Catalog (`/admin/symptoms`) (`[x] COMPLETED`)
+- [x] **Task 36.1**: Database Schema & Clinical Attribute Migration
+  - Migration `2026_11_27_182001_add_clinical_attributes_to_symptoms_table.php` adding `code`, `modalities`, and database indexes on `code` and `category`.
+  - Hardened `Symptom` model with `medicines()` BelongsToMany, `symptomMedicineMaps()` HasMany, `visits()` BelongsToMany, local query scopes (`search`, `category`, `active`), and Spatie activity logging.
+- [x] **Task 36.2**: Kent Repertory Seeders & Clinical Knowledge Graph
+  - Created `SymptomSeeder` pre-seeding 50 classical Kent repertory rubrics across 11 chapters (`Mind`, `Head`, `Eyes/ENT`, `Digestion`, `Abdomen/Stool`, `Urinary`, `Respiratory`, `Extremities`, `Skin`, `Fever`, `Generalities`).
+  - Created `SymptomMedicineMapSeeder` linking rubrics to top 45 homeopathic polychrests with Grade 1-3 priorities and Kent Repertory citation.
+- [x] **Task 36.3**: Form Requests & Controller Hardening
+  - Created `StoreSymptomRequest` and `UpdateSymptomRequest` with strict validation for `name_en`, `code`, `name_bn`, `category`, `modalities`, and `is_active`.
+  - Upgraded `SymptomController`: eager-loads `withCount('medicines')`, calculates executive KPI metrics, supports debounced multi-field search and chapter filtering, and enforces safe deactivation if linked to visits or remedy mappings.
+- [x] **Task 36.4**: Responsive Multi-Screen Workstation & Ergonomics
+  - `Symptoms/Index.jsx`: Header KPI ribbon (Total, Active, Mapped, Repertory Chapters), 300ms debounced search with `✕`, 1-click Chapter Tab Pills, Mapping Status dropdown, Desktop DataTable with `💊 X Meds ↗` link, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `Symptoms/Create.jsx`: RemediQ PageHeader, 1-Click Kent Rubric Presets Toolbar (auto-fills English, Bengali, chapter, modalities), and chapter selector.
+  - `Symptoms/Edit.jsx`: Mapped remedies banner with direct link to knowledge graph (`/admin/symptom-medicine-map?symptom_id={id}`), chapter selector, and modalities editor.
+- [x] **Task 36.5**: Automated Verification & Regression Testing
+  - Created `tests/Feature/SymptomManagementTest.php` with 10 comprehensive tests covering index KPI metrics, search, chapter filters, validation, deactivation safety, and CDSS repertorization suggestions.
+  - Verified zero regressions across `SymptomMedicineMapGovernanceTest` and `DoctorDefaultPermissionsTest`.
+  - Formatted with Pint and compiled assets with Vite (`npm run build`).

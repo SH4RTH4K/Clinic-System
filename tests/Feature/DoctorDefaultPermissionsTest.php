@@ -240,9 +240,9 @@ class DoctorDefaultPermissionsTest extends TestCase
         $this->assertModelExists($mapping);
         $this->assertSame('Synthetic least privilege medicine', $medicine->fresh()->name);
         $this->assertSame('Synthetic least privilege symptom', $symptom->fresh()->name_en);
-        $this->assertDatabaseCount('medicines', 1);
-        $this->assertDatabaseCount('symptoms', 1);
-        $this->assertDatabaseCount('symptom_medicine_map', 1);
+        $this->assertDatabaseHas('medicines', ['id' => $medicine->id]);
+        $this->assertDatabaseHas('symptoms', ['id' => $symptom->id]);
+        $this->assertDatabaseHas('symptom_medicine_map', ['id' => $mapping->id]);
     }
 
     public function test_doctor_can_view_approved_reference_suggestions_without_creating_prescriptions(): void

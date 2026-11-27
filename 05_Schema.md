@@ -252,15 +252,21 @@ CREATE TABLE `prescription_items` (
 
 ### 2.6 Homeopathic Master Catalog
 ```sql
--- symptoms
+-- symptoms (Kent Repertory Rubrics Catalog)
 CREATE TABLE `symptoms` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `name` varchar(255) NOT NULL UNIQUE,
-  `slug` varchar(255) NOT NULL UNIQUE,
-  `body_region` varchar(100) NULL,
+  `code` varchar(50) NULL,
+  `name_en` varchar(255) NOT NULL,
+  `name_bn` varchar(255) NULL,
+  `category` varchar(100) NOT NULL DEFAULT 'generalities',
+  `modalities` varchar(255) NULL,
   `description` text NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL,
-  `updated_at` timestamp NULL
+  `updated_at` timestamp NULL,
+  KEY `symptoms_code_index` (`code`),
+  KEY `symptoms_category_index` (`category`),
+  KEY `symptoms_is_active_index` (`is_active`)
 );
 
 -- medicines (Homeopathic remedies)
