@@ -1221,3 +1221,22 @@
   - Verified full role, permission, and user test suite with zero regressions (248 tests passed, 1790 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 51: Activity Logs & Security Audit Workstation (`/admin/activity-logs`) (`[x] COMPLETED`)
+- [x] **Task 51.1**: Controller Hardening & Streaming CSV Export (`ActivityLogController.php`, `routes/admin.php`)
+  - Upgraded `ActivityLogController@index` to accept multi-parameter search, fast filter pills (`denied`, `clinical_access`, `mutations`, `system_health`, `today`), actor filter (`causer_id`), event type filter (`event`), and date ranges (`date_from`, `date_to`).
+  - Computed 5 executive KPI summary counters (`total_logs`, `today_logs`, `clinical_access_count`, `denied_alerts_count`, `active_actors_today`).
+  - Added streaming CSV export method `export(Request $request)` and registered route `GET /admin/activity-logs/export` protected by `permission:activity_logs.export` and `role:Super Admin`.
+  - Maintained 100% strict clinical privacy whitelisting, preventing exposure of raw patient changes or sensitive diagnostic values.
+- [x] **Task 51.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/ActivityLogs/Index.jsx`)
+  - Integrated RemediQ standard `PageHeader` with navigation links (`👥 Staff Users`, `🛡️ Roles`, `🔑 Permissions`, `🏥 System Health`) and `📥 Export CSV` action.
+  - Added 5-card Executive KPI summary ribbon with responsive grid layout and semantic tones (`Sky`, `Emerald`, `Violet`, `Rose`, `Amber`).
+  - Implemented 300ms debounced search bar with clear (`✕`) button and reset filters action.
+  - Implemented 1-Click Fast-Track Filter Pills Strip with live count badges.
+  - Added filter dropdowns for Staff Actor (`causer_id`), Event Type, and Date Range.
+  - Built Dual-Mode Presentation: Desktop structured `DataTable` (`hidden md:block`) with color-coded event badges, access outcome indicators, and direct clickable Patient/Visit links alongside High-Density **Mobile Audit Cards** (`block md:hidden`) with 44px+ touch-friendly layout.
+- [x] **Task 51.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/ActivityLogWorkstationTest.php` with 6 feature tests passing (398 assertions in suite).
+  - Verified full clinical access audit and patient privacy test suite with zero regressions.
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).

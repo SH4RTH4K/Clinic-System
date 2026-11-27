@@ -1,1 +1,0 @@
-import{o as e}from"./app-kZp4-dgy.js";function t(){let{auth:t={}}=e().props,n=t.permissions||[];return e=>n.includes(e)}export{t};

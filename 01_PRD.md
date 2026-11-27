@@ -58,7 +58,13 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Only "Super Admin" can access `/admin/users`, `/admin/roles`, `/admin/permissions`, and `/admin/system-health`.
   - Application prevents deleting, deactivating, or demoting the last remaining active Super Admin.
   - Super Admin permissions cannot be modified or revoked through the UI.
-- `[x] Done` **Security Audit Logging**: Powered by `spatie/laravel-activitylog`. Captures all critical actions with non-sensitive metadata.
+- `[x] Done` **Security Audit Logging & Activity Logs Workstation (`/admin/activity-logs`)**:
+  - **Executive KPI Summary Ribbon (5 Cards)**: Total Audit Events (📜), Today's Events (⚡), Clinical Access Verifications (🩺), Security Denials & Alerts (🛑), and Active Staff Actors Today (👥).
+  - **Universal Multi-Factor Search & Fast-Track Filter Pills**: 300ms debounced search matching descriptions, subject models, and actor names with match counter and `✕` clear action. 1-Click filter pills (`All Events`, `🛑 Security Denials (Alerts)`, `🩺 Clinical Access`, `✏️ Data Changes`, `🏥 System Operations`, `⚡ Today Only`).
+  - **Pinpoint Dropdown Filters**: Staff Actor dropdown (`causer_id`), Event Type dropdown (`created`, `updated`, `deleted`, `denied`, etc.), and Date Range (`date_from`, `date_to`).
+  - **Dual-Mode Multi-Type Screen Views**: Desktop structured `DataTable` (`hidden md:block`) with color-coded event badges, outcome pills (`Allowed` vs `Denied`), and clickable Patient/Visit reference links alongside High-Density **Mobile Audit Cards** (`block md:hidden`) with 44px+ tap targets.
+  - **Compliance CSV Export Endpoint (`GET /admin/activity-logs/export`)**: Streaming CSV export guarded by `role:Super Admin` and `permission:activity_logs.export` with active filter preservation for regulatory audits.
+  - **Strict Clinical Privacy Whitelist**: Retains 100% of privacy whitelisting (`patient_id`, `visit_id`, `authorization_outcome`, `required_permission`, `denial_reason`, `request_id`). Raw attribute values and personal identifiers are strictly omitted from non-clinical audit records.
 - `[x] Done` **Staff Profile Management**: Staff users can update name, email, and password. Profile self-deletion is disabled; staff deactivation is strictly reserved for Super Admin.
 - `[x] Done` **Dynamic Clinic Branding & Language-Wise Browser Tab Titles**: Browser tab titles and sidebar navigation dynamically display the configured Clinic Name from Clinic Settings (`/admin/settings`) according to active language version (`clinic_name_en` for English and `clinic_name_bn` for Bangla), completely replacing static default titles (`- Laravel`). Includes 1-click Language Switcher (`বাং` / `EN`) in topbar navigation.
 - `[x] Done` **Role Management & Access Control Workstation (`/admin/roles`)**:

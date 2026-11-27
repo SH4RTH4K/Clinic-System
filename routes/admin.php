@@ -312,8 +312,10 @@ Route::middleware([
     ->group(fn () => Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'));
 
 // Activity Logs
-Route::middleware(['auth', 'permission:activity_logs.view', 'role:Super Admin'])
-    ->group(fn () => Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity_logs.index'));
+Route::middleware(['auth', 'permission:activity_logs.view', 'role:Super Admin'])->group(function () {
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity_logs.index');
+    Route::get('/activity-logs/export', [ActivityLogController::class, 'export'])->name('activity_logs.export');
+});
 
 // System health and backup maintenance are restricted to Super Admins and explicitly authorized managers.
 Route::middleware(['auth', 'role_or_permission:Super Admin|system_health.manage'])->group(function () {
