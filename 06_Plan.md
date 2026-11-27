@@ -707,6 +707,24 @@
   - Verified full Doctor test suite with zero regressions (109 tests passed, 827 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 44: Doctor Visual Calendar & Appointments Matrix Workstation (`/admin/calendar`) (`[x] COMPLETED`)
+- [x] **Task 44.1**: Backend Controller & Metric Aggregation (`CalendarController.php`)
+  - Upgraded `CalendarController@index` to accept universal `search` parameter, matching across patient name, phone number, patient code, and doctor name.
+  - Computed recurring weekly doctor shift rosters (`doctorShifts`) across all days of the week (Sun-Sat) with chamber assignments and duty hours.
+  - Aggregated monthly Executive KPI metrics (`total_appointments`, `total_visits`, `total_leaves`, `today_activity`, `active_doctors`).
+- [x] **Task 44.2**: Modernized Visual Calendar Workstation (`resources/js/Pages/Admin/Calendar/Index.jsx`)
+  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `🕒 Schedules`, `🎟️ Queue`, `📝 Requests`).
+  - Added 5-card Executive Monthly KPI summary ribbon.
+  - Implemented real-time Search Bar with active cell emerald glow highlights and match counter.
+  - Added 1-Click Event Category Filter Toolbar (`All Events`, `🕒 Appointments`, `🩺 Visits`, `🏖️ Doctor Leaves`).
+  - Integrated recurring doctor shift badges on calendar day cells with automatic strikethrough for approved leaves.
+  - Implemented Mobile Daily Agenda Timeline View (`block md:hidden`) with an interactive day-picker ribbon and chronological agenda feed.
+  - Upgraded Day Details Studio with 1-tap phone dialing (`tel:`), WhatsApp click-to-chat (`https://wa.me/...`), 1-click token issuance bridge, and fast-track booking link.
+- [x] **Task 44.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/CalendarWorkstationTest.php` with 6 feature tests passing (74 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -1066,5 +1084,23 @@
 - [x] **Task 43.3**: Automated Testing & Suite Verification
   - Authored comprehensive test suite `tests/Feature/DoctorScheduleWorkstationTest.php` with 8 feature tests passing (38 assertions).
   - Verified full Doctor test suite with zero regressions (109 tests passed, 827 assertions).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 44: Doctor Visual Calendar & Appointments Matrix Workstation (`/admin/calendar`) (`[x] COMPLETED`)
+- [x] **Task 44.1**: Backend Controller & Metric Aggregation (`CalendarController.php`)
+  - Upgraded `CalendarController@index` to accept universal `search` parameter, matching across patient name, phone number, patient code, and doctor name.
+  - Computed recurring weekly doctor shift rosters (`doctorShifts`) across all days of the week (Sun-Sat) with chamber assignments and duty hours.
+  - Aggregated monthly Executive KPI metrics (`total_appointments`, `total_visits`, `total_leaves`, `today_activity`, `active_doctors`).
+- [x] **Task 44.2**: Modernized Visual Calendar Workstation (`resources/js/Pages/Admin/Calendar/Index.jsx`)
+  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `🕒 Schedules`, `🎟️ Queue`, `📝 Requests`).
+  - Added 5-card Executive Monthly KPI summary ribbon.
+  - Implemented real-time Search Bar with active cell emerald glow highlights and match counter.
+  - Added 1-Click Event Category Filter Toolbar (`All Events`, `🕒 Appointments`, `🩺 Visits`, `🏖️ Doctor Leaves`).
+  - Integrated recurring doctor shift badges on calendar day cells with automatic strikethrough for approved leaves.
+  - Implemented Mobile Daily Agenda Timeline View (`block md:hidden`) with an interactive day-picker ribbon and chronological agenda feed.
+  - Upgraded Day Details Studio with 1-tap phone dialing (`tel:`), WhatsApp click-to-chat (`https://wa.me/...`), 1-click token issuance bridge, and fast-track booking link.
+- [x] **Task 44.3**: Automated Testing & Suite Verification
+  - Authored comprehensive test suite `tests/Feature/CalendarWorkstationTest.php` with 6 feature tests passing (74 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).

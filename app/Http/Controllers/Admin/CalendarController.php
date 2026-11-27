@@ -22,6 +22,8 @@ class CalendarController extends Controller
     {
         $doctorId = $request->input('doctor_id');
         $month = $request->input('month', Carbon::today()->format('Y-m'));
+        $search = trim($request->input('search', ''));
+        $eventType = $request->input('event_type', 'all');
 
         $startDate = Carbon::parse($month.'-01')->startOfMonth()->toDateString();
         $endDate = Carbon::parse($month.'-01')->endOfMonth()->toDateString();
@@ -39,6 +41,13 @@ class CalendarController extends Controller
                 ->whereNotNull('scheduled_date')
                 ->whereDate('scheduled_date', '>=', $startDate)
                 ->whereDate('scheduled_date', '<=', $endDate)
+                ->when($search, function ($q, $search) {
+                    $q->where(function ($sub) use ($search) {
+                        $sub->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('message', 'like', "%{$search}%");
+                    });
+                })
                 ->get(['id', 'name', 'phone', 'scheduled_date', 'scheduled_time', 'status']);
 
         // 2. Clinical Visits
@@ -47,6 +56,18 @@ class CalendarController extends Controller
             ->whereDate('visit_date', '>=', $startDate)
             ->whereDate('visit_date', '<=', $endDate)
             ->when($doctorId, fn ($q) => $q->where('doctor_id', $doctorId))
+            ->when($search, function ($q, $search) {
+                $q->where(function ($query) use ($search) {
+                    $query->whereHas('patient', function ($sub) use ($search) {
+                        $sub->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('patient_code', 'like', "%{$search}%")
+                            ->orWhere('patient_no', 'like', "%{$search}%");
+                    })->orWhereHas('doctor', function ($sub) use ($search) {
+                        $sub->where('name', 'like', "%{$search}%");
+                    });
+                });
+            })
             ->get(['id', 'visit_date', 'patient_id', 'doctor_id', 'status']);
 
         // 3. Doctor Leaves / Holidays
@@ -55,16 +76,59 @@ class CalendarController extends Controller
             ->whereDate('leave_date', '>=', $startDate)
             ->whereDate('leave_date', '<=', $endDate)
             ->when($doctorId, fn ($q) => $q->where('doctor_id', $doctorId))
+            ->when($search, function ($q, $search) {
+                $q->where(function ($query) use ($search) {
+                    $query->whereHas('doctor', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
+                        ->orWhere('reason', 'like', "%{$search}%");
+                });
+            })
             ->get();
+
+        // 4. Compute recurring weekly doctor shifts mapped by day_of_week (0=Sun .. 6=Sat)
+        $doctorShifts = [];
+        foreach ($doctors as $doc) {
+            if ($doctorId && (int) $doc->id !== (int) $doctorId) {
+                continue;
+            }
+            foreach ($doc->schedules as $sch) {
+                if ($sch->is_active) {
+                    $doctorShifts[$sch->day_of_week][] = [
+                        'doctor_id' => $doc->id,
+                        'doctor_name' => $doc->name,
+                        'chamber_no' => $sch->chamber_no ?? 'Chamber 1',
+                        'start_time' => $sch->start_time ? substr($sch->start_time, 0, 5) : '09:00',
+                        'end_time' => $sch->end_time ? substr($sch->end_time, 0, 5) : '14:00',
+                        'max_patients' => $sch->max_patients,
+                    ];
+                }
+            }
+        }
+
+        // 5. Monthly Executive KPI summary
+        $todayStr = Carbon::today()->toDateString();
+        $todayApptsCount = AppointmentRequest::query()->whereDate('scheduled_date', $todayStr)->count();
+        $todayVisitsCount = Visit::query()->whereDate('visit_date', $todayStr)->count();
+
+        $kpis = [
+            'total_appointments' => $appointments->count(),
+            'total_visits' => $visits->count(),
+            'total_leaves' => $leaves->count(),
+            'today_activity' => $todayApptsCount + $todayVisitsCount,
+            'active_doctors' => $doctors->count(),
+        ];
 
         return Inertia::render('Admin/Calendar/Index', [
             'doctors' => $doctors,
             'appointments' => $appointments,
             'visits' => $visits,
             'leaves' => $leaves,
+            'doctorShifts' => $doctorShifts,
+            'kpis' => $kpis,
             'filters' => [
                 'doctor_id' => $doctorId,
                 'month' => $month,
+                'search' => $search,
+                'event_type' => $eventType,
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,

@@ -1,1 +1,0 @@
-import{o as e}from"./app-D-5i1Lah.js";function t(){let{auth:t={}}=e().props,n=t.permissions||[];return e=>n.includes(e)}export{t};
