@@ -16,8 +16,19 @@ class PrescriptionOptionController extends Controller
         $settings = ClinicSetting::first();
         $config = $settings ? $settings->getPrescriptionConfig() : ClinicSetting::defaultPrescriptionConfig();
 
+        $kpis = [
+            'total_timings' => count($config['timing_options'] ?? []),
+            'total_dose_units' => count($config['dose_units'] ?? []),
+            'total_meal_relations' => count($config['meal_relations'] ?? []),
+            'total_instructions' => count($config['dilution_instructions'] ?? []),
+            'total_duration_presets' => count($config['duration_presets'] ?? []),
+            'default_duration_days' => $config['default_duration_days'] ?? 7,
+            'default_dose_unit' => $config['default_dose_unit'] ?? 'drops',
+        ];
+
         return Inertia::render('Admin/PrescriptionOptions/Edit', [
             'config' => $config,
+            'kpis' => $kpis,
         ]);
     }
 

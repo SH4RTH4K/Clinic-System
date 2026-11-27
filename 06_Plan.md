@@ -650,6 +650,24 @@
   - Authored comprehensive test suite `tests/Feature/DoctorManagementWorkstationTest.php` with 7 feature tests passing (96 assertions).
   - Verified zero regressions in `DoctorControllerTest` and full suite (100 tests passed, 788 assertions).
   - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`) and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 41: Prescription Options & Clinical Presets Workstation (`/admin/prescription-options`) (`[x] COMPLETED`)
+- [x] **Task 41.1**: Domain Model & Clinical Catalog Hardening
+  - Updated `ClinicSetting::defaultPrescriptionConfig()` with classical succussion & dilution templates (*১০ ঝাঁকিসহ আধা কাপ পানির সাথে খাবেন*, *শিশি ১০ বার ঝাঁকিয়ে নিবেন*, *চিনির বড়িতে করে সেব্য*, etc.) and expanded dual-practice medication units (`capsules`, `sachets`, `puffs`, `30_min_before`, `as_needed`).
+- [x] **Task 41.2**: Backend Controller & KPI Aggregation
+  - Upgraded `PrescriptionOptionController@edit` with real-time KPI metrics (`total_timings`, `total_dose_units`, `total_meal_relations`, `total_instructions`, `total_duration_presets`, `default_duration_days`, `default_dose_unit`).
+  - Validated clean updates through `UpdatePrescriptionOptionsRequest` and protected by RBAC permissions (`prescription_options.view`, `create`, `update`, `delete`).
+- [x] **Task 41.3**: WYSIWYG Clinical Prescription Line Simulator
+  - Built an interactive live preview simulator in `Admin/PrescriptionOptions/Edit.jsx` rendering dynamic bilingual (English & Bengali) prescription sentences with customizable remedy, dose quantity, unit, timing, meal relation, and dilution.
+- [x] **Task 41.4**: Multi-Screen Touch Ergonomics & Real-Time Preset Search
+  - Upgraded `PrescriptionConfigModal.jsx` with real-time keyword search across all 4 tabs (English keys, English labels, Bengali script, instructions, durations).
+  - Added 1-Click Fast-Track Clinical Preset Packs toolbar (*🌿 Classical Homeopathy Pack*, *💊 General Practice Pack*, *🔄 Reset Safe Defaults*).
+  - Added responsive dual-screen presentation: Desktop tabular rows with keyboard shortcuts (Enter to save, Esc to cancel) and Mobile High-Density Touch Cards (`block md:hidden`) with 44px+ tap targets.
+  - Implemented Default Dependency Guard preventing accidental deletion of the active `default_dose_unit`.
+- [x] **Task 41.5**: Automated Testing & Verification
+  - Authored comprehensive test suite `tests/Feature/PrescriptionOptionsWorkstationTest.php` with 5 feature tests passing (35 assertions).
+  - Verified zero regressions in `PrescriptionConfigTest` (16 total tests passed, 97 assertions).
+  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -954,3 +972,21 @@
   - Authored comprehensive test suite `tests/Feature/DoctorManagementWorkstationTest.php` with 7 feature tests passing (96 assertions).
   - Verified zero regressions in `DoctorControllerTest` and full suite (100 tests passed, 788 assertions).
   - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`) and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 41: Prescription Options & Clinical Presets Workstation (`/admin/prescription-options`) (`[x] COMPLETED`)
+- [x] **Task 41.1**: Domain Model & Clinical Catalog Hardening
+  - Updated `ClinicSetting::defaultPrescriptionConfig()` with classical succussion & dilution templates (*১০ ঝাঁকিসহ আধা কাপ পানির সাথে খাবেন*, *শিশি ১০ বার ঝাঁকিয়ে নিবেন*, *চিনির বড়িতে করে সেব্য*, etc.) and expanded dual-practice medication units (`capsules`, `sachets`, `puffs`, `30_min_before`, `as_needed`).
+- [x] **Task 41.2**: Backend Controller & KPI Aggregation
+  - Upgraded `PrescriptionOptionController@edit` with real-time KPI metrics (`total_timings`, `total_dose_units`, `total_meal_relations`, `total_instructions`, `total_duration_presets`, `default_duration_days`, `default_dose_unit`).
+  - Validated clean updates through `UpdatePrescriptionOptionsRequest` and protected by RBAC permissions (`prescription_options.view`, `create`, `update`, `delete`).
+- [x] **Task 41.3**: WYSIWYG Clinical Prescription Line Simulator
+  - Built an interactive live preview simulator in `Admin/PrescriptionOptions/Edit.jsx` rendering dynamic bilingual (English & Bengali) prescription sentences with customizable remedy, dose quantity, unit, timing, meal relation, and dilution.
+- [x] **Task 41.4**: Multi-Screen Touch Ergonomics & Real-Time Preset Search
+  - Upgraded `PrescriptionConfigModal.jsx` with real-time keyword search across all 4 tabs (English keys, English labels, Bengali script, instructions, durations).
+  - Added 1-Click Fast-Track Clinical Preset Packs toolbar (*🌿 Classical Homeopathy Pack*, *💊 General Practice Pack*, *🔄 Reset Safe Defaults*).
+  - Added responsive dual-screen presentation: Desktop tabular rows with keyboard shortcuts (Enter to save, Esc to cancel) and Mobile High-Density Touch Cards (`block md:hidden`) with 44px+ tap targets.
+  - Implemented Default Dependency Guard preventing accidental deletion of the active `default_dose_unit`.
+- [x] **Task 41.5**: Automated Testing & Verification
+  - Authored comprehensive test suite `tests/Feature/PrescriptionOptionsWorkstationTest.php` with 5 feature tests passing (35 assertions).
+  - Verified zero regressions in `PrescriptionConfigTest` (16 total tests passed, 97 assertions).
+  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).

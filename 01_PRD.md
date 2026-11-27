@@ -179,6 +179,14 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Clinic Logo & Favicon Uploader**: Settings UI to upload clinic logo image (PNG/SVG/JPG/WEBP) and favicon (ICO/PNG/SVG).
 - `[x] Done` **Pre-Printed Stationery Mode**: One-click toggle in prescription print view to hide clinic header and margins when printing on official pre-printed letterheads.
 - `[x] Done` **Doctor Digital Signature & Seal**: Upload transparent PNG signature and clinic registration stamp to automatically append to finalized PDF exports.
+- `[x] Done` **Prescription Options & Clinical Presets Workstation (`/admin/prescription-options`)**:
+  - Executive 5-tile KPI Ribbon tracking Timing Options, Dose Units, Meal Relations, Dilution Templates, and Baseline Defaults.
+  - Live WYSIWYG Clinical Prescription Line Simulator generating real-time bilingual (English & Bengali) prescription sentences combining medicine name, dosage, timing, meal coordination, and succussion rules.
+  - Real-time debounced preset search bar with keyword matching across keys, English labels, and Bengali script with clear button (`✕`) across all 4 configuration tabs.
+  - Pre-loaded with authentic classical homeopathic formulas (e.g. JBHH / Dr. Md. Fazlul Karim: *"১০ ঝাঁকিসহ আধা কাপ পানির সাথে খাবেন"*, *"খাবার আগে শিশি ১০ বার ঝাঁকিয়ে নিবেন"*, *"চিনির বড়িতে করে সেব্য"*) alongside allopathic clinical units (`capsules`, `sachets`, `puffs`, `spoon`, `cream`).
+  - 1-Click Fast-Track Clinical Preset Packs (*🌿 Classical Homeopathy Pack*, *💊 General Practice Pack*, *🔄 Reset Safe Defaults*).
+  - Responsive multi-screen touch architecture: Desktop Data Tables + Mobile High-Density Touch Cards (`block md:hidden`) with 44px+ tap targets.
+  - Default dependency guard preventing deletion of the active `default_dose_unit`.
 
 ---
 
