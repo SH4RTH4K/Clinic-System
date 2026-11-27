@@ -69,6 +69,14 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - **Smart Reassignment Deletion Modal**: Clarifies deletion blocks when `users_count > 0` and provides a direct 1-click CTA button `[ 👥 View & Reassign Staff Users → ]` redirecting to the staff directory.
   - **Dual-Mode Multi-Type Screen Views**: Clean high-density desktop data table (`hidden md:block`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with avatar initials, role status badges, 2-column metrics grid, and 44px+ touch-friendly action buttons.
   - **Strict Security Invariants**: 100% preservation of immutable `Super Admin` role protection (`abort_if($role->name === 'Super Admin', 403)`) and database assignment integrity checks.
+- `[x] Done` **Permission Matrix & Module Access Workstation (`/admin/permissions`)**:
+  - **Validation Ceiling Fix (`max:500`)**: Increased validation ceiling in `UpdateRolePermissionsRequest` from `max:100` to `max:500`, permanently preventing 422 errors when assigning extensive permission profiles (>100 actions across 29 modules).
+  - **Full 29-Module Taxonomy & Clinical Categorization**: Harmonized all 29 modules (including `pharmaceuticals`, `lab_investigations`, `inventory`, `billing`, `queue`, `calendar`, `attachments`, `communications`, `manufacturers`, `system_health`) into 5 clinical domains: `Clinical Care & OPD`, `Pharmacy, Medicines & Repertory`, `Diagnostics & Lab Tests`, `Billing & Cash Register`, and `Clinic Administration & Governance`.
+  - **Executive KPI Summary Ribbon (5 Cards)**: Configured Roles (🛡️), Catalog Permissions (🔑 - 129), Active Role in Focus (🎯), Granted Coverage Rate (📊 with live percentage badge), and Active Staff Impacted (👥).
+  - **Universal Real-Time Search & Status Filter Pills**: 300ms debounced search with match counter and `✕` clear action, plus 1-click status pills (`All (129)`, `✅ Granted (N)`, `⚪ Revoked (N)`).
+  - **1-Click Fast Clinical Presets & Category Bulk Actions**: Instant preset buttons (`🩺 Doctor`, `📋 Front Desk`, `💊 Pharmacist`, `💵 Cashier`) and category-level bulk toggles (`[ Grant Category ]` / `[ Revoke ]`).
+  - **Dual-Mode Responsive Screen Views**: Sticky sidebar with live role search input on desktop (`xl+`) alongside a touch-scrolling **Horizontal Role Carousel** on mobile/tablet viewports (`< xl`), eliminating vertical stacking and providing 44px+ touch targets.
+  - **Active Staff Impact Safety Alert**: Highlights real-time warning when modifying roles bound to active clinic staff members.
 - `[x] Done` **Staff Users & Access Control Workstation (`/admin/users`)**:
   - **Executive KPI Summary Ribbon (5 Cards)**: Total Staff Accounts, Active Staff (🟢), Super Admins (👑), Practicing Doctors (🩺), and Support Staff (📋).
   - **Universal Multi-Factor Search**: 300ms debounced search matching user full name, unique username (`@user`), email address, and mobile phone number with instant match counter and `✕` clear button.

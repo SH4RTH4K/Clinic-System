@@ -25,7 +25,7 @@ class UpdateRolePermissionsRequest extends FormRequest
         $role = $this->route('role');
 
         return [
-            'permissions' => ['present', 'array', 'max:100'],
+            'permissions' => ['present', 'array', 'max:500'],
             'permissions.*' => [
                 'required',
                 'string',
