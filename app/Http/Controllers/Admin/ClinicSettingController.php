@@ -63,8 +63,20 @@ class ClinicSettingController extends Controller
             $oldOrOtherIdConfig['number_padding']
         );
 
+        $defaultProfile = $profiles->firstWhere('is_default', true);
+
+        $kpis = [
+            'total_profiles' => $profiles->count(),
+            'active_profiles' => $profiles->where('is_active', true)->count(),
+            'default_profile_name' => $defaultProfile['name'] ?? 'None',
+            'default_profile_preview' => $defaultProfile['preview'] ?? 'None',
+            'old_id_mode' => $oldOrOtherIdConfig['mode'] ?? 'auto',
+            'total_registered_patients' => (int) $profiles->sum('patients_count'),
+        ];
+
         return Inertia::render('Admin/Settings/General', [
             'profiles' => $profiles,
+            'kpis' => $kpis,
             'oldOrOtherIdConfig' => array_merge($oldOrOtherIdConfig, [
                 'preview' => $oldOrOtherIdPreview,
             ]),

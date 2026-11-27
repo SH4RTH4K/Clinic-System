@@ -78,7 +78,14 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Queue-to-Visit Auto-Link & Duplicate Warning**: Automatically links today's waiting queue token to the consultation on `/admin/visits/create` and marks the token `completed` upon visit finalization. Warns staff on token issuance (`/admin/queue/tokens/create`) if the patient already holds an active token today.
 - `[x] Done` **Precise Age Calculation**: Captures age in Years, Months, and Days, automatically calculated from Date of Birth or entered manually when DOB is unknown.
 - `[x] Done` **Guardian / Primary Contact System**: Full support for guardian name and configurable relationship types (Father, Mother, Spouse, Guardian, Son, Daughter, Other).
-- `[x] Done` **Old / Legacy ID Tracking**: Configurable auto-generation and manual recording of legacy clinic serial numbers (`old_or_other_id`).
+- `[x] Done` **Old / Legacy ID Tracking & Secondary Numbering**: Configurable auto-generation and manual recording of legacy clinic serial numbers (`old_or_other_id`) with staff override permissions.
+- `[x] Done` **General Settings & Patient Numbering Workstation (`/admin/general-settings`)**:
+  - Top 5-tile Executive KPI Ribbon: Total Profiles, Active in Intake, Default Category, Secondary ID Mode, and Total Registered Patients.
+  - Real-time Category Search Bar with match count, clear button (`✕`), and status filter pills (`All`, `Active`, `Inactive`).
+  - 1-Click Fast-Track Clinical Numbering Presets Toolbar (`🩺 General`, `👶 Pediatric`, `🧓 Senior Citizen`, `🏕️ Free Camp`).
+  - Adaptive Multi-Type Screen View: Desktop 2-column configuration workstation alongside High-Density Mobile Touch Cards (`block sm:hidden`) with 44px+ touch targets and smooth scroll-to-form ergonomics.
+  - 100% preservation of Old / Other ID Numbering business logic with dual operating modes (`auto` sequential padded generator vs `manual` custom strings) and staff override policy.
+  - Invariant safeguard: Strict enforcement preventing deactivation or deletion of the last active category profile.
 - `[x] Done` **Customizable Form Layout**: Clinic settings allow enabling, disabling, and ordering demographic fields.
 - `[x] Done` **Unified Multi-Factor Search & Filtering**: Instant search matching Name, Phone number, System Patient ID, Series code, Old/Other ID, and Guardian/Contact Name, combined with Gender, Blood Group, and Date Range filters (Today, This Week, This Month).
 - `[x] Done` **Patient Management Dashboard & Quick Actions**: Top KPI metrics (Total Patients, Registered Today, In Queue Today, Total Consultations), row-level 1-click Quick Actions (`+ Queue`, `+ Visit`, `OPD Card`, `View`, `Edit`), dynamic queue status indicators, direct WhatsApp (`https://wa.me/...`) and phone (`tel:...`) links, role-guarded blood group privacy (`clinical_records.view`), and streaming CSV export (`/admin/patients/export`).

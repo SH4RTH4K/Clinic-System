@@ -668,6 +668,25 @@
   - Authored comprehensive test suite `tests/Feature/PrescriptionOptionsWorkstationTest.php` with 5 feature tests passing (35 assertions).
   - Verified zero regressions in `PrescriptionConfigTest` (16 total tests passed, 97 assertions).
   - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 42: General Settings & Patient Numbering Workstation (`/admin/general-settings`) (`[x] COMPLETED`)
+- [x] **Task 42.1**: Backend Controller & KPI Aggregation
+  - Updated `ClinicSettingController@editGeneral` to calculate and return executive KPIs: `total_profiles`, `active_profiles`, `default_profile_name`, `default_profile_preview`, `old_id_mode`, and `total_registered_patients`.
+  - Preserved RBAC authorization guards (`general_settings.view`, `general_settings.create`, `general_settings.update`, `general_settings.delete`, and Super Admin).
+- [x] **Task 42.2**: Category Real-Time Search & Status Filtering
+  - Added instant search bar with match count indicator and one-click clear button (`✕`) matching category names, codes, and prefixes.
+  - Added status filter pills (`All`, `Active`, `Inactive`) for quick category isolation.
+- [x] **Task 42.3**: Multi-Screen Responsive Layout & Touch Ergonomics
+  - Implemented High-Density Mobile Touch Cards (`block sm:hidden`) with 44px+ touch targets for Edit and Deactivate actions.
+  - Added smooth auto-scroll to the editor form container when initiating an edit on mobile devices.
+- [x] **Task 42.4**: Fast-Track Clinical Presets & Old ID Business Logic Preservation
+  - Added 1-Click Fast-Track Presets toolbar (`🩺 General Patients`, `👶 Pediatric Clinic`, `🧓 Senior Citizens`, `🏕️ Free Camp`).
+  - Preserved 100% of Old / Other ID Numbering business rules (Auto vs Manual mode, prefix, padding, max_length, and staff override permissions).
+  - Maintained minimum 1 active profile invariant safeguard.
+- [x] **Task 42.5**: Automated Testing & Verification
+  - Authored test suite `tests/Feature/GeneralSettingsWorkstationTest.php` (6 tests passing, 43 assertions).
+  - Verified regression test `tests/Feature/PatientNumberingWorkflowTest.php` (5 tests passing, 66 assertions; combined 11/11 tests passing, 109 assertions).
+  - Formatted code with Pint and compiled frontend assets with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -990,3 +1009,22 @@
   - Authored comprehensive test suite `tests/Feature/PrescriptionOptionsWorkstationTest.php` with 5 feature tests passing (35 assertions).
   - Verified zero regressions in `PrescriptionConfigTest` (16 total tests passed, 97 assertions).
   - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 42: General Settings & Patient Numbering Workstation (`/admin/general-settings`) (`[x] COMPLETED`)
+- [x] **Task 42.1**: Backend Controller & KPI Aggregation
+  - Updated `ClinicSettingController@editGeneral` to calculate and return executive KPIs: `total_profiles`, `active_profiles`, `default_profile_name`, `default_profile_preview`, `old_id_mode`, and `total_registered_patients`.
+  - Preserved RBAC authorization guards (`general_settings.view`, `general_settings.create`, `general_settings.update`, `general_settings.delete`, and Super Admin).
+- [x] **Task 42.2**: Category Real-Time Search & Status Filtering
+  - Added instant search bar with match count indicator and one-click clear button (`✕`) matching category names, codes, and prefixes.
+  - Added status filter pills (`All`, `Active`, `Inactive`) for quick category isolation.
+- [x] **Task 42.3**: Multi-Screen Responsive Layout & Touch Ergonomics
+  - Implemented High-Density Mobile Touch Cards (`block sm:hidden`) with 44px+ touch targets for Edit and Deactivate actions.
+  - Added smooth auto-scroll to the editor form container when initiating an edit on mobile devices.
+- [x] **Task 42.4**: Fast-Track Clinical Presets & Old ID Business Logic Preservation
+  - Added 1-Click Fast-Track Presets toolbar (`🩺 General Patients`, `👶 Pediatric Clinic`, `🧓 Senior Citizens`, `🏕️ Free Camp`).
+  - Preserved 100% of Old / Other ID Numbering business rules (Auto vs Manual mode, prefix, padding, max_length, and staff override permissions).
+  - Maintained minimum 1 active profile invariant safeguard.
+- [x] **Task 42.5**: Automated Testing & Verification
+  - Authored test suite `tests/Feature/GeneralSettingsWorkstationTest.php` (6 tests passing, 43 assertions).
+  - Verified regression test `tests/Feature/PatientNumberingWorkflowTest.php` (5 tests passing, 66 assertions; combined 11/11 tests passing, 109 assertions).
+  - Formatted code with Pint and compiled frontend assets with Vite (`npm run build`).

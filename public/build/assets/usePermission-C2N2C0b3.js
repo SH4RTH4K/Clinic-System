@@ -1,0 +1,1 @@
+import{o as e}from"./app-BAmH1bXE.js";function t(){let{auth:t={}}=e().props,n=t.permissions||[];return e=>n.includes(e)}export{t};
