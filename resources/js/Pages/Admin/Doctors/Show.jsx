@@ -34,7 +34,7 @@ export default function Show({ doctor }) {
                                 ← Back to Doctors
                             </Link>
                             <Link
-                                href={route('doctor_schedules.index', { doctor_id: doctor.id })}
+                                href={route('admin.doctor_schedules.index', { doctor_id: doctor.id })}
                                 className="rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100 flex items-center gap-1"
                             >
                                 <span>📅</span> Chamber Schedule

@@ -245,7 +245,7 @@ export default function Index({
                         </Link>
                     ) : null}
                     <Link
-                        href={route('doctor_schedules.index', { doctor_id: doctor.id })}
+                        href={route('admin.doctor_schedules.index', { doctor_id: doctor.id })}
                         className="px-2 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md font-medium transition inline-flex items-center gap-1"
                         title="Configure weekly chamber schedule and leaves"
                     >
@@ -522,7 +522,7 @@ export default function Index({
                                         </Link>
                                     )}
                                     <Link
-                                        href={route('doctor_schedules.index', { doctor_id: doc.id })}
+                                        href={route('admin.doctor_schedules.index', { doctor_id: doc.id })}
                                         className="flex-1 min-h-[44px] flex items-center justify-center text-xs font-semibold text-blue-800 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition gap-1"
                                     >
                                         <span>📅</span> Hours
