@@ -71,7 +71,8 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
         if (query.sort === 'latest') delete query.sort;
         if (query.per_page === '15') delete query.per_page;
 
-        router.get(route('admin.invoices.index'), query, {
+        const targetUrl = typeof route === 'function' ? route('admin.invoices.index') : '/admin/invoices';
+        router.get(targetUrl, query, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -82,6 +83,10 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
+            return;
+        }
+
+        if (searchTerm === (filters.search || '')) {
             return;
         }
 
@@ -118,7 +123,8 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
         setEndDate('');
         setSelectedSort('latest');
         setPerPage('15');
-        router.get(route('admin.invoices.index'), {}, {
+        const targetUrl = typeof route === 'function' ? route('admin.invoices.index') : '/admin/invoices';
+        router.get(targetUrl, {}, {
             preserveState: true,
             replace: true,
         });
@@ -128,7 +134,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
     const openCollectDueModal = (invoice) => {
         setPayingInvoice(invoice);
         setPayData({
-            amount: Number(invoice.due_amount).toFixed(2),
+            amount: Number(invoice.due_amount || 0).toFixed(2),
             payment_method: 'cash',
             transaction_reference: '',
             payment_date: new Date().toISOString().split('T')[0],
@@ -145,7 +151,11 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
         e.preventDefault();
         if (!payingInvoice) return;
 
-        postPay(route('admin.invoices.payments.store', payingInvoice.id), {
+        const payTarget = typeof route === 'function'
+            ? route('admin.invoices.payments.store', payingInvoice.id)
+            : `/admin/invoices/${payingInvoice.id}/payments`;
+
+        postPay(payTarget, {
             preserveScroll: true,
             onSuccess: () => {
                 closeCollectDueModal();
@@ -162,10 +172,17 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
     if (startDate) exportParams.set('start_date', startDate);
     if (endDate) exportParams.set('end_date', endDate);
     if (selectedSort !== 'latest') exportParams.set('sort', selectedSort);
-    const exportUrl = `${route('admin.invoices.export')}${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
+    let exportUrl = '/admin/invoices/export';
+    try {
+        exportUrl = `${typeof route === 'function' ? route('admin.invoices.export') : '/admin/invoices/export'}${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
+    } catch {
+        exportUrl = `/admin/invoices/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
+    }
 
-    const collectionPercent = metrics.total_invoiced > 0
-        ? Math.min(100, Math.round(((metrics.total_collected || 0) / metrics.total_invoiced) * 100))
+    const totalInvoiced = Number(metrics?.total_invoiced || 0);
+    const totalCollected = Number(metrics?.total_collected || 0);
+    const collectionPercent = totalInvoiced > 0
+        ? Math.min(100, Math.round((totalCollected / totalInvoiced) * 100))
         : 100;
 
     return (
@@ -211,7 +228,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                     <div className="bg-white p-3.5 rounded-xl border border-sky-200 shadow-2xs flex flex-col justify-between">
                         <div className="text-[11px] font-semibold text-sky-700 uppercase tracking-wider">Total Billed 💰</div>
                         <div className="text-2xl font-bold text-gray-900 mt-1">
-                            ৳{Number(metrics.total_invoiced || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ৳{Number(metrics?.total_invoiced || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </div>
                         <div className="text-[11px] text-gray-500 mt-0.5">মোট প্রদেয় বিলকৃত রাজস্ব</div>
                     </div>
@@ -220,12 +237,12 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                     <div className="bg-white p-3.5 rounded-xl border border-emerald-200 shadow-2xs flex flex-col justify-between">
                         <div className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider flex items-center justify-between">
                             <span>Realized Revenue ✅</span>
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                                 {collectionPercent}%
                             </span>
                         </div>
                         <div className="text-2xl font-bold text-emerald-800 mt-1">
-                            ৳{Number(metrics.total_collected || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ৳{Number(metrics?.total_collected || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </div>
                         <div className="text-[11px] text-emerald-600 mt-0.5">নগদ ও ডিজিটাল আদায়কৃত</div>
                     </div>
@@ -234,7 +251,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                     <div className="bg-white p-3.5 rounded-xl border border-rose-200 shadow-2xs flex flex-col justify-between">
                         <div className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider">Outstanding Due ⚠️</div>
                         <div className="text-2xl font-bold text-rose-800 mt-1">
-                            ৳{Number(metrics.total_due || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ৳{Number(metrics?.total_due || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </div>
                         <div className="text-[11px] text-rose-600 mt-0.5 font-medium">রোগীদের নিকট বকেয়া পাওনা</div>
                     </div>
@@ -242,14 +259,14 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                     {/* Card 4: Due Invoices Count */}
                     <div className="bg-white p-3.5 rounded-xl border border-amber-200 shadow-2xs flex flex-col justify-between">
                         <div className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Due Invoices 📄</div>
-                        <div className="text-2xl font-bold text-amber-900 mt-1">{metrics.due_invoices_count || 0}</div>
+                        <div className="text-2xl font-bold text-amber-900 mt-1">{metrics?.due_invoices_count || 0}</div>
                         <div className="text-[11px] text-amber-600 mt-0.5">বকেয়া সমন্বয় বাকি বিল</div>
                     </div>
 
                     {/* Card 5: Fully Paid Invoices */}
                     <div className="bg-white p-3.5 rounded-xl border border-purple-200 shadow-2xs flex flex-col justify-between col-span-2 sm:col-span-1">
                         <div className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Fully Settled 🏆</div>
-                        <div className="text-2xl font-bold text-purple-900 mt-1">{metrics.paid_invoices_count || 0}</div>
+                        <div className="text-2xl font-bold text-purple-900 mt-1">{metrics?.paid_invoices_count || 0}</div>
                         <div className="text-[11px] text-purple-600 mt-0.5">১০০% পরিশোধিত ইনভয়েস</div>
                     </div>
                 </section>
@@ -499,10 +516,10 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                                    <div className="font-medium text-gray-900">{inv.invoice_date}</div>
+                                                    <div className="font-medium text-gray-900">{inv.invoice_date || 'N/A'}</div>
                                                     <div className="text-[10px] text-gray-400">
                                                         {inv.payments?.length > 0
-                                                            ? inv.payments.map((p) => methodIcons[p.payment_method] || p.payment_method).join(', ')
+                                                            ? inv.payments.map((p) => (p?.payment_method ? (methodIcons[p.payment_method] || p.payment_method) : 'N/A')).join(', ')
                                                             : 'No payments'}
                                                     </div>
                                                 </td>
@@ -535,15 +552,15 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap">
-                                                    ৳{Number(inv.total_amount).toFixed(2)}
-                                                    {Number(inv.discount_amount) > 0 && (
+                                                    ৳{Number(inv.total_amount || 0).toFixed(2)}
+                                                    {Number(inv.discount_amount || 0) > 0 && (
                                                         <span className="block text-[10px] text-emerald-600 font-normal">
-                                                            -৳{Number(inv.discount_amount).toFixed(2)} off
+                                                            -৳{Number(inv.discount_amount || 0).toFixed(2)} off
                                                         </span>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-medium text-emerald-700 whitespace-nowrap font-mono">
-                                                    ৳{Number(inv.paid_amount).toFixed(2)}
+                                                    ৳{Number(inv.paid_amount || 0).toFixed(2)}
                                                 </td>
                                                 <td className="px-4 py-3 text-right whitespace-nowrap font-mono">
                                                     {hasDue ? (
@@ -554,7 +571,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                                 </td>
                                                 <td className="px-4 py-3 text-center whitespace-nowrap">
                                                     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-wider ${statusBadge[inv.status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                                        {inv.status.replace('_', ' ')}
+                                                        {(inv.status || 'unpaid').replace('_', ' ')}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -646,7 +663,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                             </Link>
                                         </div>
                                         <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${statusBadge[inv.status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                            {inv.status.replace('_', ' ')}
+                                            {(inv.status || 'unpaid').replace('_', ' ')}
                                         </span>
                                     </div>
 

@@ -31,7 +31,7 @@ class InventoryController extends Controller
             $query->where('item_type', $request->type);
         }
 
-        if ($request->filled('status') && $request->input('status') !== 'all') {
+        if ($request->filled('status') && in_array($request->input('status'), ['active', 'inactive'], true)) {
             $query->where('is_active', $request->input('status') === 'active');
         }
 
@@ -164,7 +164,7 @@ class InventoryController extends Controller
     public function transactions(Request $request): Response
     {
         $query = StockTransaction::query()
-            ->with(['batch.medicine', 'batch.pharmaceutical', 'performer:id,name'])
+            ->with(['batch.medicine', 'batch.pharmaceutical', 'performedBy:id,name'])
             ->latest();
 
         if ($type = $request->input('type')) {
@@ -188,7 +188,7 @@ class InventoryController extends Controller
             $query->where('item_type', $request->type);
         }
 
-        if ($request->filled('status') && $request->input('status') !== 'all') {
+        if ($request->filled('status') && in_array($request->input('status'), ['active', 'inactive'], true)) {
             $query->where('is_active', $request->input('status') === 'active');
         }
 

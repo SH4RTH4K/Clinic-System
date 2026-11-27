@@ -43,4 +43,9 @@ class StockTransaction extends Model
     {
         return $this->belongsTo(User::class, 'performed_by');
     }
+
+    public function performer(): BelongsTo
+    {
+        return $this->performedBy();
+    }
 }
