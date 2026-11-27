@@ -161,4 +161,19 @@ class ExecutiveDashboardTest extends TestCase
                 ->missing('metrics.due_invoices_count')
             );
     }
+
+    public function test_dashboard_is_accessible_via_admin_and_admin_dashboard_urls(): void
+    {
+        $user = $this->createExecutiveUser(['patients.view']);
+
+        $this->actingAs($user)
+            ->get('/admin')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Admin/Dashboard'));
+
+        $this->actingAs($user)
+            ->get('/admin/dashboard')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Admin/Dashboard'));
+    }
 }

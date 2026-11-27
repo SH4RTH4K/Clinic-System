@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AppointmentRequestController as AdminApptControll
 use App\Http\Controllers\Admin\CalendarController;
 use App\Http\Controllers\Admin\ClinicSettingController;
 use App\Http\Controllers\Admin\CommunicationController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
 use App\Http\Controllers\Admin\FoodRestrictionController;
@@ -33,6 +34,12 @@ use App\Http\Controllers\Admin\VisitController;
 use App\Http\Controllers\Admin\VisitDraftController;
 use App\Http\Controllers\DoctorPhotoController;
 use Illuminate\Support\Facades\Route;
+
+// Executive Command Dashboard
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+});
 
 // User administration is restricted to the Super Admin role.
 Route::middleware(['auth', 'role:Super Admin'])
