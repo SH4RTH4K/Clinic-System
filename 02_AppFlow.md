@@ -760,3 +760,35 @@ flowchart TD
     ExportEngine -->|"CSV Download"| ExportCSV["Stream Filtered Dataset as CSV / Excel"]
     ExportEngine -->|"Print Layout"| PrintReport["Print-Optimized Clinical Summary (@media print)"]
 ```
+
+---
+
+## 12. Executive Command Dashboard & 1-Click Clinical Launchers Flow (`[x] Done`)
+
+Centralized operational command center delivering real-time clinic telemetry, practice mode adaptation, and instant workflow accelerators:
+
+```mermaid
+flowchart TD
+    DashboardHome["Executive Command Dashboard (/admin/dashboard)"] --> HeaderBranding["RemediQ Header: Clinic Name & Practice Mode Badge (🌿 Classical Homeopathy | 🩺 Allopathy | 🌐 Integrative Dual)"]
+    
+    DashboardHome --> OperationalRibbon["6-Tile Operational KPI Ribbon: Waiting in Queue ⏳ | Today's Consultations 🩺 | Pending Enquiries 📅 | Today's Revenue 💵 | Low Stock Alerts ⚠️ | Total Patients 👥"]
+    
+    DashboardHome --> ClinicalLaunchers["1-Click Clinical Action Launchers Strip"]
+    ClinicalLaunchers --> Launch1["[ ➕ New Consultation ] -> /admin/visits/create"]
+    ClinicalLaunchers --> Launch2["[ 🎫 Issue Token ] -> /admin/queue/tokens/create"]
+    ClinicalLaunchers --> Launch3["[ 👤 New Patient ] -> /admin/patients/create"]
+    ClinicalLaunchers --> Launch4["[ 💳 POS Billing ] -> /admin/invoices/create"]
+    ClinicalLaunchers --> Launch5["[ 📅 Book Slot ] -> /admin/appointment-requests/create"]
+    ClinicalLaunchers --> Launch6["[ 📊 Reports ] -> /admin/reports"]
+    
+    DashboardHome --> VisualInsights{"Operational & Clinical Analytics Feeds"}
+    VisualInsights --> TrendChart["7-Day Consultation Volume Trend Visualizer (Daily Patient Flow)"]
+    VisualInsights --> QueueFeed["Live Patient Queue Triage Bar (Calling / In-Consultation / Waiting)"]
+    VisualInsights --> RequestsFeed["Online Appointment Enquiries Triage Stream (1-Click Action to Confirm / Link)"]
+    VisualInsights --> PharmacopoeiaTop["Dispensary Formulary Insights (Top Prescribed Remedies & Pharmaceuticals)"]
+    
+    DashboardHome --> ResponsiveMode{"Viewport Adaptation"}
+    ResponsiveMode -->|"Desktop (>= 1024px)"| DesktopLayout["Multi-Column Command Center Grid with Sticky Side Widgets"]
+    ResponsiveMode -->|"Mobile (< 768px)"| MobileLayout["Touch Cards Strip (<768px) with 44px+ Tactile Quick Launchers"]
+```
+
