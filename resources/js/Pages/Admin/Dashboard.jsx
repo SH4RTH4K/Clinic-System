@@ -60,8 +60,15 @@ export default function Dashboard({
 }) {
     const can = usePermission();
 
-    const maxWeeklyVisits = Math.max(...weekly_visits.map((day) => day.total), 1);
-    const appointmentTotal = appointmentStatuses.reduce((total, item) => total + (appointment_status[item.key] ?? 0), 0);
+    const safeWeeklyVisits = Array.isArray(weekly_visits) ? weekly_visits : [];
+    const safeAppointmentStatus = appointment_status && typeof appointment_status === 'object' ? appointment_status : {};
+    const safeRecentRequests = Array.isArray(recent_requests) ? recent_requests : [];
+    const safeRecentVisits = Array.isArray(recent_visits) ? recent_visits : [];
+    const safeTopMedicines = Array.isArray(top_medicines) ? top_medicines : [];
+    const safeMetrics = metrics && typeof metrics === 'object' ? metrics : {};
+
+    const maxWeeklyVisits = Math.max(...safeWeeklyVisits.map((day) => Number(day?.total || 0)), 1);
+    const appointmentTotal = appointmentStatuses.reduce((total, item) => total + (safeAppointmentStatus[item.key] ?? 0), 0);
 
     const getPracticeBadge = () => {
         if (practice_type === 'allopathy') {
@@ -90,7 +97,7 @@ export default function Dashboard({
                                 {practiceBadge.label}
                             </span>
                             <Link
-                                href={route('admin.settings')}
+                                href={typeof route === 'function' && route().has('admin.settings.edit') ? route('admin.settings.edit') : (typeof route === 'function' && route().has('admin.settings') ? route('admin.settings') : '/admin/settings')}
                                 className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition shadow-2xs inline-flex items-center gap-1.5"
                             >
                                 <span>⚙️</span> Clinic Settings
@@ -332,7 +339,7 @@ export default function Dashboard({
                                     </Link>
                                 </div>
                                 <div className="flex h-48 items-end gap-3 pt-2">
-                                    {weekly_visits.map((day) => (
+                                    {safeWeeklyVisits.map((day) => (
                                         <div key={day.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
                                             <div className="flex h-36 w-full items-end rounded-lg bg-gray-50 p-1">
                                                 <div
@@ -413,8 +420,8 @@ export default function Dashboard({
                                     </Link>
                                 </div>
                                 <div className="space-y-3">
-                                    {recent_requests.length ? (
-                                        recent_requests.map((request) => (
+                                    {safeRecentRequests.length ? (
+                                        safeRecentRequests.map((request) => (
                                             <div key={request.id} className="border-b border-gray-100 pb-3 last:border-b-0 last:pb-0">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div>
@@ -450,8 +457,8 @@ export default function Dashboard({
                                     </Link>
                                 </div>
                                 <div className="space-y-3">
-                                    {recent_visits.length ? (
-                                        recent_visits.map((visit) => (
+                                    {safeRecentVisits.length ? (
+                                        safeRecentVisits.map((visit) => (
                                             <div key={visit.id} className="border-b border-gray-100 pb-3 last:border-b-0 last:pb-0">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div>
@@ -502,8 +509,8 @@ export default function Dashboard({
                                 </div>
 
                                 <div className="space-y-3">
-                                    {top_medicines.length ? (
-                                        top_medicines.map((item) => (
+                                    {safeTopMedicines.length ? (
+                                        safeTopMedicines.map((item) => (
                                             <div key={item.medicine_id} className="space-y-1">
                                                 <div className="flex items-center justify-between text-xs">
                                                     <div>

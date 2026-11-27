@@ -7,7 +7,14 @@ const AUTH_SESSION_CHANNEL = 'hcs-auth-session';
 
 export default function AuthenticatedLayout({ header, children }) {
     const pageProps = usePage().props;
-    const { user, permissions = [], roles = [] } = pageProps.auth || {};
+    const rawAuth = pageProps.auth || {};
+    const user = rawAuth.user;
+    const permissions = Array.isArray(rawAuth.permissions)
+        ? rawAuth.permissions
+        : (rawAuth.permissions && typeof rawAuth.permissions === 'object' ? Object.values(rawAuth.permissions) : []);
+    const roles = Array.isArray(rawAuth.roles)
+        ? rawAuth.roles
+        : (rawAuth.roles && typeof rawAuth.roles === 'object' ? Object.values(rawAuth.roles) : []);
     const { success } = pageProps.flash ?? {};
     const clinic = pageProps.clinic || {};
     const locale = pageProps.locale || 'en';
