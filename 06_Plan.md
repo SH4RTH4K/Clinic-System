@@ -31,6 +31,7 @@
 | **35** | Diagnostic Lab Investigations | `[x] COMPLETED` | 35 pre-seeded tests, specimen types, fees, responsive cards |
 | **36** | Kent Repertory Symptoms Catalog | `[x] COMPLETED` | 50 Kent rubrics, 11 chapters, CDSS links, responsive touch cards |
 | **37** | Repertory Knowledge Graph | `[x] COMPLETED` | Multi-filter search, Grade 1-4, review queue, responsive cards |
+| **38** | Clinical Advice & Instructions Master | `[x] COMPLETED` | 25 seeded guidelines, 6 categories, default presets, mobile touch cards |
 
 ---
 
@@ -585,6 +586,28 @@
   - All 10 tests in `SymptomManagementTest` passing (119 assertions).
   - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`).
   - Frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 38: Clinical Advice Items & Prescription Instructions Master (`/admin/advice_items`) (`[x] COMPLETED`)
+- [x] **Task 38.1**: Database Schema & Migration
+  - Migration `2026_11_27_205501_add_clinical_attributes_to_advice_items_table.php` adding `category`, `is_active`, `sort_order`, with indexes on `category`, `is_default`, and `is_active`.
+  - Updated `create_advice_items_table` so `text_en` is nullable.
+- [x] **Task 38.2**: Clinical Advice Master Seeder
+  - Authored `AdviceItemSeeder.php` pre-seeding 25 clinical advice items across 6 categories (`homeopathic`, `general`, `diet`, `lifestyle`, `hygiene`, `warning`).
+  - Registered in `DatabaseSeeder.php`. Seeded 25 records with 9 auto-selected default presets.
+- [x] **Task 38.3**: Model Hardening & FormRequests
+  - Upgraded `AdviceItem.php` with `visits()` BelongsToMany, query scopes (`search`, `category`, `active`, `default`), casts, and Spatie activity logging.
+  - Authored `StoreAdviceItemRequest.php` and `UpdateAdviceItemRequest.php`.
+- [x] **Task 38.4**: Controller Hardening with Safe Deactivation
+  - Upgraded `AdviceItemController.php` with debounced search, category tabs, default filter, active filter, KPI metrics aggregation (`total`, `default`, `homeopathic`, `general`, `diet`, `lifestyle`, `hygiene`, `warning`, `active`).
+  - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_advice`, protecting historical clinical records.
+- [x] **Task 38.5**: Responsive Multi-Screen Workstation & Ergonomics
+  - `AdviceItems/Index.jsx`: Executive KPI ribbon, 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `AdviceItems/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar, structured category select, default toggle card, and validation error displays.
+  - `AdviceItems/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, and active status toggle.
+- [x] **Task 38.6**: Automated Verification & Regression Testing
+  - Authored test suite `tests/Feature/AdviceItemManagementTest.php` with 10 feature tests passing (90 assertions).
+  - Verified zero regressions in `SettingsAuditAuthorizationTest` (21 tests passed, 50 assertions).
+  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -825,3 +848,25 @@
   - All 10 tests in `SymptomManagementTest` passing (119 assertions).
   - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`).
   - Frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 38: Clinical Advice Items & Prescription Instructions Master (`/admin/advice_items`) (`[x] COMPLETED`)
+- [x] **Task 38.1**: Database Schema & Migration
+  - Migration `2026_11_27_205501_add_clinical_attributes_to_advice_items_table.php` adding `category`, `is_active`, `sort_order`, with indexes on `category`, `is_default`, and `is_active`.
+  - Updated `create_advice_items_table` so `text_en` is nullable.
+- [x] **Task 38.2**: Clinical Advice Master Seeder
+  - Authored `AdviceItemSeeder.php` pre-seeding 25 clinical advice items across 6 categories (`homeopathic`, `general`, `diet`, `lifestyle`, `hygiene`, `warning`).
+  - Registered in `DatabaseSeeder.php`. Seeded 25 records with 9 auto-selected default presets.
+- [x] **Task 38.3**: Model Hardening & FormRequests
+  - Upgraded `AdviceItem.php` with `visits()` BelongsToMany, query scopes (`search`, `category`, `active`, `default`), casts, and Spatie activity logging.
+  - Authored `StoreAdviceItemRequest.php` and `UpdateAdviceItemRequest.php`.
+- [x] **Task 38.4**: Controller Hardening with Safe Deactivation
+  - Upgraded `AdviceItemController.php` with debounced search, category tabs, default filter, active filter, KPI metrics aggregation (`total`, `default`, `homeopathic`, `general`, `diet`, `lifestyle`, `hygiene`, `warning`, `active`).
+  - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_advice`, protecting historical clinical records.
+- [x] **Task 38.5**: Responsive Multi-Screen Workstation & Ergonomics
+  - `AdviceItems/Index.jsx`: Executive KPI ribbon, 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `AdviceItems/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar, structured category select, default toggle card, and validation error displays.
+  - `AdviceItems/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, and active status toggle.
+- [x] **Task 38.6**: Automated Verification & Regression Testing
+  - Authored test suite `tests/Feature/AdviceItemManagementTest.php` with 10 feature tests passing (90 assertions).
+  - Verified zero regressions in `SettingsAuditAuthorizationTest` (21 tests passed, 50 assertions).
+  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).

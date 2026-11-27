@@ -129,6 +129,14 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Repertory Review & Versioning**: Multi-tier review workflow supporting Draft, Pending Review, Approved, and Deprecated statuses with immutable `SymptomMedicineMapVersion` historical auditing.
 - `[x] Done` **Live Repertory Suggestions**: Selecting symptoms dynamically surfaces the most indicated remedies ranked by cumulative grade.
 - `[x] Done` **Bulk CSV Import**: Preview and batch import repertory mappings with validation.
+- `[x] Done` **Clinical Advice & Lifestyle Instructions Catalog (`/admin/advice_items`)**:
+  - Pre-seeded catalog of 25 bilingual clinical advice guidelines across 6 clinical disciplines: Homeopathic Rules (30-min rule, olfactory protection), General Health & Hydration, Diet & Nutrition, Lifestyle & Rest, Hygiene, and Emergency Safety Signs.
+  - Auto-selected default presets (`is_default: true`) automatically attaching to Step 5 of new consultations.
+  - 300ms debounced search matching Bengali and English instruction text with instant clear (`✕`).
+  - 1-click Category Filter Tabs with real-time counters and default preset filter.
+  - Multi-screen responsive layout: desktop `DataTable` alongside high-density mobile touch cards (`block md:hidden`).
+  - 1-Click Fast-Track Presets Toolbar in Create and Edit studios.
+  - Safe deactivation guarding historical prescription references in `visit_advice`.
 - `[x] Done` **Responsive Directory & Ergonomics**:
   - Top executive KPI ribbon (Total Symptoms, Active, Mapped to Remedies, Unmapped, Repertory Chapters).
   - 300ms debounced search matching code, English rubric, Bengali rubric, category, and modalities with instant clear (`✕`).

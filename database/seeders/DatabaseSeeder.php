@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call(LabInvestigationSeeder::class);
         $this->call(SymptomSeeder::class);
         $this->call(SymptomMedicineMapSeeder::class);
+        $this->call(AdviceItemSeeder::class);
 
         // 1. Roles and Permissions
         $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map', 'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs'];
