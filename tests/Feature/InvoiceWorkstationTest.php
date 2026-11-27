@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Medicine;
+use App\Models\MedicineBatch;
 use App\Models\Patient;
 use App\Models\Payment;
 use App\Models\User;
@@ -313,5 +315,54 @@ class InvoiceWorkstationTest extends TestCase
         $this->assertSame(1000.0, (float) $fresh->paid_amount);
         $this->assertSame(0.0, (float) $fresh->due_amount);
         $this->assertSame('paid', $fresh->status);
+    }
+
+    public function test_authorized_cashier_can_view_pos_create_terminal(): void
+    {
+        $response = $this->actingAs($this->authorizedCashier)
+            ->get(route('admin.invoices.create'));
+
+        $response->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Billing/Create')
+                ->has('initialData')
+                ->has('doctors')
+                ->has('patients')
+                ->has('defaultFee')
+                ->has('generatedInvoiceNumber')
+            );
+    }
+
+    public function test_authorized_cashier_can_search_pharmacy_batches_for_pos_terminal(): void
+    {
+        $med = Medicine::create([
+            'name' => 'Aconitum Napellus',
+            'potency' => '30C',
+            'form' => 'drops',
+            'is_active' => true,
+        ]);
+
+        MedicineBatch::create([
+            'medicine_id' => $med->id,
+            'item_type' => 'remedy',
+            'batch_number' => 'ACON-POS-99',
+            'current_quantity' => 40,
+            'initial_quantity' => 40,
+            'reorder_level' => 10,
+            'purchase_price' => 120.00,
+            'selling_price' => 175.00,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->authorizedCashier)
+            ->get(route('admin.invoices.search_batches', ['q' => 'Aconitum']));
+
+        $response->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonFragment([
+                'batch_number' => 'ACON-POS-99',
+                'selling_price' => 175.0,
+                'current_quantity' => 40.0,
+            ]);
     }
 }

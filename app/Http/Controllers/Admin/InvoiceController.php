@@ -210,6 +210,52 @@ class InvoiceController extends Controller
         return response()->json($visits);
     }
 
+    /**
+     * Async debounced batch search for POS billing terminal combobox.
+     */
+    public function searchBatches(Request $request): JsonResponse
+    {
+        $term = trim((string) $request->input('q', ''));
+        $query = MedicineBatch::query()
+            ->active()
+            ->with(['medicine:id,name,potency,form', 'pharmaceutical:id,brand_name,generic_name,strength,dosage_form,manufacturer'])
+            ->where('current_quantity', '>', 0);
+
+        if ($term !== '') {
+            $query->where(function ($q) use ($term): void {
+                $q->where('batch_number', 'like', "%{$term}%")
+                    ->orWhere('supplier_name', 'like', "%{$term}%")
+                    ->orWhere('potency', 'like', "%{$term}%")
+                    ->orWhereHas('medicine', fn ($m) => $m->where('name', 'like', "%{$term}%"))
+                    ->orWhereHas('pharmaceutical', fn ($p) => $p->where('brand_name', 'like', "%{$term}%")
+                        ->orWhere('generic_name', 'like', "%{$term}%")
+                        ->orWhere('strength', 'like', "%{$term}%"));
+            });
+        }
+
+        $results = $query->orderBy('current_quantity', 'desc')
+            ->limit(25)
+            ->get()
+            ->map(function (MedicineBatch $b) {
+                $subLabel = $b->item_type === 'remedy'
+                    ? ($b->potency ?? $b->medicine?->potency ?? 'Remedy')
+                    : ($b->pharmaceutical?->strength ?? $b->pharmaceutical?->generic_name ?? 'Pharma');
+
+                return [
+                    'id' => $b->id,
+                    'batch_number' => $b->batch_number,
+                    'item_name' => $b->item_name,
+                    'item_type' => $b->item_type,
+                    'sub_label' => $subLabel,
+                    'selling_price' => (float) $b->selling_price,
+                    'current_quantity' => (float) $b->current_quantity,
+                    'expiry_date' => $b->expiry_date?->format('Y-m-d') ?? 'No Expiry',
+                ];
+            });
+
+        return response()->json($results);
+    }
+
     public function store(StoreInvoiceRequest $request, BillingService $billingService)
     {
         $invoice = $billingService->createInvoice($request->validated(), $request->user());

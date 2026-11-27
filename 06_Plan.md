@@ -1317,3 +1317,22 @@
   - Verified regression safety with existing `PatientBillingAndCashRegisterTest.php` (7 tests, 93 assertions, 14 total passing tests).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 56: Point-of-Sale (POS) Invoice Creation & Cashier Checkout (`/admin/invoices/create`) (`[x] COMPLETED`)
+- [x] **Task 56.1**: Backend Pharmacy Stock Search API (`app/Http/Controllers/Admin/InvoiceController.php`, `routes/admin.php`)
+  - Added async debounced batch search endpoint `searchBatches(Request $request)` returning active inventory with item name, potency / strength, supplier, current stock count, and retail selling price.
+  - Registered route `GET /admin/invoices/search-batches` (`admin.invoices.search_batches`) guarded by `permission:billing.create`.
+- [x] **Task 56.2**: Frontend POS Terminal Transformation (`resources/js/Pages/Admin/Billing/Create.jsx`)
+  - Integrated RemediQ standard `PageHeader` with title *"New POS Invoice Terminal (নগদ বিক্রয় ও রশিদ প্রস্তুতকরণ)"* and quick links (`[ 📋 Invoices Directory ]`, `[ 🧾 Cash Register ]`, `[ 📦 Pharmacy Inventory ]`).
+  - Added rich Patient Demographics Verification Card on patient selection (photo/avatar, code, old ID, phone, age/gender, blood group, last visit link).
+  - Implemented 1-Click Fast Line Item Presets toolbar (`[ 🩺 Doctor Consultation ]`, `[ 🔄 Follow-up Visit ]`, `[ 🔬 Diagnostic Investigation ]`, `[ 🩹 Clinical Procedure ]`, `[ ➕ Custom Line Item ]`).
+  - Replaced static batch select with async debounced Pharmacy Stock Search Combobox with live stock count and price badges.
+  - Built integrated **Live Cash Drawer Tender & Change Calculator** (`Tendered Cash ৳`, quick chips `[ Exact ]`, `[ ৳500 ]`, `[ ৳1,000 ]`, `[ ৳2,000 ]`, dynamic green return callout `Change to Return: ৳X` or amber callout `Remaining Due: ৳X`).
+  - Added toggle `[x] Automatically open 80mm POS thermal print dialog after saving` and fast-track dual actions (`Create & Print POS Slip` vs `Create & View Invoice`).
+  - Built responsive 2-column POS layout on Desktop/Tablet and streamlined vertical flow on mobile screens.
+- [x] **Task 56.3**: Automated Testing & Suite Verification
+  - Expanded `tests/Feature/InvoiceWorkstationTest.php` to 9 passing feature tests (103 assertions).
+  - Verified full billing suite with zero regressions.
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
+
