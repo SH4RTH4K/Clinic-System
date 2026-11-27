@@ -620,6 +620,59 @@ CREATE TABLE `patient_notifications` (
   INDEX `pn_event_idx` (`event_type`),
   INDEX `pn_created_idx` (`created_at`)
 );
+
+### 2.12 Clinical Advice & Dietary Restrictions Master Catalogs
+```sql
+-- advice_items
+CREATE TABLE `advice_items` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `text_bn` varchar(500) NOT NULL,
+  `text_en` varchar(500) NULL,
+  `category` varchar(50) NOT NULL DEFAULT 'general',
+  `is_default` tinyint(1) NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL,
+  `updated_at` timestamp NULL,
+  INDEX `advice_category_idx` (`category`),
+  INDEX `advice_active_idx` (`is_active`),
+  INDEX `advice_default_idx` (`is_default`)
+);
+
+-- visit_advice (pivot)
+CREATE TABLE `visit_advice` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `visit_id` bigint unsigned NOT NULL,
+  `advice_item_id` bigint unsigned NOT NULL,
+  FOREIGN KEY (`visit_id`) REFERENCES `visits` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`advice_item_id`) REFERENCES `advice_items` (`id`)
+);
+
+-- food_restrictions
+CREATE TABLE `food_restrictions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `text_bn` varchar(500) NOT NULL,
+  `text_en` varchar(500) NULL,
+  `category` varchar(50) NOT NULL DEFAULT 'general',
+  `is_default` tinyint(1) NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL,
+  `updated_at` timestamp NULL,
+  INDEX `food_category_idx` (`category`),
+  INDEX `food_active_idx` (`is_active`),
+  INDEX `food_default_idx` (`is_default`)
+);
+
+-- visit_food_restriction (pivot)
+CREATE TABLE `visit_food_restriction` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `visit_id` bigint unsigned NOT NULL,
+  `food_restriction_id` bigint unsigned NOT NULL,
+  FOREIGN KEY (`visit_id`) REFERENCES `visits` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`food_restriction_id`) REFERENCES `food_restrictions` (`id`)
+);
+```
 ```
 
 ---

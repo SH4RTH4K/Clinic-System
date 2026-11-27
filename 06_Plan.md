@@ -608,6 +608,29 @@
   - Authored test suite `tests/Feature/AdviceItemManagementTest.php` with 10 feature tests passing (90 assertions).
   - Verified zero regressions in `SettingsAuditAuthorizationTest` (21 tests passed, 50 assertions).
   - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 39: Dietary & Food Restrictions Master Catalog (`/admin/food_restrictions`) (`[x] COMPLETED`)
+- [x] **Task 39.1**: Database Schema & Migration
+  - Migration `2026_11_27_151209_add_category_is_active_sort_order_to_food_restrictions_table.php` adding `category` (default `general`), `is_active` (default `true`), and `sort_order` (default `0`), with indexes on `category`, `is_default`, and `is_active`.
+  - Updated base migration `create_food_restrictions_table` so `text_en` is nullable.
+- [x] **Task 39.2**: Clinical Dietary Restrictions Master Seeder
+  - Authored `FoodRestrictionSeeder.php` pre-seeding 25 clinical dietary rules across 6 categories (`homeopathic_antidote`, `sour_cold`, `spicy_oily`, `allergic_histamine`, `chronic_metabolic`, `general`).
+  - Registered in `DatabaseSeeder.php`. Seeded 25 records with 8 auto-selected default presets.
+- [x] **Task 39.3**: Model Hardening & FormRequests
+  - Upgraded `FoodRestriction.php` with `visits()` BelongsToMany, query scopes (`search`, `category`, `active`, `default`), casts, and Spatie activity logging.
+  - Authored `StoreFoodRestrictionRequest.php` and `UpdateFoodRestrictionRequest.php` with authorization and category fallback.
+- [x] **Task 39.4**: Controller Hardening with Safe Deactivation
+  - Upgraded `FoodRestrictionController.php` with debounced search, category tabs, default filter, active filter, KPI metrics aggregation (`total`, `default`, `antidote`, `sour_cold`, `spicy_oily`, `allergic`, `metabolic`, `general`, `active`).
+  - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_food_restriction`, protecting historical clinical records.
+  - Added `toggleStatus` and `toggleDefault` endpoints.
+- [x] **Task 39.5**: Responsive Multi-Screen Workstation & Ergonomics
+  - `FoodRestrictions/Index.jsx`: Executive KPI ribbon (5 cards), 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `FoodRestrictions/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar (Antidotes, Cold/Sour, Spicy/Oily, Allergic, Salt/Sugar), structured category select, default toggle card, and validation error displays.
+  - `FoodRestrictions/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, fast-track presets toolbar, and active status toggle.
+- [x] **Task 39.6**: Automated Verification & Regression Testing
+  - Authored test suite `tests/Feature/FoodRestrictionManagementTest.php` with 12 feature tests passing (106 assertions).
+  - Verified zero regressions in `SettingsAuditAuthorizationTest`, `RolePermissionManagementTest`, `ProductionSetupSeederTest`, and `AdviceItemManagementTest` (45 tests passed, 228 assertions).
+  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -869,4 +892,27 @@
 - [x] **Task 38.6**: Automated Verification & Regression Testing
   - Authored test suite `tests/Feature/AdviceItemManagementTest.php` with 10 feature tests passing (90 assertions).
   - Verified zero regressions in `SettingsAuditAuthorizationTest` (21 tests passed, 50 assertions).
+  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 39: Dietary & Food Restrictions Master Catalog (`/admin/food_restrictions`) (`[x] COMPLETED`)
+- [x] **Task 39.1**: Database Schema & Migration
+  - Migration `2026_11_27_151209_add_category_is_active_sort_order_to_food_restrictions_table.php` adding `category` (default `general`), `is_active` (default `true`), and `sort_order` (default `0`), with indexes on `category`, `is_default`, and `is_active`.
+  - Updated base migration `create_food_restrictions_table` so `text_en` is nullable.
+- [x] **Task 39.2**: Clinical Dietary Restrictions Master Seeder
+  - Authored `FoodRestrictionSeeder.php` pre-seeding 25 clinical dietary rules across 6 categories (`homeopathic_antidote`, `sour_cold`, `spicy_oily`, `allergic_histamine`, `chronic_metabolic`, `general`).
+  - Registered in `DatabaseSeeder.php`. Seeded 25 records with 8 auto-selected default presets.
+- [x] **Task 39.3**: Model Hardening & FormRequests
+  - Upgraded `FoodRestriction.php` with `visits()` BelongsToMany, query scopes (`search`, `category`, `active`, `default`), casts, and Spatie activity logging.
+  - Authored `StoreFoodRestrictionRequest.php` and `UpdateFoodRestrictionRequest.php` with authorization and category fallback.
+- [x] **Task 39.4**: Controller Hardening with Safe Deactivation
+  - Upgraded `FoodRestrictionController.php` with debounced search, category tabs, default filter, active filter, KPI metrics aggregation (`total`, `default`, `antidote`, `sour_cold`, `spicy_oily`, `allergic`, `metabolic`, `general`, `active`).
+  - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_food_restriction`, protecting historical clinical records.
+  - Added `toggleStatus` and `toggleDefault` endpoints.
+- [x] **Task 39.5**: Responsive Multi-Screen Workstation & Ergonomics
+  - `FoodRestrictions/Index.jsx`: Executive KPI ribbon (5 cards), 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `FoodRestrictions/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar (Antidotes, Cold/Sour, Spicy/Oily, Allergic, Salt/Sugar), structured category select, default toggle card, and validation error displays.
+  - `FoodRestrictions/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, fast-track presets toolbar, and active status toggle.
+- [x] **Task 39.6**: Automated Verification & Regression Testing
+  - Authored test suite `tests/Feature/FoodRestrictionManagementTest.php` with 12 feature tests passing (106 assertions).
+  - Verified zero regressions in `SettingsAuditAuthorizationTest`, `RolePermissionManagementTest`, `ProductionSetupSeederTest`, and `AdviceItemManagementTest` (45 tests passed, 228 assertions).
   - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).

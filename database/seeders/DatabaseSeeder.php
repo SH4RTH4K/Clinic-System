@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         $this->call(SymptomSeeder::class);
         $this->call(SymptomMedicineMapSeeder::class);
         $this->call(AdviceItemSeeder::class);
+        $this->call(FoodRestrictionSeeder::class);
 
         // 1. Roles and Permissions
         $modules = ['patients', 'visits', 'medicines', 'symptoms', 'symptom_medicine_map', 'appointments', 'reports', 'settings', 'users', 'roles', 'activity_logs'];
@@ -131,17 +132,5 @@ class DatabaseSeeder extends Seeder
             DB::table('advice_items')->updateOrInsert(['text_en' => $advice['text_en']], $advice);
         }
 
-        // Food Restrictions Default
-        $foods = [
-            ['text_en' => 'No smoking.', 'text_bn' => 'ধূমপান নিষেধ।', 'is_default' => true],
-            ['text_en' => 'Avoid excess spicy or salty food; avoid raw/added salt at the table.', 'text_bn' => 'অতিরিক্ত মশলাযুক্ত বা লবণাক্ত খাবার এড়িয়ে চলুন; কাঁচা লবণ খাবেন না।', 'is_default' => true],
-            ['text_en' => 'Avoid red meat.', 'text_bn' => 'গরু বা খাসির মাংস এড়িয়ে চলুন।', 'is_default' => true],
-            ['text_en' => 'Avoid duck meat and duck eggs.', 'text_bn' => 'হাঁসের মাংস এবং হাঁসের ডিম এড়িয়ে চলুন।', 'is_default' => true],
-            ['text_en' => 'Avoid hilsa fish and prawns/shrimp.', 'text_bn' => 'ইলিশ মাছ এবং চিংড়ি এড়িয়ে চলুন।', 'is_default' => true],
-            ['text_en' => 'Avoid any food the patient is personally allergic to.', 'text_bn' => 'যেসব খাবারে এলার্জি আছে সেগুলো এড়িয়ে চলুন।', 'is_default' => true],
-        ];
-        foreach ($foods as $food) {
-            DB::table('food_restrictions')->updateOrInsert(['text_en' => $food['text_en']], $food);
-        }
     }
 }

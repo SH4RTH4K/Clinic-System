@@ -285,7 +285,11 @@ Route::middleware(['auth', 'permission:advice_items.view|settings.view'])
 Route::middleware(['auth', 'permission:food_restrictions.create|settings.create'])
     ->group(fn () => Route::resource('food_restrictions', FoodRestrictionController::class)->only(['create', 'store']));
 Route::middleware(['auth', 'permission:food_restrictions.update|settings.update'])
-    ->group(fn () => Route::resource('food_restrictions', FoodRestrictionController::class)->only(['edit', 'update']));
+    ->group(function () {
+        Route::patch('food_restrictions/{food_restriction}/toggle-status', [FoodRestrictionController::class, 'toggleStatus'])->name('food_restrictions.toggle-status');
+        Route::patch('food_restrictions/{food_restriction}/toggle-default', [FoodRestrictionController::class, 'toggleDefault'])->name('food_restrictions.toggle-default');
+        Route::resource('food_restrictions', FoodRestrictionController::class)->only(['edit', 'update']);
+    });
 Route::middleware(['auth', 'permission:food_restrictions.delete|settings.delete'])
     ->group(fn () => Route::resource('food_restrictions', FoodRestrictionController::class)->only(['destroy']));
 Route::middleware(['auth', 'permission:food_restrictions.view|settings.view'])

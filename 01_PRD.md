@@ -166,6 +166,11 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
 - `[x] Done` **Interactive Medication Builder**: Select remedy or pharmaceutical item, potency/strength, dosage form, frequency, and duration.
 - `[x] Done` **Bilingual Dosage Instructions**: Predefined and custom instructions available in both English and Bengali (e.g., "১টি করে ট্যাবলেট দিনে ৩ বার খাবার পর", "৪ ফোঁটা সামান্য পানিতে").
 - `[x] Done` **Standard Dietary & Lifestyle Advice**: Configurable dietary restrictions and lifestyle advice (`advice_items`, `food_restrictions`).
+  - Pre-seeded with 25 bilingual clinical advice items across 6 categories (Homeopathic, General, Diet, Lifestyle, Hygiene, Warning) and 25 clinical dietary restrictions across 6 categories (Homeopathic Antidotes, Cold & Sour, Spicy & Oily, Allergenic, Metabolic, General).
+  - Executive KPI metric ribbon, 300ms debounced search, category pill tabs, and default preset filter (`⭐ Auto-Selected for New Visits`).
+  - Dual-mode multi-type presentation: Desktop `DataTable` + High-Density Mobile Touch Cards (`block md:hidden`) with 44px+ touch targets.
+  - Safe deactivation pattern (`is_active = false`) for items referenced in historical patient visits, preventing fatal SQL 1451 integrity errors.
+  - 1-Click Fast-Track Clinical Presets Toolbar in `Create.jsx` and `Edit.jsx` for rapid onboarding.
 - `[x] Done` **High-Fidelity PDF Generation**: Powered by `barryvdh/laravel-dompdf`. Custom configured with self-hosted `NotoSansBengali` TrueType fonts for flawless Bengali conjunct rendering.
 - `[x] Done` **Configurable Pad Geometry**: Margins, header offset, font sizing, and signature blocks configurable via admin settings.
 - `[x] Done` **Dual-Layout Prescription Styling**:
