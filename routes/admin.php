@@ -392,6 +392,7 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|billing.create'])->gr
 });
 Route::middleware(['auth', 'role_or_permission:Super Admin|billing.view'])->group(function () {
     Route::get('/billing/cash-register', [InvoiceController::class, 'cashRegister'])->name('billing.cash_register');
+    Route::get('/invoices/export', [InvoiceController::class, 'export'])->name('invoices.export');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
     Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');

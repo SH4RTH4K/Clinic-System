@@ -12,22 +12,26 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\MedicineBatch;
 use App\Models\Patient;
+use App\Models\Payment;
 use App\Models\Visit;
 use App\Services\BillingService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $query = Invoice::query()->with([
             'patient:id,name,patient_no,patient_series,patient_code,phone',
             'visit:id,visit_date,doctor_id',
             'visit.doctor:id,name',
             'createdBy:id,name',
+            'payments.receivedBy:id,name',
         ]);
 
         if ($request->filled('status') && $request->status !== 'all') {
@@ -38,37 +42,75 @@ class InvoiceController extends Controller
             }
         }
 
+        if ($request->filled('payment_method') && $request->payment_method !== 'all') {
+            $query->whereHas('payments', function ($pq) use ($request): void {
+                $pq->where('payment_method', $request->payment_method);
+            });
+        }
+
         if ($request->filled('search')) {
             $term = trim($request->search);
-            $query->where(function ($q) use ($term) {
+            $query->where(function ($q) use ($term): void {
                 $q->where('invoice_number', 'like', "%{$term}%")
-                    ->orWhereHas('patient', function ($pq) use ($term) {
+                    ->orWhereHas('patient', function ($pq) use ($term): void {
                         $pq->where('name', 'like', "%{$term}%")
                             ->orWhere('phone', 'like', "%{$term}%")
-                            ->orWhere('patient_code', 'like', "%{$term}%");
+                            ->orWhere('patient_code', 'like', "%{$term}%")
+                            ->orWhere('patient_no', 'like', "%{$term}%");
+                    })
+                    ->orWhereHas('visit.doctor', function ($dq) use ($term): void {
+                        $dq->where('name', 'like', "%{$term}%");
+                    })
+                    ->orWhereHas('createdBy', function ($cq) use ($term): void {
+                        $cq->where('name', 'like', "%{$term}%");
                     });
             });
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
+        if ($preset = $request->input('date_preset')) {
+            match ($preset) {
+                'today' => $query->whereDate('invoice_date', Carbon::today()),
+                'yesterday' => $query->whereDate('invoice_date', Carbon::yesterday()),
+                'this_week' => $query->whereBetween('invoice_date', [Carbon::now()->startOfWeek()->toDateString(), Carbon::now()->endOfWeek()->toDateString()]),
+                'this_month' => $query->whereBetween('invoice_date', [Carbon::now()->startOfMonth()->toDateString(), Carbon::now()->endOfMonth()->toDateString()]),
+                'this_year' => $query->whereBetween('invoice_date', [Carbon::now()->startOfYear()->toDateString(), Carbon::now()->endOfYear()->toDateString()]),
+                default => null,
+            };
+        } elseif ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('invoice_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->whereDate('invoice_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->whereDate('invoice_date', '<=', $request->end_date);
         }
 
-        $invoices = $query->latest('id')
-            ->paginate(15)
-            ->withQueryString();
+        $sort = $request->input('sort', 'latest');
+        match ($sort) {
+            'oldest' => $query->oldest('id'),
+            'due_desc' => $query->orderByDesc('due_amount')->orderByDesc('id'),
+            'amount_desc' => $query->orderByDesc('total_amount')->orderByDesc('id'),
+            default => $query->latest('id'),
+        };
 
-        // Calculate summary metrics
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = in_array($perPage, [10, 15, 25, 50, 100], true) ? $perPage : 15;
+
+        $invoices = $query->paginate($perPage)->withQueryString();
+
+        // 5 Executive Financial KPIs
         $metrics = [
-            'total_invoiced' => (float) Invoice::sum('total_amount'),
+            'total_invoiced' => (float) Invoice::whereNotIn('status', ['cancelled', 'waived'])->sum('total_amount'),
             'total_collected' => (float) Invoice::sum('paid_amount'),
             'total_due' => (float) Invoice::whereNotIn('status', ['cancelled', 'waived'])->sum('due_amount'),
+            'due_invoices_count' => Invoice::whereNotIn('status', ['cancelled', 'waived'])->where('due_amount', '>', 0)->count(),
             'unpaid_count' => Invoice::whereIn('status', ['unpaid', 'partially_paid'])->count(),
+            'paid_invoices_count' => Invoice::where('status', 'paid')->count(),
+            'today_collected' => (float) Payment::whereDate('payment_date', Carbon::today())->sum('amount'),
         ];
 
         return Inertia::render('Admin/Billing/Index', [
             'invoices' => $invoices,
-            'filters' => $request->only(['status', 'search', 'start_date', 'end_date']),
+            'filters' => $request->only(['status', 'payment_method', 'search', 'date_preset', 'start_date', 'end_date', 'sort', 'per_page']),
             'metrics' => $metrics,
         ]);
     }
@@ -329,5 +371,117 @@ class InvoiceController extends Controller
                 'end_date' => $endDate,
             ],
         ]);
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $query = Invoice::query()->with([
+            'patient:id,name,patient_no,patient_series,patient_code,phone',
+            'visit:id,visit_date,doctor_id',
+            'visit.doctor:id,name',
+            'createdBy:id,name',
+            'payments.receivedBy:id,name',
+        ]);
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            if ($request->status === 'due') {
+                $query->due();
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
+        if ($request->filled('payment_method') && $request->payment_method !== 'all') {
+            $query->whereHas('payments', function ($pq) use ($request): void {
+                $pq->where('payment_method', $request->payment_method);
+            });
+        }
+
+        if ($request->filled('search')) {
+            $term = trim($request->search);
+            $query->where(function ($q) use ($term): void {
+                $q->where('invoice_number', 'like', "%{$term}%")
+                    ->orWhereHas('patient', function ($pq) use ($term): void {
+                        $pq->where('name', 'like', "%{$term}%")
+                            ->orWhere('phone', 'like', "%{$term}%")
+                            ->orWhere('patient_code', 'like', "%{$term}%");
+                    })
+                    ->orWhereHas('visit.doctor', function ($dq) use ($term): void {
+                        $dq->where('name', 'like', "%{$term}%");
+                    });
+            });
+        }
+
+        if ($preset = $request->input('date_preset')) {
+            match ($preset) {
+                'today' => $query->whereDate('invoice_date', Carbon::today()),
+                'yesterday' => $query->whereDate('invoice_date', Carbon::yesterday()),
+                'this_week' => $query->whereBetween('invoice_date', [Carbon::now()->startOfWeek()->toDateString(), Carbon::now()->endOfWeek()->toDateString()]),
+                'this_month' => $query->whereBetween('invoice_date', [Carbon::now()->startOfMonth()->toDateString(), Carbon::now()->endOfMonth()->toDateString()]),
+                'this_year' => $query->whereBetween('invoice_date', [Carbon::now()->startOfYear()->toDateString(), Carbon::now()->endOfYear()->toDateString()]),
+                default => null,
+            };
+        } elseif ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('invoice_date', [$request->start_date, $request->end_date]);
+        }
+
+        $sort = $request->input('sort', 'latest');
+        match ($sort) {
+            'oldest' => $query->oldest('id'),
+            'due_desc' => $query->orderByDesc('due_amount')->orderByDesc('id'),
+            'amount_desc' => $query->orderByDesc('total_amount')->orderByDesc('id'),
+            default => $query->latest('id'),
+        };
+
+        $invoices = $query->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="invoices-billing-ledger-'.now()->format('Y-m-d').'.csv"',
+        ];
+
+        return response()->stream(function () use ($invoices): void {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF"); // UTF-8 BOM
+
+            fputcsv($file, [
+                'Invoice Number',
+                'Invoice Date',
+                'Patient ID',
+                'Patient Name',
+                'Patient Phone',
+                'Attending Doctor',
+                'Subtotal (BDT)',
+                'Discount (BDT)',
+                'Total Invoiced (BDT)',
+                'Paid Amount (BDT)',
+                'Due Amount (BDT)',
+                'Payment Status',
+                'Payment Methods',
+                'Created By',
+            ]);
+
+            foreach ($invoices as $inv) {
+                $methods = $inv->payments->pluck('payment_method')->unique()->map(fn ($m) => strtoupper($m))->join(', ');
+                fputcsv($file, [
+                    $inv->invoice_number,
+                    $inv->invoice_date?->format('Y-m-d') ?? '',
+                    $inv->patient?->patient_code ?? ($inv->patient?->id ? (string) $inv->patient->id : 'Walk-in'),
+                    $inv->patient?->name ?? 'Walk-in Patient',
+                    $inv->patient?->phone ?? '—',
+                    $inv->visit?->doctor?->name ?? 'Direct Desk Bill',
+                    number_format((float) $inv->subtotal, 2, '.', ''),
+                    number_format((float) $inv->discount_amount, 2, '.', ''),
+                    number_format((float) $inv->total_amount, 2, '.', ''),
+                    number_format((float) $inv->paid_amount, 2, '.', ''),
+                    number_format((float) $inv->due_amount, 2, '.', ''),
+                    ucwords(str_replace('_', ' ', $inv->status)),
+                    $methods ?: 'Unpaid',
+                    $inv->createdBy?->name ?? 'System',
+                ]);
+            }
+
+            fclose($file);
+        }, 200, $headers);
     }
 }

@@ -1298,3 +1298,22 @@
   - Validated permission test suite (105 tests passing, 727 assertions).
   - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
   - Compiled production frontend assets with Vite (`npm run build`).
+
+### Phase 55: Patient Invoicing & Due Collection Workstation (`/admin/invoices`) (`[x] COMPLETED`)
+- [x] **Task 55.1**: Controller Hardening, 5 Financial KPIs & Ledger CSV Export (`app/Http/Controllers/Admin/InvoiceController.php`, `routes/admin.php`)
+  - Implemented multi-parameter search matching invoice number, patient name, phone, patient code, series/number, attending doctor, and creator.
+  - Added payment status filters (`all`, `paid`, `partially_paid`, `unpaid`, `due`), payment method filters (`cash`, `bkash`, `nagad`, `rocket`, `card`, `bank`), date presets (`today`, `yesterday`, `this_week`, `this_month`, `this_year`), custom date pickers, sort modes (`latest`, `oldest`, `due_desc`, `amount_desc`), and per-page selector.
+  - Computed 5 executive financial KPIs (`total_invoiced`, `total_collected`, `total_due`, `due_invoices_count`, `paid_invoices_count`, and `today_collected`).
+  - Added streaming CSV ledger export (`GET /admin/invoices/export`) with UTF-8 BOM for accountant reconciliation.
+- [x] **Task 55.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Billing/Index.jsx`)
+  - Integrated RemediQ standard `PageHeader` with direct quick links (`[ 🧾 Cash Register ]`, `[ 📥 Export Ledger CSV ]`, `[ ➕ New POS Invoice ]`).
+  - Implemented 5-Card Financial KPI Summary Ribbon with revenue realization percentage badge.
+  - Added 300ms debounced search bar with instant reset button (`✕`).
+  - Added 1-Click Fast Filter Pills strip (`All Invoices`, `⚠️ Has Due`, `✅ Fully Paid`, `🛑 Unpaid`, `📱 bKash MFS`, `💵 Cash Desk`).
+  - Built Quick Due Collection Modal allowing cashiers to record partial or full due settlements with instant balance recalculation without leaving the directory.
+  - Built Dual-Mode Presentation: Desktop structured table alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly actions (`Collect Due`, `View Details`, `POS Slip`, `A4 Print`).
+- [x] **Task 55.3**: Automated Testing & Suite Verification
+  - Authored comprehensive feature test suite `tests/Feature/InvoiceWorkstationTest.php` with 7 feature tests passing (82 assertions).
+  - Verified regression safety with existing `PatientBillingAndCashRegisterTest.php` (7 tests, 93 assertions, 14 total passing tests).
+  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+  - Compiled production frontend assets with Vite (`npm run build`).
