@@ -1,4 +1,4 @@
-# Master Implementation Plan & Roadmap (06_Plan.md)
+﻿# Master Implementation Plan & Roadmap (06_Plan.md)
 ## RemediQ - Dual-Purpose Practice Management System
 *(Classical Homeopathy, General Medicine & Integrative Clinics)*
 
@@ -216,7 +216,7 @@
 - [x] **Task 14.1**: Section-Level Patient Configuration Engine
   - Added `defaultPatientFormSections()`, `currentPatientFormSections()`, and `getPatientFormSections()` in `ClinicSetting.php`.
   - Added validation rules for `sections` array in `UpdatePatientFormConfigRequest.php`.
-  - Section re-ordering (`↑` / `↓`), master section visibility toggling (`visible: false`), and custom title customization in `Admin/PatientConfig/Edit.jsx`.
+  - Section re-ordering (`â†‘` / `â†“`), master section visibility toggling (`visible: false`), and custom title customization in `Admin/PatientConfig/Edit.jsx`.
   - Enforced clinical core safety invariant preventing deactivation of the core `Identity` section (`is_core: true`).
 - [x] **Task 14.2**: Dynamic Section Rendering in Patient Forms
   - Updated `Patients/Create.jsx` and `Patients/Edit.jsx` to dynamically respect section orders (`style={{ order: getSectionOrder(...) }}`) and section visibility (`isSectionVisible(...)`).
@@ -246,7 +246,7 @@
 - [x] **Task 16.2**: Dynamic Frontend Page Title Resolution
   - Updated `resources/js/app.jsx` title callback to resolve clinic branding language-wise (`resolveClinicName(title)`), eliminating the `- Laravel` fallback across all pages.
   - Updated `AuthenticatedLayout.jsx` sidebar branding to dynamically display the configured clinic name and logo rather than static text.
-  - Added a 1-click Language Switcher toggle (`বাং` / `EN`) in the admin topbar.
+  - Added a 1-click Language Switcher toggle (`à¦¬à¦¾à¦‚` / `EN`) in the admin topbar.
 - [x] **Verification**: Added `ClinicBrandingAndLanguageTitleTest` (3 tests, 68 assertions) covering English/Bangla titles, setting updates, and server-rendered HTML tags. All 50 related tests passing. Pint formatted and Vite build completed.
 
 ### Phase 17: Mobile Camera Native Capture & Insecure Context Hardening (`[x] COMPLETED`)
@@ -256,9 +256,9 @@
 - [x] **Task 17.2**: WebRTC Modal Insecure Context & Multi-Camera Hardening
   - Updated `WebcamCaptureModal.jsx` with `window.isSecureContext` detection to identify non-SSL / HTTP origins (such as `8-119-134.cpanel.site`) cleanly.
   - Added facing-mode selection defaulting to rear camera (`environment`) on mobile devices.
-  - Added `🔄 Flip Camera` button (`Rear Cam` / `Front Cam`) in the live viewfinder overlay.
+  - Added `ðŸ”„ Flip Camera` button (`Rear Cam` / `Front Cam`) in the live viewfinder overlay.
   - Added progressive constraint fallback from 1280x720 ideal constraints to basic video constraint.
-  - Upgraded modal fallback UI with a primary `📸 Snap with Mobile Camera` action button.
+  - Upgraded modal fallback UI with a primary `ðŸ“¸ Snap with Mobile Camera` action button.
 - [x] **Task 17.3**: Automated Feature Verification & Testing
   - Added `test_user_can_store_and_update_patient_with_mobile_camera_photo_upload()` in `PatientAttachmentsAndOpdCardTest.php` testing high-resolution mobile camera snaps (`image/jpeg`), storage persistence, URL generation, and automatic old photo cleanup upon update.
 - [x] **Verification**: All 11 tests in `PatientAttachmentsAndOpdCardTest` and related test suites passing (130 assertions). Pint formatted and Vite build completed.
@@ -298,7 +298,7 @@
 - [x] **Task 20.2**: Desktop Data Table & Clinical Diagnosis Presentation
   - Redesigned `resources/js/Pages/Admin/Visits/Index.jsx` with 4 KPI summary cards.
   - Added Search & Filter form with single unified search bar, date presets (`Today`, `This Week`, `This Month`), collapsible filters tray, and reset toggle.
-  - Added Clinical Diagnosis & Chief Complaints column, Prescribed Remedy/Drug counts, Vitals preview, and dynamic Billing Status badge (`✓ Paid`, `⚠ Due`, `+ Create Bill`).
+  - Added Clinical Diagnosis & Chief Complaints column, Prescribed Remedy/Drug counts, Vitals preview, and dynamic Billing Status badge (`âœ“ Paid`, `âš  Due`, `+ Create Bill`).
   - Replaced hardcoded doctor name fallback (`v.doctor?.name ?? 'Dr. Fazlul Karim'`) with dynamic settings fallback.
   - Added 1-click WhatsApp share action, direct PDF view/print, and 1-click POS invoice generation bridge (`/admin/billing/invoices/create?visit_id=X`).
 - [x] **Task 20.3**: Mobile Responsive Touch Card Architecture
@@ -312,7 +312,7 @@
   - Eager-loaded `patient:id,name,phone,patient_no,patient_series,patient_code,old_or_other_id,photo_path,gender,age_years` to supply avatars, identifiers, and demographic summaries.
 - [x] **Task 21.2**: Desktop & Tablet Dashboard Experience
   - Implemented debounced search input (350ms) with dedicated `Search` button, Enter key trigger, and instant `Reset Filters` button.
-  - Added live queue auto-refresh toggle (15s / 30s / Off) with visual countdown pill and 1-click `🔄 Refresh Queue` action (`router.reload`).
+  - Added live queue auto-refresh toggle (15s / 30s / Off) with visual countdown pill and 1-click `ðŸ”„ Refresh Queue` action (`router.reload`).
   - Added 1-click **`+ Start Visit`** direct consultation launcher (`/admin/visits/create?patient_id=X&token_id=Y`) for calling and in-consultation tokens.
   - Fixed `patient_identifier` display bug (using `patient_identifier` or `patient_code` with Old ID badge).
   - Added 1-tap phone dialer (`tel:`) and direct WhatsApp alert links for calling/waiting patients.
@@ -340,112 +340,47 @@
 - [x] **Task 22.4**: Verification & Testing
   - Added feature tests in `QueueManagementAndCalendarTest.php` covering token issuance search parameters, duplicate token guard, print slip redirection, and doctor load calculation (12 tests, 91 assertions passing). Pint formatting and Vite build verified.
 
-### Phase 23: Doctor Visual Calendar, Multi-Screen Agenda & Search Upgrade (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 23.1**: Backend Multi-Factor Search & Shift Roster Aggregation
-  - Upgrade `CalendarController::index` to accept `search` / `q`, querying across `AppointmentRequest` (name, phone, message) and `Visit` (patient name, phone, patient code, old ID, doctor name).
-  - Aggregate recurring doctor weekly schedules (`DoctorSchedule`) to render active physician duty shifts on each day of the month without losing clinic appointments when a doctor filter is applied.
-- [ ] **Task 23.2**: Desktop & Tablet Calendar Experience
-  - Implement debounced search input (350ms) with reset and matching event highlights.
-  - Add Event Type filter tabs (`All Events`, `Appointments`, `Visits`, `Doctor Leaves`).
-  - Render recurring doctor shift badges (e.g. `👨‍⚕️ Chamber 1 (09:00-14:00)`) on active calendar weekdays.
-  - Upgrade Day Schedule Modal with 1-click action triggers: `[+ Issue Token]`, `[+ Book Appointment]`, `[+ Add Doctor Leave]`, and 1-tap phone/WhatsApp contact links.
-- [ ] **Task 23.3**: Mobile Responsive Agenda Timeline View
-  - Implement dual-mode presentation: high-density **Mobile Daily Agenda Timeline View** (`block md:hidden`) with horizontal date picker ribbon and vertical chronological cards.
-  - Structured 7-column calendar matrix on desktop/tablets (`hidden md:block`).
-- [ ] **Task 23.4**: Verification & Testing
-  - Add feature tests in `QueueManagementAndCalendarTest.php` verifying calendar search parameters, doctor shift roster aggregation, and day schedule endpoints. Pint formatting and Vite build verification.
+### Phase 23: Doctor Visual Calendar, Multi-Screen Agenda & Search Upgrade (`[x] COMPLETED - Merged into Phase 44`)
+- [x] **Task 23.1**: Backend Multi-Factor Search & Shift Roster Aggregation (Completed in Phase 44)
+- [x] **Task 23.2**: Desktop & Tablet Calendar Experience (Completed in Phase 44)
+- [x] **Task 23.3**: Mobile Responsive Agenda Timeline View (Completed in Phase 44)
+- [x] **Task 23.4**: Verification & Testing (Completed in Phase 44)
 
-### Phase 24: Doctor Visiting Schedules, Chamber Roster & Leave Range Upgrade (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 24.1**: Backend Leave Date Range Support & Conflict Detection (`DoctorScheduleController.php`, `StoreDoctorLeaveRequest.php`)
-  - Extend `StoreDoctorLeaveRequest` to validate optional `leave_date_end` (date, `>=:leave_date`).
-  - In `DoctorScheduleController::storeLeave`, handle multi-day date range insertion in a database transaction, generating daily records automatically.
-  - Add conflict detection helper returning warning counts for existing appointments (`AppointmentRequest`) and tokens (`QueueToken`) on the requested leave dates.
-- [ ] **Task 24.2**: Schedule Copy Accelerator & Chamber Management
-  - Add 1-click `📋 Copy Sunday Times to Mon-Thu` schedule accelerator in `Schedules.jsx` to pre-fill standard clinic shifts across active working days.
-  - Add quick chamber selector pills (`Chamber 1`, `Chamber 2`, `Chamber 3`).
-- [ ] **Task 24.3**: Mobile Sub-Tab Navigation & Responsive UI
-  - On mobile screens (< 768px), introduce top sub-tabs: `[ 🕒 Weekly Visiting Hours ]` and `[ 🏖️ Leaves & Off-Days ]` to prevent excessive vertical scrolling.
-  - Implement doctor search filter for clinics with multiple physicians/consultants.
-- [ ] **Task 25.4**: Verification & Testing
-  - Add feature tests in `AppointmentRequestWorkflowTest.php` covering search by name, phone, ID, date presets, and quick status actions. Pint formatting and Vite build verification.
+### Phase 24: Doctor Visiting Schedules, Chamber Roster & Leave Range Upgrade (`[x] COMPLETED - Merged into Phase 43`)
+- [x] **Task 24.1**: Backend Leave Date Range Support & Conflict Detection (Completed in Phase 43)
+- [x] **Task 24.2**: Schedule Copy Accelerator & Chamber Management (Completed in Phase 43)
+- [x] **Task 24.3**: Mobile Sub-Tab Navigation & Responsive UI (Completed in Phase 43)
+- [x] **Task 24.4**: Verification & Testing (Completed in Phase 43)
 
-### Phase 26: Invoices Directory Search, Quick Due Payment & Multi-Screen Transformation (`/admin/invoices`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 26.1**: Backend Multi-Column Smart Search, Quick Date Presets & CSV Export
-  - Upgrade `InvoiceController::index` to search across `invoice_number`, `patient.name`, `patient.phone`, `patient.patient_code`, `patient.old_or_other_id`, `patient.patient_no`, and `visit.doctor.name`.
-  - Add date presets filter (`today`, `yesterday`, `this_week`, `this_month`) and payment method filter (`cash`, `bkash`, `nagad`, `rocket`, `card`, `bank`).
-  - Add CSV export endpoint (`GET /admin/invoices/export`) to stream filtered invoice records for accounting reconciliation.
-- [ ] **Task 26.2**: Desktop & Tablet Experience
-  - Implement 350ms debounced search bar with reset (`✕`) button and active filter chips.
-  - Add tactile date preset pill buttons (`[ Today ]`, `[ Yesterday ]`, `[ This Week ]`, `[ This Month ]`).
-  - Add 1-click `[ 💵 Collect Due ]` modal allowing cashiers to record full or partial payments directly from the directory without navigating to the detail page.
-- [ ] **Task 26.3**: Mobile Responsive Touch Cards
-  - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) displaying invoice #, status badge, patient name with 1-tap call, color-coded financial pills (Total, Paid, Due), and 1-tap thermal POS receipt printing.
-- [ ] **Task 26.4**: Verification & Testing
-  - Feature test coverage in `PatientBillingAndCashRegisterTest.php` verifying search by old ID, doctor name, date presets, CSV export, and quick payment recording. Pint formatting and Vite build verification.
+### Phase 26: Invoices Directory Search, Quick Due Payment & Multi-Screen Transformation (`/admin/invoices`) (`[x] COMPLETED - Merged into Phase 55`)
+- [x] **Task 26.1**: Backend Multi-Column Smart Search, Quick Date Presets & CSV Export (Completed in Phase 55)
+- [x] **Task 26.2**: Desktop & Tablet Experience (Completed in Phase 55)
+- [x] **Task 26.3**: Mobile Responsive Touch Cards (Completed in Phase 55)
+- [x] **Task 26.4**: Verification & Testing (Completed in Phase 55)
 
-### Phase 27: Point-of-Sale (POS) Invoice Creation & Cashier Checkout (`/admin/invoices/create`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 27.1**: Backend Pharmacy Catalog & Inventory Search Endpoint
-  - Implement `/admin/inventory/batches/search?q=...` to support fast debounced lookup across all active medicine batches, remedies, potencies, and pharmaceuticals with live stock and selling prices.
-  - Upgrade `InvoiceController::store` to accept optional `auto_print_pos` boolean and return appropriate redirect/print metadata.
-- [ ] **Task 27.2**: Frontend POS Terminal Transformation
-  - Upgrade patient selection with rich Demographics Verification Card (Photo, IDs, Old ID, Blood Group, Age) and barcode scanner listener.
-  - Replace static 50-item batch dropdown with async debounced Pharmacy Stock Search Combobox.
-  - Add built-in POS Cash Drawer Calculator with cash tendered input, quick denomination chips (`[ Exact ]`, `[ ৳500 ]`, `[ ৳1,000 ]`, `[ ৳2,000 ]`), and live change return indicator (ফেরত দিন).
-  - Add `[x] Automatically open 80mm POS Thermal Slip print dialog` toggle with fast-track `[ + Create Next Invoice ]` action.
-- [ ] **Task 27.3**: Mobile Responsive Touch POS Layout
-  - Implement 2-column POS Terminal layout on Desktop/Tablet (Left: Items & Patient, Right: Calculation, Tender & Payment).
-  - High-density mobile touch card stream (`block md:hidden`) with tactile `+` / `-` quantity steppers and sticky bottom summary.
-- [ ] **Task 27.4**: Verification & Testing
-  - Add feature tests in `PatientBillingAndCashRegisterTest.php` covering batch search, change calculation, and POS auto-print redirection. Pint formatting and Vite build verification.
+### Phase 27: Point-of-Sale (POS) Invoice Creation & Cashier Checkout (`/admin/invoices/create`) (`[x] COMPLETED - Merged into Phase 56`)
+- [x] **Task 27.1**: Backend Pharmacy Catalog & Inventory Search Endpoint (Completed in Phase 56)
+- [x] **Task 27.2**: Frontend POS Terminal Transformation (Completed in Phase 56)
+- [x] **Task 27.3**: Mobile Responsive Touch POS Layout (Completed in Phase 56)
+- [x] **Task 27.4**: Verification & Testing (Completed in Phase 56)
 
-### Phase 28: Communication Settings, Gateway Balance Check & Template Studio Upgrade (`/admin/communications/settings`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 28.1**: Backend Live Gateway Diagnostics & Balance Check Endpoints
-  - Add `/admin/communications/check-balance` endpoint querying vendor balance API (Greenweb balance API, MimSMS balance API) and returning credit status.
-  - Add `/admin/communications/test-ping` endpoint allowing admin to dispatch a test SMS to a specified phone number and view real-time HTTP response.
-  - Extend `UpdateSmsSettingsRequest` and `CommunicationService` to support `auto_sms_billing` trigger and `billing_receipt` template.
-- [ ] **Task 28.2**: Frontend Template Studio & Live Counter Transformation
-  - Implement real-time character & segment counter distinguishing GSM 7-bit English (160 chars) from Unicode Bengali (70 chars) with amber billing cost alerts.
-  - Add clickable variable chips (`[+ Patient Name]`, `[+ Doctor Name]`, `[+ Token Code]`, `[+ Date]`, `[+ Rx Link]`) inserting placeholders at cursor position.
-  - Add live Mobile Phone Preview rendering message text in a smartphone simulator frame.
-  - Add WhatsApp sharing template customization editor.
-- [ ] **Task 28.3**: Mobile Responsive Studio Layout
-  - Implement tactile accordion / tabbed view on mobile (`[ 📡 Gateway ]`, `[ ⚡ Triggers ]`, `[ 📝 Templates ]`) preventing long vertical scrolling.
-- [ ] **Task 28.4**: Verification & Testing
-  - Add feature tests in `AutomatedPatientCommunicationsTest.php` verifying balance checking, test ping dispatch, billing receipt SMS triggering, and template saving. Pint formatting and Vite build verification.
+### Phase 28: Communication Settings, Gateway Balance Check & Template Studio Upgrade (`/admin/communications/settings`) (`[x] COMPLETED - Merged into Phase 58`)
+- [x] **Task 28.1**: Backend Live Gateway Diagnostics & Balance Check Endpoints (Completed in Phase 58)
+- [x] **Task 28.2**: Frontend Template Studio & Live Counter Transformation (Completed in Phase 58)
+- [x] **Task 28.3**: Mobile Responsive Studio Layout (Completed in Phase 58)
+- [x] **Task 28.4**: Verification & Testing (Completed in Phase 58)
 
-### Phase 29: Clinical, Financial & Operational Analytics Reports Suite (`/admin/reports`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 29.1**: Backend Multi-Dimensional Analytics Aggregation & Search
-  - Upgrade `ReportController::index` to support multi-column search (`search` / `q`) across patient name, phone, patient code, and chief complaint / diagnosis.
-  - Implement filters for `doctor_id`, `status` (`finalized`, `draft`, `amended`), and `date_preset` (`today`, `yesterday`, `this_week`, `this_month`, `last_month`, `this_year`).
-  - Calculate executive KPI summary statistics: total consultations, unique patients seen, finalized prescriptions, and average daily patient volume.
-  - Provide domain-specific aggregations: Doctor Productivity metrics and Top Dispensed Remedies.
-  - Add CSV export endpoint (`GET /admin/reports/export`) to stream filtered clinical activity records for external statistical analysis.
-- [ ] **Task 29.2**: Frontend Analytical Studio & Multi-Tab Dashboard
-  - Implement top executive KPI tiles with visual icons and comparative statistics.
-  - Add 3 dedicated analytical tabs: `[ 📋 Consultations & Morbidity ]`, `[ 👨‍⚕️ Doctor Productivity ]`, and `[ 💊 Top Dispensed Remedies ]`.
-  - Add tactile date preset pill buttons (`[ Today ]`, `[ This Week ]`, `[ This Month ]`, `[ This Year ]`).
-  - Add 350ms debounced search bar with reset (`✕`) button and Doctor filter dropdown.
-- [ ] **Task 29.3**: Mobile Responsive Analytics Layout
-  - Implement high-density mobile touch summary cards (`block md:hidden`) with expandable complaint and diagnosis details.
-- [ ] **Task 29.4**: Verification & Testing
-  - Feature test coverage in `PatientClinicalAccessTest.php` verifying multi-dimensional report filters, doctor aggregation, CSV export, and permissions. Pint formatting and Vite build verification.
+### Phase 29: Clinical, Financial & Operational Analytics Reports Suite (`/admin/reports`) (`[x] COMPLETED - Merged into Phase 57`)
+- [x] **Task 29.1**: Backend Multi-Dimensional Analytics Aggregation & Search (Completed in Phase 57)
+- [x] **Task 29.2**: Frontend Analytical Studio & Multi-Tab Dashboard (Completed in Phase 57)
+- [x] **Task 29.3**: Mobile Responsive Analytics Layout (Completed in Phase 57)
+- [x] **Task 29.4**: Verification & Testing (Completed in Phase 57)
 
-### Phase 30: Homeopathic Medicine Catalog, Pharmacopoeia Search & Batch Inventory Integration (`/admin/medicines`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 30.1**: Backend Multi-Nomenclature Search & Inventory Aggregation
-  - Upgrade `MedicineController::index` to support multi-field search (`search` / `q`) matching against Latin name, common name, Bengali phonetic name, and abbreviation.
-  - Implement potency scale filtering (`potency_scale`: `all`, `ch`, `lm`, `x`, `q`), formulation filter (`form`: `drops`, `pills`, `liquid`), and status filter (`status`: `active`, `inactive`, `all`).
-  - Calculate real-time aggregate physical stock across active `medicine_batches` (`item_type = 'remedy'`) using `withSum('batches as total_batch_stock', 'current_quantity')`.
-  - Add configurable pagination (`per_page`: 15, 25, 50, 100) and default alphabetical ordering (`orderBy('name', 'asc')`).
-  - Add CSV export endpoint (`GET /admin/medicines/export`) streaming remedies, potencies, formulations, and active inventory stock levels.
-- [ ] **Task 30.2**: Frontend Clinical Pharmacopoeia Studio & Filter Pill Strip
-  - Implement 300ms debounced search bar with instant reset button (`✕`).
-  - Add 1-click potency scale pill strip: `[ All Scales ]`, `[ Centesimal (CH) ]`, `[ 50-Millesimal (LM/Q) ]`, `[ Decimal (X) ]`, and `[ Mother Tinctures (Q) ]`.
-  - Add live inventory stock badge (`In Stock (XX)`, `Low Stock (XX)`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={name}`.
-  - Update deactivation modal to accurately reflect reversible status toggle rather than permanent deletion.
-- [ ] **Task 30.3**: Mobile Responsive Pharmacopoeia Touch Cards
-  - Implement high-density mobile touch cards (`block md:hidden`) featuring remedy name, Bengali script, potency pill with scale-specific color coding (CH = blue, LM = purple, X = emerald, Q = amber), form icon (💧 Drops, ⚪ Pills, 🧪 Liquid), live stock badge, and 44px+ touch-friendly actions.
-- [ ] **Task 30.4**: Verification & Testing
-  - Add feature test suite `tests/Feature/MedicineCatalogTest.php` verifying multi-nomenclature search, potency scale filters, batch stock aggregation, soft deactivation, and permissions.
+### Phase 30: Homeopathic Medicine Catalog, Pharmacopoeia Search & Batch Inventory Integration (`/admin/medicines`) (`[x] COMPLETED - Merged into Phase 53`)
+- [x] **Task 30.1**: Backend Multi-Nomenclature Search & Inventory Aggregation (Completed in Phase 53)
+- [x] **Task 30.2**: Frontend Clinical Pharmacopoeia Studio & Filter Pill Strip (Completed in Phase 53)
+- [x] **Task 30.3**: Mobile Responsive Pharmacopoeia Touch Cards (Completed in Phase 53)
+- [x] **Task 30.4**: Verification & Testing (Completed in Phase 53)
 
 ### Phase 31: Allopathic Pharmaceuticals Catalog, Multi-Parameter Search & Batch Inventory Integration (`/admin/pharmaceuticals`) (`[x] COMPLETED`)
 - [x] **Task 31.1**: Backend Multi-Parameter Search, Strength Matching & Inventory Aggregation
@@ -458,8 +393,8 @@
   - Upgrade `PharmaceuticalController::destroy` to perform safe reversible deactivation (`is_active = false`), preventing accidental cascading deletion of historical batch inventory in `medicine_batches`.
   - Block hard deletion if active batches or prescription items are linked.
 - [x] **Task 31.3**: Frontend Clinical Formulary Studio & Dosage Form Pill Strip
-  - Implement 300ms debounced search bar with instant reset button (`✕`).
-  - Add 1-click horizontal dosage form pill strip: `[ All Forms ]`, `[ Tablet 💊 ]`, `[ Capsule 💊 ]`, `[ Syrup 🧪 ]`, `[ Suspension 🧪 ]`, `[ Injection 💉 ]`, `[ Drops 🧴 ]`, `[ Inhaler / Ointment 🧴 ]`.
+  - Implement 300ms debounced search bar with instant reset button (`âœ•`).
+  - Add 1-click horizontal dosage form pill strip: `[ All Forms ]`, `[ Tablet ðŸ’Š ]`, `[ Capsule ðŸ’Š ]`, `[ Syrup ðŸ§ª ]`, `[ Suspension ðŸ§ª ]`, `[ Injection ðŸ’‰ ]`, `[ Drops ðŸ§´ ]`, `[ Inhaler / Ointment ðŸ§´ ]`.
   - Add live inventory stock badge (`In Stock: XX`, `Low Stock: XX`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={brand_name}` for rapid stock replenishment.
   - Update confirmation dialog to accurately reflect safe status deactivation rather than permanent deletion.
 - [x] **Task 31.4**: Mobile Responsive Formulary Touch Cards
@@ -483,24 +418,12 @@
   - Add feature tests in `tests/Feature/PharmaceuticalCatalogTest.php` covering drug creation, opening batch creation, and validation rules.
   - Run Pint code formatting and build Vite production assets.
 
-### Phase 33: Pharmacy Multi-Batch Inventory, FEFO Sorting & Mobile Workstation (`/admin/inventory`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 33.1**: Backend Multi-Attribute Search, FEFO Sorting & Stocktake CSV Export
-  - Upgrade `InventoryController::index` to search across `batch_number`, `supplier_name`, `form`, `potency`, `medicine.name`, `pharmaceutical.brand_name`, `pharmaceutical.generic_name`, and `pharmaceutical.strength`.
-  - Implement sort selector: `latest` (default), `expiry_asc` (FEFO - earliest expiry first), `stock_asc` (reorder priority), `stock_desc`, `name_asc`.
-  - Add supplier filter and configurable pagination (`per_page`: 15, 25, 50, 100).
-  - Add CSV export endpoint (`GET /admin/inventory/export`) streaming physical stocktake sheet with batch details, location, current quantity, expiry, cost, and selling valuation.
-- [ ] **Task 33.2**: Audit Protection & Cascade Deletion Hardening
-  - Upgrade `InventoryController::destroy` to perform safe deactivation (`is_active = false`) if stock transactions exist, protecting the transaction ledger and invoice records.
-- [ ] **Task 33.3**: Frontend Workstation & FEFO Sort Controls
-  - Implement 300ms debounced instant search with clear (`✕`) button.
-  - Add FEFO / Reorder priority sort dropdown and per-page selector.
-  - Add `📥 Export Stocktake CSV` action in header.
-  - Replace browser `confirm()` with RemediQ's standard `ConfirmDialog` component.
-- [ ] **Task 33.4**: Mobile Responsive Inventory Batch Touch Cards
-  - Implement high-density mobile touch cards (`block md:hidden`) featuring item title, potency/strength tag, stock balance with reorder indicator, expiry urgency pill, buy/sell valuation chips, and 44px+ touch-friendly action buttons (`Adjust Stock`, `Edit`, `Deactivate`).
-- [ ] **Task 33.5**: Verification & Testing
-  - Add feature test suite `tests/Feature/PharmacyInventoryTest.php` verifying multi-attribute search, FEFO sorting, CSV export, safe deactivation, and mobile touch cards.
-  - Run Pint code formatting and build Vite production assets.
+### Phase 33: Pharmacy Multi-Batch Inventory, FEFO Sorting & Mobile Workstation (`/admin/inventory`) (`[x] COMPLETED - Merged into Phase 54`)
+- [x] **Task 33.1**: Backend Multi-Attribute Search, FEFO Sorting & Stocktake CSV Export (Completed in Phase 54)
+- [x] **Task 33.2**: Audit Protection & Cascade Deletion Hardening (Completed in Phase 54)
+- [x] **Task 33.3**: Frontend Workstation & FEFO Sort Controls (Completed in Phase 54)
+- [x] **Task 33.4**: Mobile Responsive Inventory Batch Touch Cards (Completed in Phase 54)
+- [x] **Task 33.5**: Verification & Testing (Completed in Phase 54)
 
 ### Phase 34: Pharmaceutical & Remedy Manufacturer Master Management (`/admin/manufacturers`) (`[x] COMPLETED`)
 - [x] **Task 34.1**: Database Schema & Eloquent Architecture
@@ -512,7 +435,7 @@
   - Implement `ManufacturerController` with `index`, `create`, `store`, `edit`, `update`, `destroy` (safe deactivation), and `search` JSON API endpoint.
   - Register RESTful and search routes under `routes/admin.php`.
 - [x] **Task 34.3**: Frontend Directory, Responsive Workstation & Mobile Touch Cards (`/admin/manufacturers`)
-  - Implement `resources/js/Pages/Admin/Manufacturers/Index.jsx` with KPI tiles, 300ms debounced search, category filter pills (`All`, `Allopathy 💊`, `Homeopathy 🌿`, `Dual 🏥`, `Surgical 🩺`), desktop DataTable, and mobile touch cards (`block md:hidden`).
+  - Implement `resources/js/Pages/Admin/Manufacturers/Index.jsx` with KPI tiles, 300ms debounced search, category filter pills (`All`, `Allopathy ðŸ’Š`, `Homeopathy ðŸŒ¿`, `Dual ðŸ¥`, `Surgical ðŸ©º`), desktop DataTable, and mobile touch cards (`block md:hidden`).
   - Add click-to-call `tel:` MR links and deactivation modal.
 - [x] **Task 34.4**: Frontend Entry & Edit Studios (`Create.jsx` & `Edit.jsx`)
   - Create `resources/js/Pages/Admin/Manufacturers/Create.jsx` with 1-click Bangladeshi & international presets (`Square`, `Beximco`, `Incepta`, `Renata`, `Schwabe Germany`, `SBL India`, `Dr. Reckeweg`).
@@ -553,7 +476,7 @@
   - Created `StoreSymptomRequest` and `UpdateSymptomRequest` with strict validation for `name_en`, `code`, `name_bn`, `category`, `modalities`, and `is_active`.
   - Upgraded `SymptomController`: eager-loads `withCount('medicines')`, calculates executive KPI metrics, supports debounced multi-field search and chapter filtering, and enforces safe deactivation if linked to visits or remedy mappings.
 - [x] **Task 36.4**: Responsive Multi-Screen Workstation & Ergonomics
-  - `Symptoms/Index.jsx`: Header KPI ribbon (Total, Active, Mapped, Repertory Chapters), 300ms debounced search with `✕`, 1-click Chapter Tab Pills, Mapping Status dropdown, Desktop DataTable with `💊 X Meds ↗` link, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `Symptoms/Index.jsx`: Header KPI ribbon (Total, Active, Mapped, Repertory Chapters), 300ms debounced search with `âœ•`, 1-click Chapter Tab Pills, Mapping Status dropdown, Desktop DataTable with `ðŸ’Š X Meds â†—` link, and Mobile High-Density Touch Cards (`block md:hidden`).
   - `Symptoms/Create.jsx`: RemediQ PageHeader, 1-Click Kent Rubric Presets Toolbar (auto-fills English, Bengali, chapter, modalities), and chapter selector.
   - `Symptoms/Edit.jsx`: Mapped remedies banner with direct link to knowledge graph (`/admin/symptom-medicine-map?symptom_id={id}`), chapter selector, and modalities editor.
 - [x] **Task 36.5**: Automated Verification & Regression Testing
@@ -568,9 +491,9 @@
   - Added pre-selection support on `create()` (`preselectedSymptomId`, `preselectedMedicineId`).
 - [x] **Task 37.2**: Responsive Workstation & Filter Controls (`Index.jsx`)
   - Built executive KPI metric ribbon displaying Total References, Active in CDSS, Pending Review, Drafts, and Inactive.
-  - Added 300ms debounced search bar with instant clear (`✕`) button.
-  - Implemented Review status tabs (`All`, `Approved ✅`, `Pending Review ⏳`, `Drafts 📝`, `Inactive 🚫`) with real-time counter badges.
-  - Implemented Kent Chapter and Grade (1–4) selector dropdowns.
+  - Added 300ms debounced search bar with instant clear (`âœ•`) button.
+  - Implemented Review status tabs (`All`, `Approved âœ…`, `Pending Review â³`, `Drafts ðŸ“`, `Inactive ðŸš«`) with real-time counter badges.
+  - Implemented Kent Chapter and Grade (1â€“4) selector dropdowns.
   - Added active filter dismiss banners for cross-module deep links from `/admin/symptoms` and `/admin/medicines`.
   - Upgraded batch CSV import workstation with collapsible toggle to preserve screen space.
 - [x] **Task 37.3**: Multi-Screen Responsive Touch Cards (`Index.jsx`)
@@ -578,7 +501,7 @@
 - [x] **Task 37.4**: Creation & Editing Studio Upgrades (`Create.jsx` & `Edit.jsx`)
   - Integrated with RemediQ design system and standard `PageHeader`.
   - Added filterable selectors for symptoms and homeopathic medicines.
-  - Added visual Grade 1–4 radio selector with clinical descriptions (Ordinary, Moderate, Strong, Keynote).
+  - Added visual Grade 1â€“4 radio selector with clinical descriptions (Ordinary, Moderate, Strong, Keynote).
   - Added 1-Click Classical Literature Presets toolbar (*Kent Repertory*, *Boericke Materia Medica*, *Boger Boenninghausen*, *Allen's Keynotes*).
 - [x] **Task 37.5**: Automated Feature Verification & Testing
   - Expanded `SymptomMedicineMapGovernanceTest.php` with 3 new comprehensive tests verifying search, status filtering, deep linking, chapter filtering, and grade filtering.
@@ -601,7 +524,7 @@
   - Upgraded `AdviceItemController.php` with debounced search, category tabs, default filter, active filter, KPI metrics aggregation (`total`, `default`, `homeopathic`, `general`, `diet`, `lifestyle`, `hygiene`, `warning`, `active`).
   - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_advice`, protecting historical clinical records.
 - [x] **Task 38.5**: Responsive Multi-Screen Workstation & Ergonomics
-  - `AdviceItems/Index.jsx`: Executive KPI ribbon, 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `AdviceItems/Index.jsx`: Executive KPI ribbon, 300ms debounced search with `âœ•`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
   - `AdviceItems/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar, structured category select, default toggle card, and validation error displays.
   - `AdviceItems/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, and active status toggle.
 - [x] **Task 38.6**: Automated Verification & Regression Testing
@@ -624,7 +547,7 @@
   - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_food_restriction`, protecting historical clinical records.
   - Added `toggleStatus` and `toggleDefault` endpoints.
 - [x] **Task 39.5**: Responsive Multi-Screen Workstation & Ergonomics
-  - `FoodRestrictions/Index.jsx`: Executive KPI ribbon (5 cards), 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
+  - `FoodRestrictions/Index.jsx`: Executive KPI ribbon (5 cards), 300ms debounced search with `âœ•`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
   - `FoodRestrictions/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar (Antidotes, Cold/Sour, Spicy/Oily, Allergic, Salt/Sugar), structured category select, default toggle card, and validation error displays.
   - `FoodRestrictions/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, fast-track presets toolbar, and active status toggle.
 - [x] **Task 39.6**: Automated Verification & Regression Testing
@@ -642,8 +565,8 @@
   - Registered `PATCH /admin/doctors/{doctor}/toggle-status` under RBAC `role_or_permission:Super Admin|doctors.update` for instantaneous 1-click status toggling.
   - Upgraded `DoctorController@show` with consultation counts, schedule counts, and secure clinic branding URLs (`photo_url`, `signature_url`, `seal_url`).
 - [x] **Task 40.3**: Responsive Multi-Screen Workstation & Ergonomics
-  - `Doctors/Index.jsx`: Executive KPI ribbon (4 tiles), 300ms debounced search bar with `✕` clear button, horizontal Status filter tabs (`All`, `Active in Practice 🩺`, `Inactive / On Leave ⏸️`), Account Linkage filter (`All`, `Linked Account 👤`, `Profile Only 📄`).
-  - Desktop `DataTable` (`hidden md:table`): Practitioner avatar thumbnail, active status dot, degrees/credentials, government registration badge (`govt_reg_no`), click-to-call phone links, linked system username badge, and quick action buttons (`View`, `Edit`, `📅 Schedule`, `Toggle Status`, `Delete/Deactivate`).
+  - `Doctors/Index.jsx`: Executive KPI ribbon (4 tiles), 300ms debounced search bar with `âœ•` clear button, horizontal Status filter tabs (`All`, `Active in Practice ðŸ©º`, `Inactive / On Leave â¸ï¸`), Account Linkage filter (`All`, `Linked Account ðŸ‘¤`, `Profile Only ðŸ“„`).
+  - Desktop `DataTable` (`hidden md:table`): Practitioner avatar thumbnail, active status dot, degrees/credentials, government registration badge (`govt_reg_no`), click-to-call phone links, linked system username badge, and quick action buttons (`View`, `Edit`, `ðŸ“… Schedule`, `Toggle Status`, `Delete/Deactivate`).
   - Mobile High-Density Touch Cards (`block md:hidden`): Touch-optimized 44px+ buttons, doctor credentials, specialty, phone links, and schedule deep-links.
   - Clinical Authorship Protection: Smart `ConfirmDialog` warning if a doctor has consultation history (`visits_count > 0`), disabling hard deletion and offering safe deactivation.
 - [x] **Task 40.4**: Automated Verification & Regression Testing
@@ -653,7 +576,7 @@
 
 ### Phase 41: Prescription Options & Clinical Presets Workstation (`/admin/prescription-options`) (`[x] COMPLETED`)
 - [x] **Task 41.1**: Domain Model & Clinical Catalog Hardening
-  - Updated `ClinicSetting::defaultPrescriptionConfig()` with classical succussion & dilution templates (*১০ ঝাঁকিসহ আধা কাপ পানির সাথে খাবেন*, *শিশি ১০ বার ঝাঁকিয়ে নিবেন*, *চিনির বড়িতে করে সেব্য*, etc.) and expanded dual-practice medication units (`capsules`, `sachets`, `puffs`, `30_min_before`, `as_needed`).
+  - Updated `ClinicSetting::defaultPrescriptionConfig()` with classical succussion & dilution templates (*à§§à§¦ à¦à¦¾à¦à¦•à¦¿à¦¸à¦¹ à¦†à¦§à¦¾ à¦•à¦¾à¦ª à¦ªà¦¾à¦¨à¦¿à¦° à¦¸à¦¾à¦¥à§‡ à¦–à¦¾à¦¬à§‡à¦¨*, *à¦¶à¦¿à¦¶à¦¿ à§§à§¦ à¦¬à¦¾à¦° à¦à¦¾à¦à¦•à¦¿à¦¯à¦¼à§‡ à¦¨à¦¿à¦¬à§‡à¦¨*, *à¦šà¦¿à¦¨à¦¿à¦° à¦¬à§œà¦¿à¦¤à§‡ à¦•à¦°à§‡ à¦¸à§‡à¦¬à§à¦¯*, etc.) and expanded dual-practice medication units (`capsules`, `sachets`, `puffs`, `30_min_before`, `as_needed`).
 - [x] **Task 41.2**: Backend Controller & KPI Aggregation
   - Upgraded `PrescriptionOptionController@edit` with real-time KPI metrics (`total_timings`, `total_dose_units`, `total_meal_relations`, `total_instructions`, `total_duration_presets`, `default_duration_days`, `default_dose_unit`).
   - Validated clean updates through `UpdatePrescriptionOptionsRequest` and protected by RBAC permissions (`prescription_options.view`, `create`, `update`, `delete`).
@@ -661,7 +584,7 @@
   - Built an interactive live preview simulator in `Admin/PrescriptionOptions/Edit.jsx` rendering dynamic bilingual (English & Bengali) prescription sentences with customizable remedy, dose quantity, unit, timing, meal relation, and dilution.
 - [x] **Task 41.4**: Multi-Screen Touch Ergonomics & Real-Time Preset Search
   - Upgraded `PrescriptionConfigModal.jsx` with real-time keyword search across all 4 tabs (English keys, English labels, Bengali script, instructions, durations).
-  - Added 1-Click Fast-Track Clinical Preset Packs toolbar (*🌿 Classical Homeopathy Pack*, *💊 General Practice Pack*, *🔄 Reset Safe Defaults*).
+  - Added 1-Click Fast-Track Clinical Preset Packs toolbar (*ðŸŒ¿ Classical Homeopathy Pack*, *ðŸ’Š General Practice Pack*, *ðŸ”„ Reset Safe Defaults*).
   - Added responsive dual-screen presentation: Desktop tabular rows with keyboard shortcuts (Enter to save, Esc to cancel) and Mobile High-Density Touch Cards (`block md:hidden`) with 44px+ tap targets.
   - Implemented Default Dependency Guard preventing accidental deletion of the active `default_dose_unit`.
 - [x] **Task 41.5**: Automated Testing & Verification
@@ -674,13 +597,13 @@
   - Updated `ClinicSettingController@editGeneral` to calculate and return executive KPIs: `total_profiles`, `active_profiles`, `default_profile_name`, `default_profile_preview`, `old_id_mode`, and `total_registered_patients`.
   - Preserved RBAC authorization guards (`general_settings.view`, `general_settings.create`, `general_settings.update`, `general_settings.delete`, and Super Admin).
 - [x] **Task 42.2**: Category Real-Time Search & Status Filtering
-  - Added instant search bar with match count indicator and one-click clear button (`✕`) matching category names, codes, and prefixes.
+  - Added instant search bar with match count indicator and one-click clear button (`âœ•`) matching category names, codes, and prefixes.
   - Added status filter pills (`All`, `Active`, `Inactive`) for quick category isolation.
 - [x] **Task 42.3**: Multi-Screen Responsive Layout & Touch Ergonomics
   - Implemented High-Density Mobile Touch Cards (`block sm:hidden`) with 44px+ touch targets for Edit and Deactivate actions.
   - Added smooth auto-scroll to the editor form container when initiating an edit on mobile devices.
 - [x] **Task 42.4**: Fast-Track Clinical Presets & Old ID Business Logic Preservation
-  - Added 1-Click Fast-Track Presets toolbar (`🩺 General Patients`, `👶 Pediatric Clinic`, `🧓 Senior Citizens`, `🏕️ Free Camp`).
+  - Added 1-Click Fast-Track Presets toolbar (`ðŸ©º General Patients`, `ðŸ‘¶ Pediatric Clinic`, `ðŸ§“ Senior Citizens`, `ðŸ•ï¸ Free Camp`).
   - Preserved 100% of Old / Other ID Numbering business rules (Auto vs Manual mode, prefix, padding, max_length, and staff override permissions).
   - Maintained minimum 1 active profile invariant safeguard.
 - [x] **Task 42.5**: Automated Testing & Verification
@@ -695,13 +618,13 @@
   - Added conflict detection checking active `PatientQueueToken` (`waiting`, `in_consultation`) and `AppointmentRequest` (`pending`, `scheduled`) records, returning flash warning with reschedule advice.
   - Calculated and returned Executive KPI metrics (`total_doctors`, `active_days`, `weekly_hours`, `assigned_chamber`, `upcoming_leaves`).
 - [x] **Task 43.2**: Schedules Workstation Modernization (`resources/js/Pages/Admin/Calendar/Schedules.jsx`)
-  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `📅 Calendar`, `🎟️ Queue`, `📝 Requests`).
+  - Integrated RemediQ `PageHeader` with quick links (`ðŸ‘¨â€âš•ï¸ Doctors`, `ðŸ“… Calendar`, `ðŸŽŸï¸ Queue`, `ðŸ“ Requests`).
   - Added 5-card Executive KPI summary ribbon.
   - Implemented real-time Doctor Search Bar with instant filtering and mobile quick-switch `<select>` dropdown.
-  - Built 1-Click Fast-Track Schedule Accelerators (`📋 Copy Sunday to Working Days`, `⚡ Apply Sunday to All Active Days`, `🕌 Set Friday Off`).
+  - Built 1-Click Fast-Track Schedule Accelerators (`ðŸ“‹ Copy Sunday to Working Days`, `âš¡ Apply Sunday to All Active Days`, `ðŸ•Œ Set Friday Off`).
   - Added Chamber Quick Pills (`Chamber 1`, `Chamber 2`, `Chamber 3`, `OPD Room 1`, `Consultation Room`).
   - Built Multi-Day Leave Range Picker with quick reason chips (*Annual Vacation*, *Medical Leave*, *Conference*, *Emergency*).
-  - Added Mobile Sub-Tab Switcher (`[ 🕒 Weekly Visiting Hours ]` vs `[ 🏖️ Leaves & Holidays ]`) with 44px+ touch targets on screens < 768px.
+  - Added Mobile Sub-Tab Switcher (`[ ðŸ•’ Weekly Visiting Hours ]` vs `[ ðŸ–ï¸ Leaves & Holidays ]`) with 44px+ touch targets on screens < 768px.
 - [x] **Task 43.3**: Automated Testing & Suite Verification
   - Authored comprehensive test suite `tests/Feature/DoctorScheduleWorkstationTest.php` with 8 feature tests passing (38 assertions).
   - Verified full Doctor test suite with zero regressions (109 tests passed, 827 assertions).
@@ -714,389 +637,10 @@
   - Computed recurring weekly doctor shift rosters (`doctorShifts`) across all days of the week (Sun-Sat) with chamber assignments and duty hours.
   - Aggregated monthly Executive KPI metrics (`total_appointments`, `total_visits`, `total_leaves`, `today_activity`, `active_doctors`).
 - [x] **Task 44.2**: Modernized Visual Calendar Workstation (`resources/js/Pages/Admin/Calendar/Index.jsx`)
-  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `🕒 Schedules`, `🎟️ Queue`, `📝 Requests`).
+  - Integrated RemediQ `PageHeader` with quick links (`ðŸ‘¨â€âš•ï¸ Doctors`, `ðŸ•’ Schedules`, `ðŸŽŸï¸ Queue`, `ðŸ“ Requests`).
   - Added 5-card Executive Monthly KPI summary ribbon.
   - Implemented real-time Search Bar with active cell emerald glow highlights and match counter.
-  - Added 1-Click Event Category Filter Toolbar (`All Events`, `🕒 Appointments`, `🩺 Visits`, `🏖️ Doctor Leaves`).
-  - Integrated recurring doctor shift badges on calendar day cells with automatic strikethrough for approved leaves.
-  - Implemented Mobile Daily Agenda Timeline View (`block md:hidden`) with an interactive day-picker ribbon and chronological agenda feed.
-  - Upgraded Day Details Studio with 1-tap phone dialing (`tel:`), WhatsApp click-to-chat (`https://wa.me/...`), 1-click token issuance bridge, and fast-track booking link.
-- [x] **Task 44.3**: Automated Testing & Suite Verification
-  - Authored comprehensive test suite `tests/Feature/CalendarWorkstationTest.php` with 6 feature tests passing (74 assertions).
-  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
-  - Compiled production frontend assets with Vite (`npm run build`).
-- [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
-  - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
-  - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
-  - Add dual-submission actions: `[ 📝 Save as Pending Request ]` and `[ ⚡ Confirm & Schedule Slot Immediately ]` with automatic SMS dispatch.
-  - Add live Doctor Duty & Roster Card showing consulting shifts and off-days/leaves on selected dates.
-  - Support pre-filling via URL parameters: `?patient_id=X` and `?date=YYYY-MM-DD`.
-
-### Phase 25: Appointment Requests, Intake Search & Triage Operations Upgrade (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 25.1**: Backend Universal Search, Date Range Filter & KPI Aggregates
-  - Upgrade `AdminApptController::index` to accept `search` / `q` matching patient name, phone, request #ID, and message notes.
-  - Implement date preset filter (`today`, `tomorrow`, `this_week`, `pending_unactioned`) and custom `scheduled_date` / date range.
-  - Compute KPI summary aggregates (`total`, `pending_action`, `contacted`, `scheduled_today`) and return with Inertia payload.
-  - Add quick status update route (`PATCH /admin/appointment-requests/{id}/quick-status`) for 1-click status transitions (e.g. marking `contacted`).
-- [ ] **Task 25.2**: Desktop & Tablet Experience
-  - Implement top KPI metric banner cards with clear operational counts.
-  - Add debounced search input (350ms) with reset (`✕`) button and status filter tabs.
-  - Display prominent `[ ⏰ Today's Appointment ]` highlight badges and prioritize the `[ 🎟️ Issue Token ]` action for today's arrivals.
-- [ ] **Task 25.3**: Mobile Responsive Touch Cards
-  - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) with 1-tap call (`tel:`) and 1-tap WhatsApp (`wa.me`) reach.
-  - Add quick status toggle pill and 1-click `[ 🎟️ Issue Token ]` action bar with touch targets >= 44px.
-- [ ] **Task 25.4**: Verification & Testing
-  - Add feature tests in `AppointmentRequestWorkflowTest.php` covering search by name, phone, ID, date presets, and quick status actions. Pint formatting and Vite build verification.
-
-### Phase 26: Invoices Directory Search, Quick Due Payment & Multi-Screen Transformation (`/admin/invoices`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 26.1**: Backend Multi-Column Smart Search, Quick Date Presets & CSV Export
-  - Upgrade `InvoiceController::index` to search across `invoice_number`, `patient.name`, `patient.phone`, `patient.patient_code`, `patient.old_or_other_id`, `patient.patient_no`, and `visit.doctor.name`.
-  - Add date presets filter (`today`, `yesterday`, `this_week`, `this_month`) and payment method filter (`cash`, `bkash`, `nagad`, `rocket`, `card`, `bank`).
-  - Add CSV export endpoint (`GET /admin/invoices/export`) to stream filtered invoice records for accounting reconciliation.
-- [ ] **Task 26.2**: Desktop & Tablet Experience
-  - Implement 350ms debounced search bar with reset (`✕`) button and active filter chips.
-  - Add tactile date preset pill buttons (`[ Today ]`, `[ Yesterday ]`, `[ This Week ]`, `[ This Month ]`).
-  - Add 1-click `[ 💵 Collect Due ]` modal allowing cashiers to record full or partial payments directly from the directory without navigating to the detail page.
-- [ ] **Task 26.3**: Mobile Responsive Touch Cards
-  - Implement dual-mode presentation: high-density **Mobile Touch Cards** (`block md:hidden`) displaying invoice #, status badge, patient name with 1-tap call, color-coded financial pills (Total, Paid, Due), and 1-tap thermal POS receipt printing.
-- [ ] **Task 26.4**: Verification & Testing
-  - Feature test coverage in `PatientBillingAndCashRegisterTest.php` verifying search by old ID, doctor name, date presets, CSV export, and quick payment recording. Pint formatting and Vite build verification.
-
-### Phase 27: Point-of-Sale (POS) Invoice Creation & Cashier Checkout (`/admin/invoices/create`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 27.1**: Backend Pharmacy Catalog & Inventory Search Endpoint
-  - Implement `/admin/inventory/batches/search?q=...` to support fast debounced lookup across all active medicine batches, remedies, potencies, and pharmaceuticals with live stock and selling prices.
-  - Upgrade `InvoiceController::store` to accept optional `auto_print_pos` boolean and return appropriate redirect/print metadata.
-- [ ] **Task 27.2**: Frontend POS Terminal Transformation
-  - Upgrade patient selection with rich Demographics Verification Card (Photo, IDs, Old ID, Blood Group, Age) and barcode scanner listener.
-  - Replace static 50-item batch dropdown with async debounced Pharmacy Stock Search Combobox.
-  - Add built-in POS Cash Drawer Calculator with cash tendered input, quick denomination chips (`[ Exact ]`, `[ ৳500 ]`, `[ ৳1,000 ]`, `[ ৳2,000 ]`), and live change return indicator (ফেরত দিন).
-  - Add `[x] Automatically open 80mm POS Thermal Slip print dialog` toggle with fast-track `[ + Create Next Invoice ]` action.
-- [ ] **Task 27.3**: Mobile Responsive Touch POS Layout
-  - Implement 2-column POS Terminal layout on Desktop/Tablet (Left: Items & Patient, Right: Calculation, Tender & Payment).
-  - High-density mobile touch card stream (`block md:hidden`) with tactile `+` / `-` quantity steppers and sticky bottom summary.
-- [ ] **Task 27.4**: Verification & Testing
-  - Add feature tests in `PatientBillingAndCashRegisterTest.php` covering batch search, change calculation, and POS auto-print redirection. Pint formatting and Vite build verification.
-
-### Phase 28: Communication Settings, Gateway Balance Check & Template Studio Upgrade (`/admin/communications/settings`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 28.1**: Backend Live Gateway Diagnostics & Balance Check Endpoints
-  - Add `/admin/communications/check-balance` endpoint querying vendor balance API (Greenweb balance API, MimSMS balance API) and returning credit status.
-  - Add `/admin/communications/test-ping` endpoint allowing admin to dispatch a test SMS to a specified phone number and view real-time HTTP response.
-  - Extend `UpdateSmsSettingsRequest` and `CommunicationService` to support `auto_sms_billing` trigger and `billing_receipt` template.
-- [ ] **Task 28.2**: Frontend Template Studio & Live Counter Transformation
-  - Implement real-time character & segment counter distinguishing GSM 7-bit English (160 chars) from Unicode Bengali (70 chars) with amber billing cost alerts.
-  - Add clickable variable chips (`[+ Patient Name]`, `[+ Doctor Name]`, `[+ Token Code]`, `[+ Date]`, `[+ Rx Link]`) inserting placeholders at cursor position.
-  - Add live Mobile Phone Preview rendering message text in a smartphone simulator frame.
-  - Add WhatsApp sharing template customization editor.
-- [ ] **Task 28.3**: Mobile Responsive Studio Layout
-  - Implement tactile accordion / tabbed view on mobile (`[ 📡 Gateway ]`, `[ ⚡ Triggers ]`, `[ 📝 Templates ]`) preventing long vertical scrolling.
-- [ ] **Task 28.4**: Verification & Testing
-  - Add feature tests in `AutomatedPatientCommunicationsTest.php` verifying balance checking, test ping dispatch, billing receipt SMS triggering, and template saving. Pint formatting and Vite build verification.
-
-### Phase 29: Clinical, Financial & Operational Analytics Reports Suite (`/admin/reports`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 29.1**: Backend Multi-Dimensional Analytics Aggregation & Search
-  - Upgrade `ReportController::index` to support multi-column search (`search` / `q`) across patient name, phone, patient code, and chief complaint / diagnosis.
-  - Implement filters for `doctor_id`, `status` (`finalized`, `draft`, `amended`), and `date_preset` (`today`, `yesterday`, `this_week`, `this_month`, `last_month`, `this_year`).
-  - Calculate executive KPI summary statistics: total consultations, unique patients seen, finalized prescriptions, and average daily patient volume.
-  - Provide domain-specific aggregations: Doctor Productivity metrics and Top Dispensed Remedies.
-  - Add CSV export endpoint (`GET /admin/reports/export`) to stream filtered clinical activity records for external statistical analysis.
-- [ ] **Task 29.2**: Frontend Analytical Studio & Multi-Tab Dashboard
-  - Implement top executive KPI tiles with visual icons and comparative statistics.
-  - Add 3 dedicated analytical tabs: `[ 📋 Consultations & Morbidity ]`, `[ 👨‍⚕️ Doctor Productivity ]`, and `[ 💊 Top Dispensed Remedies ]`.
-  - Add tactile date preset pill buttons (`[ Today ]`, `[ This Week ]`, `[ This Month ]`, `[ This Year ]`).
-  - Add 350ms debounced search bar with reset (`✕`) button and Doctor filter dropdown.
-- [ ] **Task 29.3**: Mobile Responsive Analytics Layout
-  - Implement high-density mobile touch summary cards (`block md:hidden`) with expandable complaint and diagnosis details.
-- [ ] **Task 29.4**: Verification & Testing
-  - Feature test coverage in `PatientClinicalAccessTest.php` verifying multi-dimensional report filters, doctor aggregation, CSV export, and permissions. Pint formatting and Vite build verification.
-
-### Phase 30: Homeopathic Medicine Catalog, Pharmacopoeia Search & Batch Inventory Integration (`/admin/medicines`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 30.1**: Backend Multi-Nomenclature Search & Inventory Aggregation
-  - Upgrade `MedicineController::index` to support multi-field search (`search` / `q`) matching against Latin name, common name, Bengali phonetic name, and abbreviation.
-  - Implement potency scale filtering (`potency_scale`: `all`, `ch`, `lm`, `x`, `q`), formulation filter (`form`: `drops`, `pills`, `liquid`), and status filter (`status`: `active`, `inactive`, `all`).
-  - Calculate real-time aggregate physical stock across active `medicine_batches` (`item_type = 'remedy'`) using `withSum('batches as total_batch_stock', 'current_quantity')`.
-  - Add configurable pagination (`per_page`: 15, 25, 50, 100) and default alphabetical ordering (`orderBy('name', 'asc')`).
-  - Add CSV export endpoint (`GET /admin/medicines/export`) streaming remedies, potencies, formulations, and active inventory stock levels.
-- [ ] **Task 30.2**: Frontend Clinical Pharmacopoeia Studio & Filter Pill Strip
-  - Implement 300ms debounced search bar with instant reset button (`✕`).
-  - Add 1-click potency scale pill strip: `[ All Scales ]`, `[ Centesimal (CH) ]`, `[ 50-Millesimal (LM/Q) ]`, `[ Decimal (X) ]`, and `[ Mother Tinctures (Q) ]`.
-  - Add live inventory stock badge (`In Stock (XX)`, `Low Stock (XX)`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={name}`.
-  - Update deactivation modal to accurately reflect reversible status toggle rather than permanent deletion.
-- [ ] **Task 30.3**: Mobile Responsive Pharmacopoeia Touch Cards
-  - Implement high-density mobile touch cards (`block md:hidden`) featuring remedy name, Bengali script, potency pill with scale-specific color coding (CH = blue, LM = purple, X = emerald, Q = amber), form icon (💧 Drops, ⚪ Pills, 🧪 Liquid), live stock badge, and 44px+ touch-friendly actions.
-- [ ] **Task 30.4**: Verification & Testing
-  - Add feature test suite `tests/Feature/MedicineCatalogTest.php` verifying multi-nomenclature search, potency scale filters, batch stock aggregation, soft deactivation, and permissions.
-
-### Phase 31: Allopathic Pharmaceuticals Catalog, Multi-Parameter Search & Batch Inventory Integration (`/admin/pharmaceuticals`) (`[x] COMPLETED`)
-- [x] **Task 31.1**: Backend Multi-Parameter Search, Strength Matching & Inventory Aggregation
-  - Upgrade `PharmaceuticalController::index` to support multi-column search (`search` / `q`) matching simultaneously across `brand_name`, `generic_name`, `strength`, and `manufacturer`.
-  - Implement dosage form filtering (`dosage_form`), status filter (`status`: `active`, `inactive`, `all`), and stock level filter (`stock_status`: `in_stock`, `low_stock`, `out_of_stock`).
-  - Add `batches()` relationship on `Pharmaceutical` and calculate aggregate physical stock quantity across active `medicine_batches` (`item_type = 'pharmaceutical'`) using `withSum(['batches as total_batch_stock' => fn ($q) => $q->active()], 'current_quantity')`.
-  - Add configurable pagination (`per_page`: 15, 25, 50, 100) and preserve alphabetical sorting by brand name.
-  - Add CSV export endpoint (`GET /admin/pharmaceuticals/export`) streaming all registered pharmaceutical drugs, generics, strengths, manufacturers, and active inventory stock counts.
-- [x] **Task 31.2**: Data Loss Prevention & Cascade Deletion Hardening
-  - Upgrade `PharmaceuticalController::destroy` to perform safe reversible deactivation (`is_active = false`), preventing accidental cascading deletion of historical batch inventory in `medicine_batches`.
-  - Block hard deletion if active batches or prescription items are linked.
-- [x] **Task 31.3**: Frontend Clinical Formulary Studio & Dosage Form Pill Strip
-  - Implement 300ms debounced search bar with instant reset button (`✕`).
-  - Add 1-click horizontal dosage form pill strip: `[ All Forms ]`, `[ Tablet 💊 ]`, `[ Capsule 💊 ]`, `[ Syrup 🧪 ]`, `[ Suspension 🧪 ]`, `[ Injection 💉 ]`, `[ Drops 🧴 ]`, `[ Inhaler / Ointment 🧴 ]`.
-  - Add live inventory stock badge (`In Stock: XX`, `Low Stock: XX`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={brand_name}` for rapid stock replenishment.
-  - Update confirmation dialog to accurately reflect safe status deactivation rather than permanent deletion.
-- [x] **Task 31.4**: Mobile Responsive Formulary Touch Cards
-  - Implement high-density mobile touch cards (`block md:hidden`) featuring brand name + strength title, generic formulation subtitle, dosage form pill with icon, manufacturer tag, real-time batch stock badge, and 44px+ touch-friendly actions.
-- [x] **Task 31.5**: Verification & Testing
-  - Add feature test suite `tests/Feature/PharmaceuticalCatalogTest.php` verifying multi-parameter search, strength matching, dosage form filtering, batch stock aggregation, safe deactivation, and mobile touch cards.
-  - Run Pint code formatting and build Vite production assets.
-
-### Phase 32: Allopathic Pharmaceutical Drug Creation, Header Action Fix & Atomic Inventory Intake (`/admin/pharmaceuticals/create`) (`[x] COMPLETED`)
-- [x] **Task 32.1**: Header Navigation Prop Bug Fix & Direct Action Restoration
-  - Correct `action` -> `actions` and `description` -> `subtitle` prop mismatch in `resources/js/Pages/Admin/Pharmaceuticals/Index.jsx` so the `+ Add Pharmaceutical Drug` button renders immediately.
-- [x] **Task 32.2**: Backend Validation & Atomic Batch Receiving Support
-  - Expand `StorePharmaceuticalRequest` to validate expanded dosage forms (`Gel`, `Lotion`, `Eye Drops`, `Ear Drops`, `Nasal Spray`, `Powder / Sachet`, `IV Infusion`).
-  - Add support for optional opening batch creation (`initial_batch`: `batch_number`, `expiry_date`, `purchase_price`, `selling_price`, `initial_quantity`).
-  - Upgrade `PharmaceuticalController::store` with database transaction to atomically create drug master and opening `MedicineBatch` when requested.
-- [x] **Task 32.3**: Frontend Intake Studio & Mobile Ergonomics
-  - Add quick-select chips for common strengths (`500mg`, `650mg`, `20mg`, `40mg`, `100ml`) and leading manufacturers (`Square`, `Beximco`, `Incepta`, `Renata`, `ACI`, `Opsonin`).
-  - Add collapsible `[ ] Receive Opening Batch Now` intake section.
-  - Add real-time duplicate drug combination warning.
-- [x] **Task 32.4**: Verification & Testing
-  - Add feature tests in `tests/Feature/PharmaceuticalCatalogTest.php` covering drug creation, opening batch creation, and validation rules.
-  - Run Pint code formatting and build Vite production assets.
-
-### Phase 33: Pharmacy Multi-Batch Inventory, FEFO Sorting & Mobile Workstation (`/admin/inventory`) (`[ ] PENDING USER CONFIRMATION`)
-- [ ] **Task 33.1**: Backend Multi-Attribute Search, FEFO Sorting & Stocktake CSV Export
-  - Upgrade `InventoryController::index` to search across `batch_number`, `supplier_name`, `form`, `potency`, `medicine.name`, `pharmaceutical.brand_name`, `pharmaceutical.generic_name`, and `pharmaceutical.strength`.
-  - Implement sort selector: `latest` (default), `expiry_asc` (FEFO - earliest expiry first), `stock_asc` (reorder priority), `stock_desc`, `name_asc`.
-  - Add supplier filter and configurable pagination (`per_page`: 15, 25, 50, 100).
-  - Add CSV export endpoint (`GET /admin/inventory/export`) streaming physical stocktake sheet with batch details, location, current quantity, expiry, cost, and selling valuation.
-- [ ] **Task 33.2**: Audit Protection & Cascade Deletion Hardening
-  - Upgrade `InventoryController::destroy` to perform safe deactivation (`is_active = false`) if stock transactions exist, protecting the transaction ledger and invoice records.
-- [ ] **Task 33.3**: Frontend Workstation & FEFO Sort Controls
-  - Implement 300ms debounced instant search with clear (`✕`) button.
-  - Add FEFO / Reorder priority sort dropdown and per-page selector.
-  - Add `📥 Export Stocktake CSV` action in header.
-  - Replace browser `confirm()` with RemediQ's standard `ConfirmDialog` component.
-- [ ] **Task 33.4**: Mobile Responsive Inventory Batch Touch Cards
-  - Implement high-density mobile touch cards (`block md:hidden`) featuring item title, potency/strength tag, stock balance with reorder indicator, expiry urgency pill, buy/sell valuation chips, and 44px+ touch-friendly action buttons (`Adjust Stock`, `Edit`, `Deactivate`).
-- [ ] **Task 33.5**: Verification & Testing
-  - Add feature test suite `tests/Feature/PharmacyInventoryTest.php` verifying multi-attribute search, FEFO sorting, CSV export, safe deactivation, and mobile touch cards.
-  - Run Pint code formatting and build Vite production assets.
-
-### Phase 34: Pharmaceutical & Remedy Manufacturer Master Management (`/admin/manufacturers`) (`[x] COMPLETED`)
-- [x] **Task 34.1**: Database Schema & Eloquent Architecture
-  - Create `manufacturers` database table with fields: `name` (unique), `short_name`, `name_bn`, `type` (`allopathic`, `homeopathic`, `dual`, `surgical`), `contact_person` (MR name), `phone`, `email`, `address`, `website`, `notes`, `is_active`.
-  - Create `Manufacturer` Eloquent model with local scopes: `active()`, `type()`, `search()` and `display_name` accessor.
-  - Create and assign `manufacturers.*` permissions (`view`, `create`, `update`, `delete`) to Super Admin and Doctor roles.
-- [x] **Task 34.2**: Backend Form Requests, Controller & Search API
-  - Create dedicated `StoreManufacturerRequest` and `UpdateManufacturerRequest` validating company identity and unique constraint.
-  - Implement `ManufacturerController` with `index`, `create`, `store`, `edit`, `update`, `destroy` (safe deactivation), and `search` JSON API endpoint.
-  - Register RESTful and search routes under `routes/admin.php`.
-- [x] **Task 34.3**: Frontend Directory, Responsive Workstation & Mobile Touch Cards (`/admin/manufacturers`)
-  - Implement `resources/js/Pages/Admin/Manufacturers/Index.jsx` with KPI tiles, 300ms debounced search, category filter pills (`All`, `Allopathy 💊`, `Homeopathy 🌿`, `Dual 🏥`, `Surgical 🩺`), desktop DataTable, and mobile touch cards (`block md:hidden`).
-  - Add click-to-call `tel:` MR links and deactivation modal.
-- [x] **Task 34.4**: Frontend Entry & Edit Studios (`Create.jsx` & `Edit.jsx`)
-  - Create `resources/js/Pages/Admin/Manufacturers/Create.jsx` with 1-click Bangladeshi & international presets (`Square`, `Beximco`, `Incepta`, `Renata`, `Schwabe Germany`, `SBL India`, `Dr. Reckeweg`).
-  - Create `resources/js/Pages/Admin/Manufacturers/Edit.jsx` with full company profile editing.
-- [x] **Task 34.5**: Cross-Module Integration with Drug Formulary (`/admin/pharmaceuticals/create` & `Edit.jsx`)
-  - Pass registered manufacturers to `PharmaceuticalController@create` and `@edit`.
-  - Update `Pharmaceuticals/Create.jsx` and `Edit.jsx` with HTML5 datalist autocomplete, registered manufacturer quick chips, and inline `+ Add New Company` shortcut link.
-- [x] **Task 34.6**: Verification, Testing & Asset Compilation
-  - Create test suite `tests/Feature/ManufacturerManagementTest.php` (9 tests passed, 86 assertions).
-  - Verify zero regressions in `PharmaceuticalCatalogTest` (6 tests passed, 71 assertions) and `DualPharmacyInventoryTest` (9 tests passed, 61 assertions).
-  - Format code with Laravel Pint and build Vite production bundle (`npm run build`).
-- [x] **Task 34.7**: Cross-Module Integration with Pharmacy Stock Intake (`/admin/inventory/create` & `Edit.jsx`)
-  - Pass registered manufacturers to `InventoryController@create` and `@edit`.
-  - Upgrade `supplier_name` into a Category-Aware Datalist Combobox dynamically prioritizing homeopathic vs allopathic suppliers based on selected item category.
-  - Add quick-select chips and inline `+ Add Company` shortcut link to `/admin/manufacturers/create`.
-
-### Phase 35: Diagnostic Lab Investigations Master Catalog (`/admin/lab-investigations`) (`[x] COMPLETED`)
-- [x] **Task 35.1**: Schema & Model Architecture
-  - Database table `lab_investigations` with code, name_en, name_bn, category, specimen, standard_fee, turnaround_hours, instructions, is_active.
-  - Model `LabInvestigation` with scopes and Spatie activity logging.
-  - FormRequests `StoreLabInvestigationRequest` and `UpdateLabInvestigationRequest`.
-- [x] **Task 35.2**: Pre-Seeded Diagnostic Catalog
-  - Seeded 35 high-yield clinical investigations across Hematology, Biochemistry, Imaging/Radiology, Ultrasound, Urine, and Serology via `LabInvestigationSeeder`.
-- [x] **Task 35.3**: Responsive Workstation & Clinical Presets
-  - Index view with KPI ribbon, 300ms debounced search, category filter pills, desktop DataTable, and mobile touch cards (`block md:hidden`).
-  - Create view with 1-Click Clinical Presets Toolbar (Lipid Profile, Thyroid Panel, Dengue NS1, etc.).
-- [x] **Task 35.4**: Automated Verification & Regression Testing
-  - Feature test suite `tests/Feature/LabInvestigationManagementTest.php` passing all 10 tests (91 assertions).
-
-### Phase 36: Homeopathic Symptoms & Kent Repertory Rubrics Catalog (`/admin/symptoms`) (`[x] COMPLETED`)
-- [x] **Task 36.1**: Database Schema & Clinical Attribute Migration
-  - Migration `2026_11_27_182001_add_clinical_attributes_to_symptoms_table.php` adding `code`, `modalities`, and database indexes on `code` and `category`.
-  - Hardened `Symptom` model with `medicines()` BelongsToMany, `symptomMedicineMaps()` HasMany, `visits()` BelongsToMany, local query scopes (`search`, `category`, `active`), and Spatie activity logging.
-- [x] **Task 36.2**: Kent Repertory Seeders & Clinical Knowledge Graph
-  - Created `SymptomSeeder` pre-seeding 50 classical Kent repertory rubrics across 11 chapters (`Mind`, `Head`, `Eyes/ENT`, `Digestion`, `Abdomen/Stool`, `Urinary`, `Respiratory`, `Extremities`, `Skin`, `Fever`, `Generalities`).
-  - Created `SymptomMedicineMapSeeder` linking rubrics to top 45 homeopathic polychrests with Grade 1-3 priorities and Kent Repertory citation.
-- [x] **Task 36.3**: Form Requests & Controller Hardening
-  - Created `StoreSymptomRequest` and `UpdateSymptomRequest` with strict validation for `name_en`, `code`, `name_bn`, `category`, `modalities`, and `is_active`.
-  - Upgraded `SymptomController`: eager-loads `withCount('medicines')`, calculates executive KPI metrics, supports debounced multi-field search and chapter filtering, and enforces safe deactivation if linked to visits or remedy mappings.
-- [x] **Task 36.4**: Responsive Multi-Screen Workstation & Ergonomics
-  - `Symptoms/Index.jsx`: Header KPI ribbon (Total, Active, Mapped, Repertory Chapters), 300ms debounced search with `✕`, 1-click Chapter Tab Pills, Mapping Status dropdown, Desktop DataTable with `💊 X Meds ↗` link, and Mobile High-Density Touch Cards (`block md:hidden`).
-  - `Symptoms/Create.jsx`: RemediQ PageHeader, 1-Click Kent Rubric Presets Toolbar (auto-fills English, Bengali, chapter, modalities), and chapter selector.
-  - `Symptoms/Edit.jsx`: Mapped remedies banner with direct link to knowledge graph (`/admin/symptom-medicine-map?symptom_id={id}`), chapter selector, and modalities editor.
-- [x] **Task 36.5**: Automated Verification & Regression Testing
-  - Created `tests/Feature/SymptomManagementTest.php` with 10 comprehensive tests covering index KPI metrics, search, chapter filters, validation, deactivation safety, and CDSS repertorization suggestions.
-  - Verified zero regressions across `SymptomMedicineMapGovernanceTest` and `DoctorDefaultPermissionsTest`.
-  - Formatted with Pint and compiled assets with Vite (`npm run build`).
-
-### Phase 37: Homeopathic Repertory Knowledge Graph & Mapping Workstation (`/admin/symptom_medicine_map`) (`[x] COMPLETED`)
-- [x] **Task 37.1**: Backend Controller & Local Query Scopes
-  - Added query scopes to `SymptomMedicineMap.php`: `scopeSearch`, `scopeFilterStatus`, `scopeFilterPriority`, `scopeFilterChapter`, `scopeFilterSymptom`, `scopeFilterMedicine`.
-  - Upgraded `SymptomMedicineMapController::index` with multi-field debounced search, status tabs, grade filtering, chapter filtering, active filter detection, and KPI metrics aggregation (`total`, `approved`, `pending_review`, `draft`, `inactive`).
-  - Added pre-selection support on `create()` (`preselectedSymptomId`, `preselectedMedicineId`).
-- [x] **Task 37.2**: Responsive Workstation & Filter Controls (`Index.jsx`)
-  - Built executive KPI metric ribbon displaying Total References, Active in CDSS, Pending Review, Drafts, and Inactive.
-  - Added 300ms debounced search bar with instant clear (`✕`) button.
-  - Implemented Review status tabs (`All`, `Approved ✅`, `Pending Review ⏳`, `Drafts 📝`, `Inactive 🚫`) with real-time counter badges.
-  - Implemented Kent Chapter and Grade (1–4) selector dropdowns.
-  - Added active filter dismiss banners for cross-module deep links from `/admin/symptoms` and `/admin/medicines`.
-  - Upgraded batch CSV import workstation with collapsible toggle to preserve screen space.
-- [x] **Task 37.3**: Multi-Screen Responsive Touch Cards (`Index.jsx`)
-  - Implemented high-density mobile touch cards (`block md:hidden`) alongside desktop `DataTable` with rubric/remedy tags, grade stars, source citations, status badges, and 44px+ touch-friendly action buttons (`Review`, `Edit`, `Restore`, `Delete`).
-- [x] **Task 37.4**: Creation & Editing Studio Upgrades (`Create.jsx` & `Edit.jsx`)
-  - Integrated with RemediQ design system and standard `PageHeader`.
-  - Added filterable selectors for symptoms and homeopathic medicines.
-  - Added visual Grade 1–4 radio selector with clinical descriptions (Ordinary, Moderate, Strong, Keynote).
-  - Added 1-Click Classical Literature Presets toolbar (*Kent Repertory*, *Boericke Materia Medica*, *Boger Boenninghausen*, *Allen's Keynotes*).
-- [x] **Task 37.5**: Automated Feature Verification & Testing
-  - Expanded `SymptomMedicineMapGovernanceTest.php` with 3 new comprehensive tests verifying search, status filtering, deep linking, chapter filtering, and grade filtering.
-  - All 16 tests in `SymptomMedicineMapGovernanceTest` passing (205 assertions).
-  - All 10 tests in `SymptomManagementTest` passing (119 assertions).
-  - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`).
-  - Frontend production assets compiled with Vite (`npm run build`).
-
-### Phase 38: Clinical Advice Items & Prescription Instructions Master (`/admin/advice_items`) (`[x] COMPLETED`)
-- [x] **Task 38.1**: Database Schema & Migration
-  - Migration `2026_11_27_205501_add_clinical_attributes_to_advice_items_table.php` adding `category`, `is_active`, `sort_order`, with indexes on `category`, `is_default`, and `is_active`.
-  - Updated `create_advice_items_table` so `text_en` is nullable.
-- [x] **Task 38.2**: Clinical Advice Master Seeder
-  - Authored `AdviceItemSeeder.php` pre-seeding 25 clinical advice items across 6 categories (`homeopathic`, `general`, `diet`, `lifestyle`, `hygiene`, `warning`).
-  - Registered in `DatabaseSeeder.php`. Seeded 25 records with 9 auto-selected default presets.
-- [x] **Task 38.3**: Model Hardening & FormRequests
-  - Upgraded `AdviceItem.php` with `visits()` BelongsToMany, query scopes (`search`, `category`, `active`, `default`), casts, and Spatie activity logging.
-  - Authored `StoreAdviceItemRequest.php` and `UpdateAdviceItemRequest.php`.
-- [x] **Task 38.4**: Controller Hardening with Safe Deactivation
-  - Upgraded `AdviceItemController.php` with debounced search, category tabs, default filter, active filter, KPI metrics aggregation (`total`, `default`, `homeopathic`, `general`, `diet`, `lifestyle`, `hygiene`, `warning`, `active`).
-  - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_advice`, protecting historical clinical records.
-- [x] **Task 38.5**: Responsive Multi-Screen Workstation & Ergonomics
-  - `AdviceItems/Index.jsx`: Executive KPI ribbon, 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
-  - `AdviceItems/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar, structured category select, default toggle card, and validation error displays.
-  - `AdviceItems/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, and active status toggle.
-- [x] **Task 38.6**: Automated Verification & Regression Testing
-  - Authored test suite `tests/Feature/AdviceItemManagementTest.php` with 10 feature tests passing (90 assertions).
-  - Verified zero regressions in `SettingsAuditAuthorizationTest` (21 tests passed, 50 assertions).
-  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
-
-### Phase 39: Dietary & Food Restrictions Master Catalog (`/admin/food_restrictions`) (`[x] COMPLETED`)
-- [x] **Task 39.1**: Database Schema & Migration
-  - Migration `2026_11_27_151209_add_category_is_active_sort_order_to_food_restrictions_table.php` adding `category` (default `general`), `is_active` (default `true`), and `sort_order` (default `0`), with indexes on `category`, `is_default`, and `is_active`.
-  - Updated base migration `create_food_restrictions_table` so `text_en` is nullable.
-- [x] **Task 39.2**: Clinical Dietary Restrictions Master Seeder
-  - Authored `FoodRestrictionSeeder.php` pre-seeding 25 clinical dietary rules across 6 categories (`homeopathic_antidote`, `sour_cold`, `spicy_oily`, `allergic_histamine`, `chronic_metabolic`, `general`).
-  - Registered in `DatabaseSeeder.php`. Seeded 25 records with 8 auto-selected default presets.
-- [x] **Task 39.3**: Model Hardening & FormRequests
-  - Upgraded `FoodRestriction.php` with `visits()` BelongsToMany, query scopes (`search`, `category`, `active`, `default`), casts, and Spatie activity logging.
-  - Authored `StoreFoodRestrictionRequest.php` and `UpdateFoodRestrictionRequest.php` with authorization and category fallback.
-- [x] **Task 39.4**: Controller Hardening with Safe Deactivation
-  - Upgraded `FoodRestrictionController.php` with debounced search, category tabs, default filter, active filter, KPI metrics aggregation (`total`, `default`, `antidote`, `sour_cold`, `spicy_oily`, `allergic`, `metabolic`, `general`, `active`).
-  - Implemented safe deactivation in `destroy()` if an item is referenced in `visit_food_restriction`, protecting historical clinical records.
-  - Added `toggleStatus` and `toggleDefault` endpoints.
-- [x] **Task 39.5**: Responsive Multi-Screen Workstation & Ergonomics
-  - `FoodRestrictions/Index.jsx`: Executive KPI ribbon (5 cards), 300ms debounced search with `✕`, horizontal Category Filter Tabs, default preset filter, Desktop DataTable, and Mobile High-Density Touch Cards (`block md:hidden`).
-  - `FoodRestrictions/Create.jsx`: RemediQ PageHeader, 1-Click Fast-Track Presets Toolbar (Antidotes, Cold/Sour, Spicy/Oily, Allergic, Salt/Sugar), structured category select, default toggle card, and validation error displays.
-  - `FoodRestrictions/Edit.jsx`: RemediQ PageHeader, linked visit count protection advisory, category select, fast-track presets toolbar, and active status toggle.
-- [x] **Task 39.6**: Automated Verification & Regression Testing
-  - Authored test suite `tests/Feature/FoodRestrictionManagementTest.php` with 12 feature tests passing (106 assertions).
-  - Verified zero regressions in `SettingsAuditAuthorizationTest`, `RolePermissionManagementTest`, `ProductionSetupSeederTest`, and `AdviceItemManagementTest` (45 tests passed, 228 assertions).
-  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
-
-### Phase 40: Doctor Profiles & Practitioner Management Workstation (`/admin/doctors`) (`[x] COMPLETED`)
-- [x] **Task 40.1**: Model Hardening & Relationship Fixes
-  - Added missing `visits(): HasMany` relationship to `App\Models\Doctor`, linking historical patient clinical visits directly to the practitioner.
-  - Implemented query scopes on `Doctor.php`: `scopeSearch` (matching name EN/BN, degrees/credentials EN/BN, specialty EN/BN, govt_reg_no, phone, appointment_phone, email), `scopeActive`, and `scopeAccount` (linked login vs unlinked profile).
-- [x] **Task 40.2**: Controller Modernization & KPI Aggregation
-  - Upgraded `DoctorController@index` with query filtering, eager loaded `visits_count`, `schedules_count`, and user accounts.
-  - Computed executive KPI metrics: `total`, `active`, `inactive`, `linked_account`, `scheduled`, and `total_visits`.
-  - Registered `PATCH /admin/doctors/{doctor}/toggle-status` under RBAC `role_or_permission:Super Admin|doctors.update` for instantaneous 1-click status toggling.
-  - Upgraded `DoctorController@show` with consultation counts, schedule counts, and secure clinic branding URLs (`photo_url`, `signature_url`, `seal_url`).
-- [x] **Task 40.3**: Responsive Multi-Screen Workstation & Ergonomics
-  - `Doctors/Index.jsx`: Executive KPI ribbon (4 tiles), 300ms debounced search bar with `✕` clear button, horizontal Status filter tabs (`All`, `Active in Practice 🩺`, `Inactive / On Leave ⏸️`), Account Linkage filter (`All`, `Linked Account 👤`, `Profile Only 📄`).
-  - Desktop `DataTable` (`hidden md:table`): Practitioner avatar thumbnail, active status dot, degrees/credentials, government registration badge (`govt_reg_no`), click-to-call phone links, linked system username badge, and quick action buttons (`View`, `Edit`, `📅 Schedule`, `Toggle Status`, `Delete/Deactivate`).
-  - Mobile High-Density Touch Cards (`block md:hidden`): Touch-optimized 44px+ buttons, doctor credentials, specialty, phone links, and schedule deep-links.
-  - Clinical Authorship Protection: Smart `ConfirmDialog` warning if a doctor has consultation history (`visits_count > 0`), disabling hard deletion and offering safe deactivation.
-- [x] **Task 40.4**: Automated Verification & Regression Testing
-  - Authored comprehensive test suite `tests/Feature/DoctorManagementWorkstationTest.php` with 7 feature tests passing (96 assertions).
-  - Verified zero regressions in `DoctorControllerTest` and full suite (100 tests passed, 788 assertions).
-  - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`) and frontend production assets compiled with Vite (`npm run build`).
-
-### Phase 41: Prescription Options & Clinical Presets Workstation (`/admin/prescription-options`) (`[x] COMPLETED`)
-- [x] **Task 41.1**: Domain Model & Clinical Catalog Hardening
-  - Updated `ClinicSetting::defaultPrescriptionConfig()` with classical succussion & dilution templates (*১০ ঝাঁকিসহ আধা কাপ পানির সাথে খাবেন*, *শিশি ১০ বার ঝাঁকিয়ে নিবেন*, *চিনির বড়িতে করে সেব্য*, etc.) and expanded dual-practice medication units (`capsules`, `sachets`, `puffs`, `30_min_before`, `as_needed`).
-- [x] **Task 41.2**: Backend Controller & KPI Aggregation
-  - Upgraded `PrescriptionOptionController@edit` with real-time KPI metrics (`total_timings`, `total_dose_units`, `total_meal_relations`, `total_instructions`, `total_duration_presets`, `default_duration_days`, `default_dose_unit`).
-  - Validated clean updates through `UpdatePrescriptionOptionsRequest` and protected by RBAC permissions (`prescription_options.view`, `create`, `update`, `delete`).
-- [x] **Task 41.3**: WYSIWYG Clinical Prescription Line Simulator
-  - Built an interactive live preview simulator in `Admin/PrescriptionOptions/Edit.jsx` rendering dynamic bilingual (English & Bengali) prescription sentences with customizable remedy, dose quantity, unit, timing, meal relation, and dilution.
-- [x] **Task 41.4**: Multi-Screen Touch Ergonomics & Real-Time Preset Search
-  - Upgraded `PrescriptionConfigModal.jsx` with real-time keyword search across all 4 tabs (English keys, English labels, Bengali script, instructions, durations).
-  - Added 1-Click Fast-Track Clinical Preset Packs toolbar (*🌿 Classical Homeopathy Pack*, *💊 General Practice Pack*, *🔄 Reset Safe Defaults*).
-  - Added responsive dual-screen presentation: Desktop tabular rows with keyboard shortcuts (Enter to save, Esc to cancel) and Mobile High-Density Touch Cards (`block md:hidden`) with 44px+ tap targets.
-  - Implemented Default Dependency Guard preventing accidental deletion of the active `default_dose_unit`.
-- [x] **Task 41.5**: Automated Testing & Verification
-  - Authored comprehensive test suite `tests/Feature/PrescriptionOptionsWorkstationTest.php` with 5 feature tests passing (35 assertions).
-  - Verified zero regressions in `PrescriptionConfigTest` (16 total tests passed, 97 assertions).
-  - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
-
-### Phase 42: General Settings & Patient Numbering Workstation (`/admin/general-settings`) (`[x] COMPLETED`)
-- [x] **Task 42.1**: Backend Controller & KPI Aggregation
-  - Updated `ClinicSettingController@editGeneral` to calculate and return executive KPIs: `total_profiles`, `active_profiles`, `default_profile_name`, `default_profile_preview`, `old_id_mode`, and `total_registered_patients`.
-  - Preserved RBAC authorization guards (`general_settings.view`, `general_settings.create`, `general_settings.update`, `general_settings.delete`, and Super Admin).
-- [x] **Task 42.2**: Category Real-Time Search & Status Filtering
-  - Added instant search bar with match count indicator and one-click clear button (`✕`) matching category names, codes, and prefixes.
-  - Added status filter pills (`All`, `Active`, `Inactive`) for quick category isolation.
-- [x] **Task 42.3**: Multi-Screen Responsive Layout & Touch Ergonomics
-  - Implemented High-Density Mobile Touch Cards (`block sm:hidden`) with 44px+ touch targets for Edit and Deactivate actions.
-  - Added smooth auto-scroll to the editor form container when initiating an edit on mobile devices.
-- [x] **Task 42.4**: Fast-Track Clinical Presets & Old ID Business Logic Preservation
-  - Added 1-Click Fast-Track Presets toolbar (`🩺 General Patients`, `👶 Pediatric Clinic`, `🧓 Senior Citizens`, `🏕️ Free Camp`).
-  - Preserved 100% of Old / Other ID Numbering business rules (Auto vs Manual mode, prefix, padding, max_length, and staff override permissions).
-  - Maintained minimum 1 active profile invariant safeguard.
-- [x] **Task 42.5**: Automated Testing & Verification
-  - Authored test suite `tests/Feature/GeneralSettingsWorkstationTest.php` (6 tests passing, 43 assertions).
-  - Verified regression test `tests/Feature/PatientNumberingWorkflowTest.php` (5 tests passing, 66 assertions; combined 11/11 tests passing, 109 assertions).
-  - Formatted code with Pint and compiled frontend assets with Vite (`npm run build`).
-
-### Phase 43: Doctor Visiting Schedules, Chamber Roster & Leave Range Workstation (`/admin/doctor-schedules`) (`[x] COMPLETED`)
-- [x] **Task 43.1**: Backend Multi-Day Leave Ranges & Conflict Detection
-  - Extended `StoreDoctorLeaveRequest` with optional `leave_date_end` (`nullable`, `date`, `after_or_equal:leave_date`).
-  - Implemented multi-day date range insertion within an atomic database transaction in `DoctorScheduleController@storeLeave`.
-  - Added conflict detection checking active `PatientQueueToken` (`waiting`, `in_consultation`) and `AppointmentRequest` (`pending`, `scheduled`) records, returning flash warning with reschedule advice.
-  - Calculated and returned Executive KPI metrics (`total_doctors`, `active_days`, `weekly_hours`, `assigned_chamber`, `upcoming_leaves`).
-- [x] **Task 43.2**: Schedules Workstation Modernization (`resources/js/Pages/Admin/Calendar/Schedules.jsx`)
-  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `📅 Calendar`, `🎟️ Queue`, `📝 Requests`).
-  - Added 5-card Executive KPI summary ribbon.
-  - Implemented real-time Doctor Search Bar with instant filtering and mobile quick-switch `<select>` dropdown.
-  - Built 1-Click Fast-Track Schedule Accelerators (`📋 Copy Sunday to Working Days`, `⚡ Apply Sunday to All Active Days`, `🕌 Set Friday Off`).
-  - Added Chamber Quick Pills (`Chamber 1`, `Chamber 2`, `Chamber 3`, `OPD Room 1`, `Consultation Room`).
-  - Built Multi-Day Leave Range Picker with quick reason chips (*Annual Vacation*, *Medical Leave*, *Conference*, *Emergency*).
-  - Added Mobile Sub-Tab Switcher (`[ 🕒 Weekly Visiting Hours ]` vs `[ 🏖️ Leaves & Holidays ]`) with 44px+ touch targets on screens < 768px.
-- [x] **Task 43.3**: Automated Testing & Suite Verification
-  - Authored comprehensive test suite `tests/Feature/DoctorScheduleWorkstationTest.php` with 8 feature tests passing (38 assertions).
-  - Verified full Doctor test suite with zero regressions (109 tests passed, 827 assertions).
-  - Formatted PHP code with Laravel Pint (`vendor/bin/pint --dirty --format agent`).
-  - Compiled production frontend assets with Vite (`npm run build`).
-
-### Phase 44: Doctor Visual Calendar & Appointments Matrix Workstation (`/admin/calendar`) (`[x] COMPLETED`)
-- [x] **Task 44.1**: Backend Controller & Metric Aggregation (`CalendarController.php`)
-  - Upgraded `CalendarController@index` to accept universal `search` parameter, matching across patient name, phone number, patient code, and doctor name.
-  - Computed recurring weekly doctor shift rosters (`doctorShifts`) across all days of the week (Sun-Sat) with chamber assignments and duty hours.
-  - Aggregated monthly Executive KPI metrics (`total_appointments`, `total_visits`, `total_leaves`, `today_activity`, `active_doctors`).
-- [x] **Task 44.2**: Modernized Visual Calendar Workstation (`resources/js/Pages/Admin/Calendar/Index.jsx`)
-  - Integrated RemediQ `PageHeader` with quick links (`👨‍⚕️ Doctors`, `🕒 Schedules`, `🎟️ Queue`, `📝 Requests`).
-  - Added 5-card Executive Monthly KPI summary ribbon.
-  - Implemented real-time Search Bar with active cell emerald glow highlights and match counter.
-  - Added 1-Click Event Category Filter Toolbar (`All Events`, `🕒 Appointments`, `🩺 Visits`, `🏖️ Doctor Leaves`).
+  - Added 1-Click Event Category Filter Toolbar (`All Events`, `ðŸ•’ Appointments`, `ðŸ©º Visits`, `ðŸ–ï¸ Doctor Leaves`).
   - Integrated recurring doctor shift badges on calendar day cells with automatic strikethrough for approved leaves.
   - Implemented Mobile Daily Agenda Timeline View (`block md:hidden`) with an interactive day-picker ribbon and chronological agenda feed.
   - Upgraded Day Details Studio with 1-tap phone dialing (`tel:`), WhatsApp click-to-chat (`https://wa.me/...`), 1-click token issuance bridge, and fast-track booking link.
@@ -1114,10 +658,10 @@
 - [x] **Task 45.2**: Modernized Intake Triage Workstation (`resources/js/Pages/Admin/AppointmentRequests/Index.jsx`)
   - Integrated RemediQ `PageHeader` with contextual action (`+ New Request`) and navigation tabs.
   - Added 5-card Executive KPI summary ribbon with responsive grid layout.
-  - Built real-time 300ms debounced search bar with instant clear button (`✕`) and match counter.
-  - Added 1-Click Date Preset Filter Pills (`All Requests`, `📅 Today's Bookings`, `🌅 Tomorrow`, `🗓️ This Week`, `⏳ Pending Triage`).
-  - Added Today's Appointment highlight badge (`📅 TODAY`) with emerald border and soft emerald background.
-  - Added 1-Click `[ 📞 Contacted ]` action button with live server-side update.
+  - Built real-time 300ms debounced search bar with instant clear button (`âœ•`) and match counter.
+  - Added 1-Click Date Preset Filter Pills (`All Requests`, `ðŸ“… Today's Bookings`, `ðŸŒ… Tomorrow`, `ðŸ—“ï¸ This Week`, `â³ Pending Triage`).
+  - Added Today's Appointment highlight badge (`ðŸ“… TODAY`) with emerald border and soft emerald background.
+  - Added 1-Click `[ ðŸ“ž Contacted ]` action button with live server-side update.
   - Added 1-Tap phone dialing (`tel:`) and pre-filled WhatsApp click-to-chat links (`https://wa.me/...`).
   - Implemented High-Density Mobile Touch Cards (`block md:hidden`) with 44px+ touch targets and expandable triage notes.
 - [x] **Task 45.3**: Automated Testing & Suite Verification
@@ -1132,13 +676,13 @@
   - Upgraded `ClinicSettingController@edit` to calculate and return executive KPI metrics: `practice_type`, `practice_label`, `auto_deduct_inventory`, `default_consultation_fee`, `has_custom_logo`, `has_custom_favicon`, `schedule_mode`, and `active_days_count`.
   - Preserved strict Super Admin protection and authorization checks (`role:Super Admin`, `permission:clinic_settings.view|update`).
 - [x] **Task 46.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Settings/Edit.jsx`)
-  - Integrated RemediQ `PageHeader` with quick navigation links (`🔢 Patient Numbering`, `📝 Rx Presets`, `👨‍⚕️ Doctors`, `🎟️ Queue`).
+  - Integrated RemediQ `PageHeader` with quick navigation links (`ðŸ”¢ Patient Numbering`, `ðŸ“ Rx Presets`, `ðŸ‘¨â€âš•ï¸ Doctors`, `ðŸŽŸï¸ Queue`).
   - Added 5-card Executive KPI summary ribbon with real-time operational status.
-  - Implemented real-time in-page search bar (300ms debounce) matching all setting titles, labels, descriptions, and values with clear button (`✕`) and visual emerald glow highlighting.
-  - Added Category Filter Tabs Strip (`All Settings`, `🩺 Practice Mode`, `📦 Stock & Pharmacy`, `🧾 Billing & bKash`, `🎨 Branding`, `🏥 General Info`, `🕒 Visiting Hours`, `🌐 Website & About`).
+  - Implemented real-time in-page search bar (300ms debounce) matching all setting titles, labels, descriptions, and values with clear button (`âœ•`) and visual emerald glow highlighting.
+  - Added Category Filter Tabs Strip (`All Settings`, `ðŸ©º Practice Mode`, `ðŸ“¦ Stock & Pharmacy`, `ðŸ§¾ Billing & bKash`, `ðŸŽ¨ Branding`, `ðŸ¥ General Info`, `ðŸ•’ Visiting Hours`, `ðŸŒ Website & About`).
   - Added dedicated bKash / Mobile Financial Services (MFS) card in Billing section for token and POS invoice cashless payments.
-  - Added 1-Click Fast-Track Practice Mode Presets Toolbar (`🌿 Classical Pack`, `💊 General Pack`, `⚖️ Dual Pack`).
-  - Added 1-Click Visiting Hours schedule accelerators (`📋 Copy Sunday to Working Days`, `🕌 Set Friday Closed`, `⚡ Standard 9am-9pm OPD`).
+  - Added 1-Click Fast-Track Practice Mode Presets Toolbar (`ðŸŒ¿ Classical Pack`, `ðŸ’Š General Pack`, `âš–ï¸ Dual Pack`).
+  - Added 1-Click Visiting Hours schedule accelerators (`ðŸ“‹ Copy Sunday to Working Days`, `ðŸ•Œ Set Friday Closed`, `âš¡ Standard 9am-9pm OPD`).
   - Implemented responsive multi-screen layout with adaptive input stacking (`grid-cols-1 sm:grid-cols-2`) and floating Sticky Bottom Save Drawer on mobile viewports (< 640px).
 - [x] **Task 46.3**: Automated Testing & Suite Verification
   - Authored comprehensive test suite `tests/Feature/ClinicSettingsWorkstationTest.php` with 5 feature tests passing (47 assertions).
@@ -1152,11 +696,11 @@
   - Preserved RBAC security guards (`role_or_permission:Super Admin|patient_config.view|create|update|order|delete`).
   - Preserved foreign database usage checks on relationship deletion preventing accidental orphan states in `Patient` records.
 - [x] **Task 47.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/PatientConfig/Edit.jsx`)
-  - Integrated RemediQ standard `PageHeader` with title *"Patient Registration Form Configuration (রোগী নিবন্ধন ফর্ম বিন্যাস)"* and quick navigation links (`👥 Patients`, `➕ Register Patient`, `🔢 Numbering Profiles`, `⚙️ Clinic Settings`).
+  - Integrated RemediQ standard `PageHeader` with title *"Patient Registration Form Configuration (à¦°à§‹à¦—à§€ à¦¨à¦¿à¦¬à¦¨à§à¦§à¦¨ à¦«à¦°à§à¦® à¦¬à¦¿à¦¨à§à¦¯à¦¾à¦¸)"* and quick navigation links (`ðŸ‘¥ Patients`, `âž• Register Patient`, `ðŸ”¢ Numbering Profiles`, `âš™ï¸ Clinic Settings`).
   - Added 5-card Executive KPI summary ribbon with real-time operational status.
-  - Implemented real-time in-page search bar (300ms debounce) matching all field names, keys, custom labels, section names, and relationships with clear button (`✕`) and visual emerald glow highlighting.
-  - Added Category Navigation Tabs Strip (`All Sections`, `👤 Identity`, `🩺 Medical`, `📞 Contact`, `📜 Migration`, `👨‍👩‍👦 Relationships`).
-  - Added 1-Click Clinical Form Presets Toolbar (`🌿 Standard OPD Intake`, `⚡ Fast-Track Minimal OPD`, `📜 Historical Migration Pack`).
+  - Implemented real-time in-page search bar (300ms debounce) matching all field names, keys, custom labels, section names, and relationships with clear button (`âœ•`) and visual emerald glow highlighting.
+  - Added Category Navigation Tabs Strip (`All Sections`, `ðŸ‘¤ Identity`, `ðŸ©º Medical`, `ðŸ“ž Contact`, `ðŸ“œ Migration`, `ðŸ‘¨â€ðŸ‘©â€ðŸ‘¦ Relationships`).
+  - Added 1-Click Clinical Form Presets Toolbar (`ðŸŒ¿ Standard OPD Intake`, `âš¡ Fast-Track Minimal OPD`, `ðŸ“œ Historical Migration Pack`).
   - Added Quick-Add Relationship Chips (`+ Step-Father`, `+ Step-Mother`, `+ Foster Parent`, `+ Hostel Warden`, `+ Colleague`).
   - Implemented responsive touch card layout with generous 44px+ tap targets and floating Mobile Sticky Save Drawer on viewports < 640px.
 - [x] **Task 47.3**: Automated Testing & Suite Verification
@@ -1172,10 +716,10 @@
   - Added `toggleStatus(Request $request, User $user)` method with database transaction, row-locking (`lockForUpdate()`), and strict defense preventing deactivation of the last remaining active Super Admin.
   - Registered route `PATCH /admin/users/{user}/toggle-status` under `role:Super Admin`.
 - [x] **Task 48.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Users/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with navigation links (`🛡️ Roles & Permissions`, `📜 Security Logs`, `🏥 System Health`, `➕ Create User`).
+  - Integrated RemediQ standard `PageHeader` with navigation links (`ðŸ›¡ï¸ Roles & Permissions`, `ðŸ“œ Security Logs`, `ðŸ¥ System Health`, `âž• Create User`).
   - Added 5-card Executive KPI summary ribbon with real-time operational metrics.
-  - Implemented 300ms debounced search bar matching user name, username, email, and phone with match counter and `✕` clear button.
-  - Added 1-Click Role & Status Filter Pills Strip (`All Staff`, `Active 🟢`, `Inactive ⏸️`, `Super Admin 👑`, `Doctor 🩺`, `Receptionist 📋`, `Accountant 💵`).
+  - Implemented 300ms debounced search bar matching user name, username, email, and phone with match counter and `âœ•` clear button.
+  - Added 1-Click Role & Status Filter Pills Strip (`All Staff`, `Active ðŸŸ¢`, `Inactive â¸ï¸`, `Super Admin ðŸ‘‘`, `Doctor ðŸ©º`, `Receptionist ðŸ“‹`, `Accountant ðŸ’µ`).
   - Implemented 1-Click Fast-Track Status Toggle action with optimistic feedback.
   - Built responsive dual presentation: Desktop structured `DataTable` (`hidden md:block`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with avatar initials, role pills, 1-tap phone `tel:`, email `mailto:`, and 44px+ touch-friendly action buttons.
 - [x] **Task 48.3**: Automated Testing & Suite Verification
@@ -1191,13 +735,13 @@
   - Aggregated 5 system-wide KPI metrics (`total_roles`, `total_assignments`, `custom_roles_count`, `unassigned_roles_count`, `protected_roles_count`) passed directly into Inertia props.
   - Upgraded `Admin/Permissions/Index.jsx` to honor incoming `?role={id}` query parameter, automatically pre-selecting the target role in the Permissions Matrix tab.
 - [x] **Task 49.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Roles/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with quick links (`👥 Staff Users`, `🔑 Permissions Matrix`, `📜 Security Logs`, `➕ Create Role`).
+  - Integrated RemediQ standard `PageHeader` with quick links (`ðŸ‘¥ Staff Users`, `ðŸ”‘ Permissions Matrix`, `ðŸ“œ Security Logs`, `âž• Create Role`).
   - Embedded standard `AccessControlNavigation` tab navigation.
   - Implemented 5-card Executive KPI summary ribbon with responsive grid layout and semantic tones (`Sky`, `Emerald`, `Violet`, `Amber`, `Rose`).
-  - Added 300ms debounced real-time search with clear (`✕`) action and match indicator.
-  - Implemented 1-Click Fast-Track Filter Pills Strip (`All Roles`, `👑 Protected`, `🛡️ Custom Roles`, `👥 Assigned`, `⚪ Unassigned`).
+  - Added 300ms debounced real-time search with clear (`âœ•`) action and match indicator.
+  - Implemented 1-Click Fast-Track Filter Pills Strip (`All Roles`, `ðŸ‘‘ Protected`, `ðŸ›¡ï¸ Custom Roles`, `ðŸ‘¥ Assigned`, `âšª Unassigned`).
   - Built Dual-Mode Presentation: Desktop structured table (`hidden md:block`) with Avatar badge, staff user link (`admin.users.index?role={name}`), permissions count, and deep-link to Matrix (`admin.permissions.index?role={id}`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly buttons.
-  - Upgraded `ConfirmDialog` to provide actionable guidance and 1-click CTA button (`[ 👥 View & Reassign Staff Users → ]`) when role deletion is blocked by assigned users.
+  - Upgraded `ConfirmDialog` to provide actionable guidance and 1-click CTA button (`[ ðŸ‘¥ View & Reassign Staff Users â†’ ]`) when role deletion is blocked by assigned users.
 - [x] **Task 49.3**: Automated Testing & Suite Verification
   - Authored comprehensive test suite `tests/Feature/RoleManagementWorkstationTest.php` with 8 feature tests passing (25 assertions).
   - Verified full role and user permission management test suite with zero regressions (179 tests passed, 1261 assertions).
@@ -1209,10 +753,10 @@
   - Increased array limit in `UpdateRolePermissionsRequest.php` from `max:100` to `max:500`, permanently resolving the validation ceiling trap for high-permission clinical roles.
   - Upgraded `PermissionController@index` to accept query parameter `role` and compute executive KPI summary counters (`total_roles`, `total_permissions`, `total_assignments`).
 - [x] **Task 50.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Permissions/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with quick links (`👥 Staff Users`, `🛡️ Roles Directory`, `📜 Security Logs`, `🏥 System Health`, `➕ Create Role`).
+  - Integrated RemediQ standard `PageHeader` with quick links (`ðŸ‘¥ Staff Users`, `ðŸ›¡ï¸ Roles Directory`, `ðŸ“œ Security Logs`, `ðŸ¥ System Health`, `âž• Create Role`).
   - Mapped all 29 modules cleanly into 5 clinical domains (`Clinical Care & OPD`, `Pharmacy, Medicines & Repertory`, `Diagnostics & Lab Tests`, `Billing & Cash Register`, `Clinic Administration & Governance`).
   - Added 5-card Executive KPI summary ribbon with live metrics and percentage coverage indicator.
-  - Implemented 300ms debounced search, category navigation tabs, and 1-click status filter pills (`All (129)`, `✅ Granted (N)`, `⚪ Revoked (N)`).
+  - Implemented 300ms debounced search, category navigation tabs, and 1-click status filter pills (`All (129)`, `âœ… Granted (N)`, `âšª Revoked (N)`).
   - Added category-level bulk grant/revoke controls and 1-Click Fast Clinical Presets (`Doctor`, `Front Desk`, `Pharmacist`, `Cashier`).
   - Implemented Dual-Mode Presentation: Desktop sticky sidebar with live role search input alongside high-density **Horizontal Touch Role Carousel** on mobile/tablet viewports (< xl) with 44px+ tap targets.
   - Added real-time staff impact alert warning when editing roles with active users.
@@ -1229,9 +773,9 @@
   - Added streaming CSV export method `export(Request $request)` and registered route `GET /admin/activity-logs/export` protected by `permission:activity_logs.export` and `role:Super Admin`.
   - Maintained 100% strict clinical privacy whitelisting, preventing exposure of raw patient changes or sensitive diagnostic values.
 - [x] **Task 51.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/ActivityLogs/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with navigation links (`👥 Staff Users`, `🛡️ Roles`, `🔑 Permissions`, `🏥 System Health`) and `📥 Export CSV` action.
+  - Integrated RemediQ standard `PageHeader` with navigation links (`ðŸ‘¥ Staff Users`, `ðŸ›¡ï¸ Roles`, `ðŸ”‘ Permissions`, `ðŸ¥ System Health`) and `ðŸ“¥ Export CSV` action.
   - Added 5-card Executive KPI summary ribbon with responsive grid layout and semantic tones (`Sky`, `Emerald`, `Violet`, `Rose`, `Amber`).
-  - Implemented 300ms debounced search bar with clear (`✕`) button and reset filters action.
+  - Implemented 300ms debounced search bar with clear (`âœ•`) button and reset filters action.
   - Implemented 1-Click Fast-Track Filter Pills Strip with live count badges.
   - Added filter dropdowns for Staff Actor (`causer_id`), Event Type, and Date Range.
   - Built Dual-Mode Presentation: Desktop structured `DataTable` (`hidden md:block`) with color-coded event badges, access outcome indicators, and direct clickable Patient/Visit links alongside High-Density **Mobile Audit Cards** (`block md:hidden`) with 44px+ touch-friendly layout.
@@ -1246,10 +790,10 @@
   - Enriched `SystemHealthController@index` to compute consolidated executive health KPI metrics (`overall_status`, `database_healthy`, `storage_healthy`, `migrations_healthy`, `total_backups_count`, `total_backups_bytes`, `database_size_bytes`, `uploads_size_bytes`, `uploads_files_count`, `scheduler_enabled`, `scheduler_time`, `scheduler_timezone`).
   - Maintained strict security invariants: cPanel bundle creation and download guarded for Super Admin; disaster recovery restore and `reset_as_new` strictly role-restricted.
 - [x] **Task 52.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/SystemHealth.jsx`)
-  - Integrated RemediQ standard `PageHeader` with sibling governance links (`👥 Staff Users`, `🛡️ Roles`, `🔑 Permissions`, `📜 Security Logs`).
-  - Built 5-card Executive KPI summary ribbon with live status badges (`Overall System Health 🏥`, `Database Engine 🗄️`, `Media & Uploads 📁`, `Backup Archive 📦`, `Automated Backup 🕒`).
-  - Implemented Segmented Workstation Navigation Tabs (`📊 Diagnostics`, `⚡ Backup & Archive`, `🔄 Disaster Recovery`, `🧹 Maintenance & Reset`) to eliminate long vertical scrolling.
-  - Added real-time 300ms debounced search and 1-click filter pills (`All Backups`, `🗄️ Database`, `📁 Media`, `📦 Full Archive`, `⚡ cPanel Bundle`) for saved backup archives.
+  - Integrated RemediQ standard `PageHeader` with sibling governance links (`ðŸ‘¥ Staff Users`, `ðŸ›¡ï¸ Roles`, `ðŸ”‘ Permissions`, `ðŸ“œ Security Logs`).
+  - Built 5-card Executive KPI summary ribbon with live status badges (`Overall System Health ðŸ¥`, `Database Engine ðŸ—„ï¸`, `Media & Uploads ðŸ“`, `Backup Archive ðŸ“¦`, `Automated Backup ðŸ•’`).
+  - Implemented Segmented Workstation Navigation Tabs (`ðŸ“Š Diagnostics`, `âš¡ Backup & Archive`, `ðŸ”„ Disaster Recovery`, `ðŸ§¹ Maintenance & Reset`) to eliminate long vertical scrolling.
+  - Added real-time 300ms debounced search and 1-click filter pills (`All Backups`, `ðŸ—„ï¸ Database`, `ðŸ“ Media`, `ðŸ“¦ Full Archive`, `âš¡ cPanel Bundle`) for saved backup archives.
   - Built Dual-Mode Presentation: Desktop structured data table alongside High-Density **Mobile Touch Cards** with 44px+ hit targets for touch screen tablets and phones.
   - Refined safety callouts and visual feedback for disaster recovery restores (`Restore to Empty Target` vs `Overwrite Existing Target` with safety recovery backup) and `Reset As New`.
 - [x] **Task 52.3**: Automated Testing & Suite Verification
@@ -1265,11 +809,11 @@
   - Computed 5 executive KPI summary counters (`total_remedies`, `ch_count`, `lm_count`, `x_count`, `mother_tincture_count`, `in_stock_count`).
   - Added streaming CSV export endpoint (`GET /admin/medicines/export`) protected by `permission:medicines.view`.
 - [x] **Task 53.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Medicines/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with quick links (`💊 Pharmaceuticals`, `📦 Pharmacy Inventory`, `🏭 Manufacturers`, `📥 Export CSV`, `➕ New Medicine`).
+  - Integrated RemediQ standard `PageHeader` with quick links (`ðŸ’Š Pharmaceuticals`, `ðŸ“¦ Pharmacy Inventory`, `ðŸ­ Manufacturers`, `ðŸ“¥ Export CSV`, `âž• New Medicine`).
   - Implemented 5-card Executive KPI summary ribbon with responsive grid layout and semantic tones (`Sky`, `Blue`, `Purple`, `Amber`, `Emerald`).
-  - Added 300ms debounced search bar with instant reset button (`✕`).
-  - Added 1-Click Potency Scale filter pills strip (`All Scales`, `🔵 Centesimal / CH`, `🟣 50-Millesimal / LM`, `🟢 Decimal / X`, `🟡 Mother Tincture / Q`).
-  - Added formulation filter pills strip (`💧 Drops`, `⚪ Pills / Globules`, `🧪 Liquid Dilution`) and dropdown filters for Status, Stock Status, and Per Page pagination.
+  - Added 300ms debounced search bar with instant reset button (`âœ•`).
+  - Added 1-Click Potency Scale filter pills strip (`All Scales`, `ðŸ”µ Centesimal / CH`, `ðŸŸ£ 50-Millesimal / LM`, `ðŸŸ¢ Decimal / X`, `ðŸŸ¡ Mother Tincture / Q`).
+  - Added formulation filter pills strip (`ðŸ’§ Drops`, `âšª Pills / Globules`, `ðŸ§ª Liquid Dilution`) and dropdown filters for Status, Stock Status, and Per Page pagination.
   - Added live batch inventory stock badge (`In Stock: XX units`, `Out of Stock`) with a direct 1-click shortcut to `/admin/inventory?search={name}` for rapid stock replenishment.
   - Built Dual-Mode Presentation: Desktop structured `DataTable` (`hidden md:block`) alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly actions (`Edit Remedy`, `View Batches`, `Deactivate`).
 - [x] **Task 53.3**: Automated Testing & Suite Verification
@@ -1284,10 +828,10 @@
   - Added multi-level filtering (`type`, `status`, `stock_level`, `expiry_status`, `sort`, `per_page`).
   - Added streaming CSV stocktake audit export (`GET /admin/inventory/export`) with UTF-8 BOM, purchase cost valuation, and retail selling valuation.
 - [x] **Task 54.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Inventory/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with direct quick links (`[ 🌿 Homeo Remedies ]`, `[ 💊 Pharmaceuticals ]`, `[ 🏭 Manufacturers ]`, `[ 📜 Stock Ledger ]`, `[ 📥 Stocktake CSV ]`, `[ ➕ Receive Stock ]`).
-  - Implemented 5-Card Inventory KPI Summary Ribbon (`Active Batches 📦`, `Stock Valuation 💰`, `Low Stock Items ⚠️`, `Near Expiry (≤30d) ⏳`, `Expired Batches 🛑`).
-  - Implemented 300ms debounced search bar with instant clear button (`✕`).
-  - Added 1-Click Dispensary Filter Pills strip (`All Batches`, `🌿 Homeopathic Remedies`, `💊 Conventional Pharma`, `⏳ Near Expiry`, `⚠️ Low Stock`, `🛑 Expired`).
+  - Integrated RemediQ standard `PageHeader` with direct quick links (`[ ðŸŒ¿ Homeo Remedies ]`, `[ ðŸ’Š Pharmaceuticals ]`, `[ ðŸ­ Manufacturers ]`, `[ ðŸ“œ Stock Ledger ]`, `[ ðŸ“¥ Stocktake CSV ]`, `[ âž• Receive Stock ]`).
+  - Implemented 5-Card Inventory KPI Summary Ribbon (`Active Batches ðŸ“¦`, `Stock Valuation ðŸ’°`, `Low Stock Items âš ï¸`, `Near Expiry (â‰¤30d) â³`, `Expired Batches ðŸ›‘`).
+  - Implemented 300ms debounced search bar with instant clear button (`âœ•`).
+  - Added 1-Click Dispensary Filter Pills strip (`All Batches`, `ðŸŒ¿ Homeopathic Remedies`, `ðŸ’Š Conventional Pharma`, `â³ Near Expiry`, `âš ï¸ Low Stock`, `ðŸ›‘ Expired`).
   - Retained fast-action Quick Stock Adjustment modal with reason and movement type.
   - Built Dual-Mode Presentation: Desktop structured table alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly actions (`Adjust Stock`, `Edit Batch`, `Delete`).
 - [x] **Task 54.3**: Permissions Matrix Category Layout Hardening (`resources/js/Pages/Admin/Permissions/Index.jsx`)
@@ -1306,10 +850,10 @@
   - Computed 5 executive financial KPIs (`total_invoiced`, `total_collected`, `total_due`, `due_invoices_count`, `paid_invoices_count`, and `today_collected`).
   - Added streaming CSV ledger export (`GET /admin/invoices/export`) with UTF-8 BOM for accountant reconciliation.
 - [x] **Task 55.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Billing/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with direct quick links (`[ 🧾 Cash Register ]`, `[ 📥 Export Ledger CSV ]`, `[ ➕ New POS Invoice ]`).
+  - Integrated RemediQ standard `PageHeader` with direct quick links (`[ ðŸ§¾ Cash Register ]`, `[ ðŸ“¥ Export Ledger CSV ]`, `[ âž• New POS Invoice ]`).
   - Implemented 5-Card Financial KPI Summary Ribbon with revenue realization percentage badge.
-  - Added 300ms debounced search bar with instant reset button (`✕`).
-  - Added 1-Click Fast Filter Pills strip (`All Invoices`, `⚠️ Has Due`, `✅ Fully Paid`, `🛑 Unpaid`, `📱 bKash MFS`, `💵 Cash Desk`).
+  - Added 300ms debounced search bar with instant reset button (`âœ•`).
+  - Added 1-Click Fast Filter Pills strip (`All Invoices`, `âš ï¸ Has Due`, `âœ… Fully Paid`, `ðŸ›‘ Unpaid`, `ðŸ“± bKash MFS`, `ðŸ’µ Cash Desk`).
   - Built Quick Due Collection Modal allowing cashiers to record partial or full due settlements with instant balance recalculation without leaving the directory.
   - Built Dual-Mode Presentation: Desktop structured table alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ touch-friendly actions (`Collect Due`, `View Details`, `POS Slip`, `A4 Print`).
 - [x] **Task 55.3**: Automated Testing & Suite Verification
@@ -1323,11 +867,11 @@
   - Added async debounced batch search endpoint `searchBatches(Request $request)` returning active inventory with item name, potency / strength, supplier, current stock count, and retail selling price.
   - Registered route `GET /admin/invoices/search-batches` (`admin.invoices.search_batches`) guarded by `permission:billing.create`.
 - [x] **Task 56.2**: Frontend POS Terminal Transformation (`resources/js/Pages/Admin/Billing/Create.jsx`)
-  - Integrated RemediQ standard `PageHeader` with title *"New POS Invoice Terminal (নগদ বিক্রয় ও রশিদ প্রস্তুতকরণ)"* and quick links (`[ 📋 Invoices Directory ]`, `[ 🧾 Cash Register ]`, `[ 📦 Pharmacy Inventory ]`).
+  - Integrated RemediQ standard `PageHeader` with title *"New POS Invoice Terminal (à¦¨à¦—à¦¦ à¦¬à¦¿à¦•à§à¦°à¦¯à¦¼ à¦“ à¦°à¦¶à¦¿à¦¦ à¦ªà§à¦°à¦¸à§à¦¤à§à¦¤à¦•à¦°à¦£)"* and quick links (`[ ðŸ“‹ Invoices Directory ]`, `[ ðŸ§¾ Cash Register ]`, `[ ðŸ“¦ Pharmacy Inventory ]`).
   - Added rich Patient Demographics Verification Card on patient selection (photo/avatar, code, old ID, phone, age/gender, blood group, last visit link).
-  - Implemented 1-Click Fast Line Item Presets toolbar (`[ 🩺 Doctor Consultation ]`, `[ 🔄 Follow-up Visit ]`, `[ 🔬 Diagnostic Investigation ]`, `[ 🩹 Clinical Procedure ]`, `[ ➕ Custom Line Item ]`).
+  - Implemented 1-Click Fast Line Item Presets toolbar (`[ ðŸ©º Doctor Consultation ]`, `[ ðŸ”„ Follow-up Visit ]`, `[ ðŸ”¬ Diagnostic Investigation ]`, `[ ðŸ©¹ Clinical Procedure ]`, `[ âž• Custom Line Item ]`).
   - Replaced static batch select with async debounced Pharmacy Stock Search Combobox with live stock count and price badges.
-  - Built integrated **Live Cash Drawer Tender & Change Calculator** (`Tendered Cash ৳`, quick chips `[ Exact ]`, `[ ৳500 ]`, `[ ৳1,000 ]`, `[ ৳2,000 ]`, dynamic green return callout `Change to Return: ৳X` or amber callout `Remaining Due: ৳X`).
+  - Built integrated **Live Cash Drawer Tender & Change Calculator** (`Tendered Cash à§³`, quick chips `[ Exact ]`, `[ à§³500 ]`, `[ à§³1,000 ]`, `[ à§³2,000 ]`, dynamic green return callout `Change to Return: à§³X` or amber callout `Remaining Due: à§³X`).
   - Added toggle `[x] Automatically open 80mm POS thermal print dialog after saving` and fast-track dual actions (`Create & Print POS Slip` vs `Create & View Invoice`).
   - Built responsive 2-column POS layout on Desktop/Tablet and streamlined vertical flow on mobile screens.
 - [x] **Task 56.3**: Automated Testing & Suite Verification
@@ -1346,10 +890,10 @@
     - Tab 3: Prescribed Remedies & Formulary Breakdown (top 20 prescribed homeopathic potencies and allopathic pharmaceuticals with times prescribed and unique patient counts).
   - Added streaming CSV data export (`GET /admin/reports/export`) with UTF-8 BOM, protected by `permission:reports.export` and `role:Super Admin`.
 - [x] **Task 57.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Reports/Index.jsx`)
-  - Integrated RemediQ standard `PageHeader` with title *"Clinical & Operational Reports (ক্লিনিক্যাল ও অপারেশনাল রিপোর্ট)"* and quick navigation links (`[ 🩺 Visits ]`, `[ 👥 Patients ]`, `[ 📋 Invoices ]`, `[ 📥 Export CSV ]`, `[ 🖨️ Print ]`).
-  - Built 5-card Executive Clinical KPI Ribbon (`Consultations 🩺`, `Unique Patients 👤`, `Finalized Rx ✅`, `Daily Average 📈`, `Rx Items Dispensed 💊`).
-  - Implemented 300ms debounced search bar with clear button (`✕`), Doctor selector dropdown, Status selector, and 1-Click Date Presets strip (`Today`, `Yesterday`, `This Week`, `This Month`, `This Year`, `Custom Range`).
-  - Implemented Segmented Analytical Tabs Navigation (`[ 🩺 Consultations & Morbidity ]`, `[ 👨‍⚕️ Doctor Productivity & Workload ]`, `[ 💊 Prescribed Remedies & Formulary ]`).
+  - Integrated RemediQ standard `PageHeader` with title *"Clinical & Operational Reports (à¦•à§à¦²à¦¿à¦¨à¦¿à¦•à§à¦¯à¦¾à¦² à¦“ à¦…à¦ªà¦¾à¦°à§‡à¦¶à¦¨à¦¾à¦² à¦°à¦¿à¦ªà§‹à¦°à§à¦Ÿ)"* and quick navigation links (`[ ðŸ©º Visits ]`, `[ ðŸ‘¥ Patients ]`, `[ ðŸ“‹ Invoices ]`, `[ ðŸ“¥ Export CSV ]`, `[ ðŸ–¨ï¸ Print ]`).
+  - Built 5-card Executive Clinical KPI Ribbon (`Consultations ðŸ©º`, `Unique Patients ðŸ‘¤`, `Finalized Rx âœ…`, `Daily Average ðŸ“ˆ`, `Rx Items Dispensed ðŸ’Š`).
+  - Implemented 300ms debounced search bar with clear button (`âœ•`), Doctor selector dropdown, Status selector, and 1-Click Date Presets strip (`Today`, `Yesterday`, `This Week`, `This Month`, `This Year`, `Custom Range`).
+  - Implemented Segmented Analytical Tabs Navigation (`[ ðŸ©º Consultations & Morbidity ]`, `[ ðŸ‘¨â€âš•ï¸ Doctor Productivity & Workload ]`, `[ ðŸ’Š Prescribed Remedies & Formulary ]`).
   - Built Dual-Mode Presentation: Desktop structured data tables alongside High-Density **Mobile Touch Cards** (`block md:hidden`) with 44px+ hit targets.
   - Added clean `@media print` styling for executive browser report printing.
 - [x] **Task 57.3**: Automated Testing & Suite Verification
@@ -1366,9 +910,9 @@
   - Added customizable WhatsApp digital prescription template `'whatsapp_prescription'` in `ClinicSetting::defaultSmsConfig()` and `CommunicationService::generateWhatsAppShareUrl`.
   - Added `communications.manage` security guards across all gateway management and balance inspection endpoints.
 - [x] **Task 58.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/Communications/Settings.jsx`)
-  - Integrated RemediQ standard `PageHeader` with title *"SMS Gateway & Communication Studio (যোগাযোগ ও এসএমএস গেটওয়ে)"* and quick links (`[ 📜 Notification Logs ]`, `[ ⚙️ Clinic Settings ]`, `[ 🧪 Send Test SMS ]`).
-  - Added 5-Card Communication KPI Ribbon (`Total Dispatches 📡`, `SMS Dispatches 💬`, `WhatsApp Alerts 📱`, `Delivery Rate % ✅`, `Today Dispatched 🕒`).
-  - Implemented Live Gateway Balance Card with real-time balance indicator, active status badge, and `[ 🔄 Refresh Balance ]` action.
+  - Integrated RemediQ standard `PageHeader` with title *"SMS Gateway & Communication Studio (à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦— à¦“ à¦à¦¸à¦à¦®à¦à¦¸ à¦—à§‡à¦Ÿà¦“à¦¯à¦¼à§‡)"* and quick links (`[ ðŸ“œ Notification Logs ]`, `[ âš™ï¸ Clinic Settings ]`, `[ ðŸ§ª Send Test SMS ]`).
+  - Added 5-Card Communication KPI Ribbon (`Total Dispatches ðŸ“¡`, `SMS Dispatches ðŸ’¬`, `WhatsApp Alerts ðŸ“±`, `Delivery Rate % âœ…`, `Today Dispatched ðŸ•’`).
+  - Implemented Live Gateway Balance Card with real-time balance indicator, active status badge, and `[ ðŸ”„ Refresh Balance ]` action.
   - Built interactive Live Test SMS Modal with custom test number input, message editor, and live result feedback.
   - Built Interactive Message Template Studio with 1-click tactile variable chips toolbar (`+ Patient Name`, `+ Doctor Name`, `+ Clinic Name`, `+ Date`, `+ Time`, `+ Token Code`, `+ Service Room`, `+ Rx Link`, `+ Phone`).
   - Added Dynamic Character & Segment Counter detecting GSM 7-bit (160 chars/part) vs Unicode/Bengali (70 chars/part) with visual multi-part SMS indicator.
@@ -1385,10 +929,10 @@
   - Added `'converted_patient_id'` to `$fillable` in `AppointmentRequest.php`.
   - Upgraded `AppointmentRequestController@store` with dual-submission engine: saves as `'pending'` enquiry for triage OR instantly confirms and schedules as `'scheduled'`, creates appropriate lifecycle event, and triggers automated SMS confirmation dispatch via `CommunicationService`.
 - [x] **Task 59.2**: Frontend Workstation Modernization (`resources/js/Pages/Admin/AppointmentRequests/Create.jsx`)
-  - Integrated RemediQ standard `PageHeader` with title *"Book Appointment Request (নতুন অ্যাপয়েন্টমেন্ট বুকিং)"* and quick link (`[ 📋 Back to Requests ]`).
+  - Integrated RemediQ standard `PageHeader` with title *"Book Appointment Request (à¦¨à¦¤à§à¦¨ à¦…à§à¦¯à¦¾à¦ªà¦¯à¦¼à§‡à¦¨à§à¦Ÿà¦®à§‡à¦¨à§à¦Ÿ à¦¬à§à¦•à¦¿à¦‚)"* and quick link (`[ ðŸ“‹ Back to Requests ]`).
   - Implemented 2-Column Responsive Layout:
     - Left Column: Mode Toggle (`Registered Patient` vs `+ New Patient`), async debounced patient lookup combobox (`/admin/patients/search?q=`), Recent Clinic Patients quick chips, and rich Patient Demographics Card (avatar, name, phone, code, gender, age).
-    - Right Column: Attending Doctor selector, Live Doctor Duty & Roster Card showing weekly consulting shifts and upcoming leaves/off-days, requested appointment date with 1-click quick presets (`Today`, `Tomorrow`, `+2 Days`, `+1 Week`), time picker, and Dual Submit Action buttons (`[ ⚡ Confirm & Schedule Immediately ]` vs `[ 💾 Save as Pending Enquiry ]`).
+    - Right Column: Attending Doctor selector, Live Doctor Duty & Roster Card showing weekly consulting shifts and upcoming leaves/off-days, requested appointment date with 1-click quick presets (`Today`, `Tomorrow`, `+2 Days`, `+1 Week`), time picker, and Dual Submit Action buttons (`[ âš¡ Confirm & Schedule Immediately ]` vs `[ ðŸ’¾ Save as Pending Enquiry ]`).
   - Streamlined mobile touch layout (< 768px) with 44px+ hit targets on buttons and chips.
 - [x] **Task 59.3**: Automated Testing & Suite Verification
   - Authored comprehensive test suite `tests/Feature/FastTrackAppointmentBookingTest.php` with 4 feature tests passing (36 assertions).
@@ -1403,9 +947,9 @@
   - Passed `practice_type` and `clinic_name` from `ClinicSetting` to enable dynamic clinical interface branding.
   - Preserved strict clinical chart privacy invariants (`clinical_records.view` + `visits.view`).
 - [x] **Task 60.2**: Frontend Dashboard Modernization & 1-Click Launchers (`resources/js/Pages/Admin/Dashboard.jsx`)
-  - Replaced legacy interface with standard RemediQ `PageHeader` featuring clinic branding and practice mode badge (`🌿 Classical Homeopathy`, `🩺 Allopathy`, `🌐 Integrative Dual Practice`).
-  - Implemented 6-Tile Operational KPI Ribbon (`Waiting in Queue ⏳`, `Today's Consultations 🩺`, `Pending Enquiries 📅`, `Today's Revenue 💵`, `Inventory Low Stock ⚠️`, `Total Registered Patients 👥`).
-  - Built 1-Click Clinical Action Launchers Strip (`+ New Consultation`, `🎫 Issue Token`, `👤 New Patient`, `💳 POS Billing`, `📅 Book Appointment`, `📊 View Reports`).
+  - Replaced legacy interface with standard RemediQ `PageHeader` featuring clinic branding and practice mode badge (`ðŸŒ¿ Classical Homeopathy`, `ðŸ©º Allopathy`, `ðŸŒ Integrative Dual Practice`).
+  - Implemented 6-Tile Operational KPI Ribbon (`Waiting in Queue â³`, `Today's Consultations ðŸ©º`, `Pending Enquiries ðŸ“…`, `Today's Revenue ðŸ’µ`, `Inventory Low Stock âš ï¸`, `Total Registered Patients ðŸ‘¥`).
+  - Built 1-Click Clinical Action Launchers Strip (`+ New Consultation`, `ðŸŽ« Issue Token`, `ðŸ‘¤ New Patient`, `ðŸ’³ POS Billing`, `ðŸ“… Book Appointment`, `ðŸ“Š View Reports`).
   - Built responsive consultation trend visualizer, high-density appointment triage feed, and touch-optimized layout for mobile and tablet screens.
 - [x] **Task 60.3**: Automated Testing & Suite Verification
   - Authored dedicated feature test `tests/Feature/ExecutiveDashboardTest.php` (2 tests, 51 assertions passing).

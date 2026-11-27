@@ -195,7 +195,7 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - 1-click Chapter Tab Pills and Mapping Status filters (`Mapped`, `Unmapped`).
   - High-density mobile touch cards (`block md:hidden`) alongside desktop `DataTable`.
   - 1-Click Kent Rubric Presets Toolbar on creation studio.
-- `[ ] Pending` **Homeopathic Scale Specifications**: Native support for Centesimal (CH), Decimal (X), 50-Millesimal (LM/Q), and Mother Tinctures (Q/MT).
+- `[x] Done` **Homeopathic Scale Specifications**: Native support for Centesimal (CH), Decimal (X), 50-Millesimal (LM/Q), and Mother Tinctures (Q/MT) across medicines pharmacopoeia, potency scale filtering, prescription builder, and multi-batch inventory.
 
 #### 4.2 General Medicine / Allopathy Domain
 - `[x] Done` **Conventional Pharmaceutical Database**:
