@@ -674,8 +674,8 @@ export default function Index({ roles = [], permissions = [], kpis = {}, filters
                                     </section>
                                 )}
 
-                                {/* Universal Search & Category Tabs Strip */}
-                                <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-2xs space-y-3">
+                                {/* Universal Search & Status Filters */}
+                                <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-2xs">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div className="relative flex-1">
                                             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
@@ -690,22 +690,23 @@ export default function Index({ roles = [], permissions = [], kpis = {}, filters
                                                 <button
                                                     type="button"
                                                     onClick={() => setSearch('')}
-                                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-400 hover:text-gray-600"
+                                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-400 hover:text-gray-600 font-bold"
                                                 >
                                                     ✕
                                                 </button>
                                             )}
                                         </div>
 
-                                        {/* Status Filter Pills: All / Granted / Revoked */}
-                                        <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                                        {/* Status Filter Pills */}
+                                        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden sm:inline">Status:</span>
                                             <button
                                                 type="button"
                                                 onClick={() => setStatusFilter('all')}
-                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                                                     statusFilter === 'all'
                                                         ? 'bg-primary-600 text-white shadow-2xs'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                             >
                                                 All ({permissions.length})
@@ -713,10 +714,10 @@ export default function Index({ roles = [], permissions = [], kpis = {}, filters
                                             <button
                                                 type="button"
                                                 onClick={() => setStatusFilter('granted')}
-                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                                                     statusFilter === 'granted'
                                                         ? 'bg-emerald-600 text-white shadow-2xs'
-                                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
                                                 }`}
                                             >
                                                 ✅ Granted ({totalSelected})
@@ -724,7 +725,7 @@ export default function Index({ roles = [], permissions = [], kpis = {}, filters
                                             <button
                                                 type="button"
                                                 onClick={() => setStatusFilter('revoked')}
-                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                                                     statusFilter === 'revoked'
                                                         ? 'bg-gray-700 text-white shadow-2xs'
                                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -734,35 +735,71 @@ export default function Index({ roles = [], permissions = [], kpis = {}, filters
                                             </button>
                                         </div>
                                     </div>
+                                </section>
 
-                                    {/* Category Navigation Tabs */}
-                                    <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-gray-100 scrollbar-none">
+                                {/* Redesigned Category Navigation Tabs Bar */}
+                                <section className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-2xs space-y-2.5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                                            <span>📑</span>
+                                            <span>Module Category Filter (ক্লিনিক্যাল ক্যাটাগরি ফিল্টার)</span>
+                                        </span>
+                                        {selectedCategory !== 'all' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedCategory('all')}
+                                                className="text-xs text-primary-700 hover:text-primary-800 hover:underline font-bold transition"
+                                            >
+                                                View All Categories ({PERMISSION_CATEGORIES.length}) →
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setSelectedCategory('all')}
-                                            className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition ${
+                                            className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                 selectedCategory === 'all'
-                                                    ? 'bg-gray-900 text-white font-bold'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    ? 'bg-primary-600 text-white font-bold shadow-2xs'
+                                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
                                             }`}
                                         >
-                                            All Categories ({PERMISSION_CATEGORIES.length})
+                                            <span>🌐</span>
+                                            <span>All Categories</span>
+                                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                                                selectedCategory === 'all' ? 'bg-primary-700 text-white' : 'bg-gray-200 text-gray-700'
+                                            }`}>
+                                                {PERMISSION_CATEGORIES.length}
+                                            </span>
                                         </button>
-                                        {PERMISSION_CATEGORIES.map((cat) => (
-                                            <button
-                                                key={cat.key}
-                                                type="button"
-                                                onClick={() => setSelectedCategory(cat.key)}
-                                                className={`shrink-0 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition ${
-                                                    selectedCategory === cat.key
-                                                        ? 'bg-primary-600 text-white font-bold shadow-2xs'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                }`}
-                                            >
-                                                <span>{cat.icon}</span>
-                                                <span>{cat.label.split('(')[0].trim()}</span>
-                                            </button>
-                                        ))}
+
+                                        {PERMISSION_CATEGORIES.map((cat) => {
+                                            const isCatSelected = selectedCategory === cat.key;
+                                            const catPerms = permissions.filter((p) => cat.modules.includes(p.name.split('.')[0]));
+                                            const catGranted = catPerms.filter((p) => data.permissions.includes(p.name)).length;
+
+                                            return (
+                                                <button
+                                                    key={cat.key}
+                                                    type="button"
+                                                    onClick={() => setSelectedCategory(cat.key)}
+                                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                                        isCatSelected
+                                                            ? 'bg-primary-600 text-white font-bold shadow-2xs'
+                                                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                    }`}
+                                                >
+                                                    <span>{cat.icon}</span>
+                                                    <span>{cat.label.split('(')[0].trim()}</span>
+                                                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                                                        isCatSelected ? 'bg-primary-700 text-white' : 'bg-gray-200 text-gray-600'
+                                                    }`}>
+                                                        {catGranted}/{catPerms.length}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </section>
 
