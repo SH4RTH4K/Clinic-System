@@ -268,7 +268,10 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.create'])
 Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.view'])
     ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['index', 'show']));
 Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.update'])
-    ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['edit', 'update']));
+    ->group(function () {
+        Route::patch('doctors/{doctor}/toggle-status', [DoctorController::class, 'toggleStatus'])->name('doctors.toggle-status');
+        Route::resource('doctors', DoctorController::class)->only(['edit', 'update']);
+    });
 Route::middleware(['auth', 'role_or_permission:Super Admin|doctors.delete'])
     ->group(fn () => Route::resource('doctors', DoctorController::class)->only(['destroy']));
 

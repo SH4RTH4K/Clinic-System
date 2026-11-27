@@ -60,6 +60,11 @@ class Doctor extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function visits(): HasMany
+    {
+        return $this->hasMany(Visit::class);
+    }
+
     public function schedules(): HasMany
     {
         return $this->hasMany(DoctorSchedule::class);
@@ -73,5 +78,49 @@ class Doctor extends Model
     public function queueTokens(): HasMany
     {
         return $this->hasMany(PatientQueueToken::class);
+    }
+
+    public function scopeSearch($query, ?string $search)
+    {
+        if (blank($search)) {
+            return $query;
+        }
+
+        $search = trim($search);
+
+        return $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('name_bn', 'like', "%{$search}%")
+                ->orWhere('credentials', 'like', "%{$search}%")
+                ->orWhere('credentials_bn', 'like', "%{$search}%")
+                ->orWhere('specialty', 'like', "%{$search}%")
+                ->orWhere('specialty_bn', 'like', "%{$search}%")
+                ->orWhere('govt_reg_no', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('appointment_phone', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
+        });
+    }
+
+    public function scopeActive($query, bool $active = true)
+    {
+        return $query->where('is_active', $active);
+    }
+
+    public function scopeAccount($query, ?string $account)
+    {
+        if (blank($account) || $account === 'all') {
+            return $query;
+        }
+
+        if ($account === 'linked') {
+            return $query->whereNotNull('user_id');
+        }
+
+        if ($account === 'unlinked') {
+            return $query->whereNull('user_id');
+        }
+
+        return $query;
     }
 }

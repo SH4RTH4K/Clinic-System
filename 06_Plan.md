@@ -631,6 +631,25 @@
   - Authored test suite `tests/Feature/FoodRestrictionManagementTest.php` with 12 feature tests passing (106 assertions).
   - Verified zero regressions in `SettingsAuditAuthorizationTest`, `RolePermissionManagementTest`, `ProductionSetupSeederTest`, and `AdviceItemManagementTest` (45 tests passed, 228 assertions).
   - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 40: Doctor Profiles & Practitioner Management Workstation (`/admin/doctors`) (`[x] COMPLETED`)
+- [x] **Task 40.1**: Model Hardening & Relationship Fixes
+  - Added missing `visits(): HasMany` relationship to `App\Models\Doctor`, linking historical patient clinical visits directly to the practitioner.
+  - Implemented query scopes on `Doctor.php`: `scopeSearch` (matching name EN/BN, degrees/credentials EN/BN, specialty EN/BN, govt_reg_no, phone, appointment_phone, email), `scopeActive`, and `scopeAccount` (linked login vs unlinked profile).
+- [x] **Task 40.2**: Controller Modernization & KPI Aggregation
+  - Upgraded `DoctorController@index` with query filtering, eager loaded `visits_count`, `schedules_count`, and user accounts.
+  - Computed executive KPI metrics: `total`, `active`, `inactive`, `linked_account`, `scheduled`, and `total_visits`.
+  - Registered `PATCH /admin/doctors/{doctor}/toggle-status` under RBAC `role_or_permission:Super Admin|doctors.update` for instantaneous 1-click status toggling.
+  - Upgraded `DoctorController@show` with consultation counts, schedule counts, and secure clinic branding URLs (`photo_url`, `signature_url`, `seal_url`).
+- [x] **Task 40.3**: Responsive Multi-Screen Workstation & Ergonomics
+  - `Doctors/Index.jsx`: Executive KPI ribbon (4 tiles), 300ms debounced search bar with `✕` clear button, horizontal Status filter tabs (`All`, `Active in Practice 🩺`, `Inactive / On Leave ⏸️`), Account Linkage filter (`All`, `Linked Account 👤`, `Profile Only 📄`).
+  - Desktop `DataTable` (`hidden md:table`): Practitioner avatar thumbnail, active status dot, degrees/credentials, government registration badge (`govt_reg_no`), click-to-call phone links, linked system username badge, and quick action buttons (`View`, `Edit`, `📅 Schedule`, `Toggle Status`, `Delete/Deactivate`).
+  - Mobile High-Density Touch Cards (`block md:hidden`): Touch-optimized 44px+ buttons, doctor credentials, specialty, phone links, and schedule deep-links.
+  - Clinical Authorship Protection: Smart `ConfirmDialog` warning if a doctor has consultation history (`visits_count > 0`), disabling hard deletion and offering safe deactivation.
+- [x] **Task 40.4**: Automated Verification & Regression Testing
+  - Authored comprehensive test suite `tests/Feature/DoctorManagementWorkstationTest.php` with 7 feature tests passing (96 assertions).
+  - Verified zero regressions in `DoctorControllerTest` and full suite (100 tests passed, 788 assertions).
+  - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`) and frontend production assets compiled with Vite (`npm run build`).
 - [ ] **Task 25.5**: Staff Intake Creation & Fast-Track Booking Workflow (`/admin/appointment-requests/create`)
   - Pass active doctors with weekly schedules and leaves in `AdminApptController::create`.
   - Implement debounced async patient autocomplete combobox (`/admin/patients/search?q=`) and demographic verification card in `Create.jsx`.
@@ -916,3 +935,22 @@
   - Authored test suite `tests/Feature/FoodRestrictionManagementTest.php` with 12 feature tests passing (106 assertions).
   - Verified zero regressions in `SettingsAuditAuthorizationTest`, `RolePermissionManagementTest`, `ProductionSetupSeederTest`, and `AdviceItemManagementTest` (45 tests passed, 228 assertions).
   - Code formatted with Pint and frontend production assets compiled with Vite (`npm run build`).
+
+### Phase 40: Doctor Profiles & Practitioner Management Workstation (`/admin/doctors`) (`[x] COMPLETED`)
+- [x] **Task 40.1**: Model Hardening & Relationship Fixes
+  - Added missing `visits(): HasMany` relationship to `App\Models\Doctor`, linking historical patient clinical visits directly to the practitioner.
+  - Implemented query scopes on `Doctor.php`: `scopeSearch` (matching name EN/BN, degrees/credentials EN/BN, specialty EN/BN, govt_reg_no, phone, appointment_phone, email), `scopeActive`, and `scopeAccount` (linked login vs unlinked profile).
+- [x] **Task 40.2**: Controller Modernization & KPI Aggregation
+  - Upgraded `DoctorController@index` with query filtering, eager loaded `visits_count`, `schedules_count`, and user accounts.
+  - Computed executive KPI metrics: `total`, `active`, `inactive`, `linked_account`, `scheduled`, and `total_visits`.
+  - Registered `PATCH /admin/doctors/{doctor}/toggle-status` under RBAC `role_or_permission:Super Admin|doctors.update` for instantaneous 1-click status toggling.
+  - Upgraded `DoctorController@show` with consultation counts, schedule counts, and secure clinic branding URLs (`photo_url`, `signature_url`, `seal_url`).
+- [x] **Task 40.3**: Responsive Multi-Screen Workstation & Ergonomics
+  - `Doctors/Index.jsx`: Executive KPI ribbon (4 tiles), 300ms debounced search bar with `✕` clear button, horizontal Status filter tabs (`All`, `Active in Practice 🩺`, `Inactive / On Leave ⏸️`), Account Linkage filter (`All`, `Linked Account 👤`, `Profile Only 📄`).
+  - Desktop `DataTable` (`hidden md:table`): Practitioner avatar thumbnail, active status dot, degrees/credentials, government registration badge (`govt_reg_no`), click-to-call phone links, linked system username badge, and quick action buttons (`View`, `Edit`, `📅 Schedule`, `Toggle Status`, `Delete/Deactivate`).
+  - Mobile High-Density Touch Cards (`block md:hidden`): Touch-optimized 44px+ buttons, doctor credentials, specialty, phone links, and schedule deep-links.
+  - Clinical Authorship Protection: Smart `ConfirmDialog` warning if a doctor has consultation history (`visits_count > 0`), disabling hard deletion and offering safe deactivation.
+- [x] **Task 40.4**: Automated Verification & Regression Testing
+  - Authored comprehensive test suite `tests/Feature/DoctorManagementWorkstationTest.php` with 7 feature tests passing (96 assertions).
+  - Verified zero regressions in `DoctorControllerTest` and full suite (100 tests passed, 788 assertions).
+  - Code formatted with Pint (`vendor/bin/pint --dirty --format agent`) and frontend production assets compiled with Vite (`npm run build`).

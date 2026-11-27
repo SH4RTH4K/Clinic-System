@@ -26,17 +26,23 @@ export default function Show({ doctor }) {
                     title={doctor.name}
                     subtitle={[doctor.credentials, doctor.specialty].filter(Boolean).join(' • ') || 'Doctor profile details'}
                     actions={
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Link
                                 href={route('admin.doctors.index')}
-                                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                className="rounded-md border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                             >
-                                Back to Doctors
+                                ← Back to Doctors
+                            </Link>
+                            <Link
+                                href={route('doctor_schedules.index', { doctor_id: doctor.id })}
+                                className="rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100 flex items-center gap-1"
+                            >
+                                <span>📅</span> Chamber Schedule
                             </Link>
                             {canUpdate ? (
                                 <Link
                                     href={route('admin.doctors.edit', doctor.id)}
-                                    className="rounded-md bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+                                    className="rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
                                 >
                                     Edit Doctor
                                 </Link>
@@ -44,7 +50,7 @@ export default function Show({ doctor }) {
                                 <button
                                     type="button"
                                     disabled
-                                    className="rounded-md bg-primary-600 px-4 py-2 text-sm font-semibold text-white opacity-50"
+                                    className="rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white opacity-50"
                                 >
                                     Edit Doctor
                                 </button>
@@ -54,22 +60,64 @@ export default function Show({ doctor }) {
                 />
 
                 <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
-                            {doctor.photo_path ? (
-                                <img src={route('admin.doctors.photo', doctor.id)} alt={doctor.name} className="h-full w-full object-cover" />
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-gray-400">
-                                    {(doctor.name || 'D').charAt(0)}
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
+                                {doctor.photo_path ? (
+                                    <img src={route('admin.doctors.photo', doctor.id)} alt={doctor.name} className="h-full w-full object-cover" />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-gray-400">
+                                        {(doctor.name || 'D').charAt(0)}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-1.5">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">{doctor.name}</h2>
+                                    {doctor.name_bn && <p className="text-sm text-gray-600 font-bengali">{doctor.name_bn}</p>}
                                 </div>
+                                <div className="text-xs font-semibold text-teal-800">
+                                    {doctor.credentials || 'Practitioner'}
+                                </div>
+                                <StatusBadge status={doctor.is_active ? 'active' : 'inactive'} />
+                            </div>
+                        </div>
+
+                        {/* Quick Metrics */}
+                        <div className="flex gap-4 border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-6 text-center">
+                            <div>
+                                <span className="block text-xl font-bold text-gray-900 font-mono">{doctor.visits_count || 0}</span>
+                                <span className="text-[11px] text-gray-500 uppercase tracking-wider">Consultations</span>
+                            </div>
+                            <div>
+                                <span className="block text-xl font-bold text-gray-900 font-mono">{doctor.schedules_count || 0}</span>
+                                <span className="text-[11px] text-gray-500 uppercase tracking-wider">Schedule Days</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Prescription Branding Assets (Signature & Seal) */}
+                <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 border-b border-gray-100 pb-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+                        Prescription Digital Assets (ব্যবস্থাপত্র স্বাক্ষর ও সিলমোহর)
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="p-4 rounded-lg border border-gray-100 bg-gray-50/50 flex flex-col items-center justify-center text-center">
+                            <span className="text-xs font-bold text-gray-500 uppercase mb-2">Digital Signature</span>
+                            {doctor.signature_path ? (
+                                <img src={route('doctors.signature', doctor.id)} alt="Signature" className="max-h-16 max-w-[200px] object-contain" />
+                            ) : (
+                                <div className="text-xs text-gray-400 italic py-4">No signature uploaded</div>
                             )}
                         </div>
-                        <div className="space-y-2">
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-900">{doctor.name}</h2>
-                                {doctor.name_bn && <p className="text-sm text-gray-600">{doctor.name_bn}</p>}
-                            </div>
-                            <StatusBadge status={doctor.is_active ? 'active' : 'inactive'} />
+                        <div className="p-4 rounded-lg border border-gray-100 bg-gray-50/50 flex flex-col items-center justify-center text-center">
+                            <span className="text-xs font-bold text-gray-500 uppercase mb-2">Official Stamp / Seal</span>
+                            {doctor.seal_path ? (
+                                <img src={route('doctors.seal', doctor.id)} alt="Seal" className="max-h-16 max-w-[120px] object-contain" />
+                            ) : (
+                                <div className="text-xs text-gray-400 italic py-4">No seal/stamp uploaded</div>
+                            )}
                         </div>
                     </div>
                 </section>

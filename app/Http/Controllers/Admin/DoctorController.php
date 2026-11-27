@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -18,16 +19,59 @@ use Inertia\Response;
 
 class DoctorController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $doctors = Doctor::orderBy('sort_order')->orderBy('name')->get();
+        $search = $request->query('search');
+        $status = $request->query('status', 'all');
+        $account = $request->query('account', 'all');
 
-        return Inertia::render('Admin/Doctors/Index', ['doctors' => $doctors]);
+        $query = Doctor::query()
+            ->with(['user:id,name,username,email'])
+            ->withCount(['visits', 'schedules', 'leaves'])
+            ->search($search)
+            ->account($account);
+
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        $query->orderBy('sort_order', 'asc')->orderBy('name', 'asc');
+
+        $kpis = [
+            'total' => Doctor::count(),
+            'active' => Doctor::where('is_active', true)->count(),
+            'inactive' => Doctor::where('is_active', false)->count(),
+            'linked_account' => Doctor::whereNotNull('user_id')->count(),
+            'scheduled' => Doctor::whereHas('schedules', fn ($q) => $q->where('is_active', true))->count(),
+            'total_visits' => Visit::count(),
+        ];
+
+        return Inertia::render('Admin/Doctors/Index', [
+            'doctors' => $query->paginate(15)->withQueryString(),
+            'kpis' => $kpis,
+            'filters' => [
+                'search' => $search ?? '',
+                'status' => $status,
+                'account' => $account,
+            ],
+        ]);
     }
 
     public function show(Doctor $doctor): Response
     {
-        return Inertia::render('Admin/Doctors/Show', ['doctor' => $doctor]);
+        $doctor->load(['user:id,name,username,email', 'schedules' => fn ($q) => $q->orderBy('day_of_week')]);
+        $doctor->loadCount(['visits', 'schedules', 'leaves', 'queueTokens']);
+
+        return Inertia::render('Admin/Doctors/Show', [
+            'doctor' => [
+                ...$doctor->toArray(),
+                'photo_url' => $doctor->photo_path ? route('doctors.photo', $doctor) : null,
+                'signature_url' => $doctor->signature_path ? route('doctors.signature', $doctor) : null,
+                'seal_url' => $doctor->seal_path ? route('doctors.seal', $doctor) : null,
+            ],
+        ]);
     }
 
     public function create(): Response
@@ -187,6 +231,15 @@ class DoctorController extends Controller
         }
 
         return back()->with('success', 'Doctor deleted.');
+    }
+
+    public function toggleStatus(Doctor $doctor): RedirectResponse
+    {
+        $doctor->update(['is_active' => ! $doctor->is_active]);
+
+        $statusText = $doctor->is_active ? 'activated' : 'deactivated';
+
+        return back()->with('success', "Doctor {$doctor->name} has been {$statusText}.");
     }
 
     /**
