@@ -1,0 +1,1 @@
+import{o as e}from"./app-D9rCAG26.js";function t(){let t=(e()||{}).props||{},n=t.auth&&typeof t.auth==`object`?t.auth:{},r=n.permissions,i=Array.isArray(r)?r:r&&typeof r==`object`?Object.values(r):[],a=n.roles,o=Array.isArray(a)?a:a&&typeof a==`object`?Object.values(a):[],s=Array.isArray(o)&&o.includes(`Super Admin`);return e=>s?!0:Array.isArray(i)&&i.includes(e)}export{t};
