@@ -285,6 +285,7 @@ class DatabaseBackupService
                 }
 
                 foreach ($tables as $table) {
+                    $this->write($stream, 'DROP TABLE IF EXISTS '.$this->quoteIdentifier($table['name']).';');
                     $this->write($stream, $this->createTableStatement($connection, $table['name']));
                 }
 

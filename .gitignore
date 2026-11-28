@@ -33,6 +33,7 @@ Thumbs.db
 
 # Sensitive data — never commit
 database/*.sql
+database/sql/
 database/*.sqlite
 Prescription.jpeg
 .antigravityignore
