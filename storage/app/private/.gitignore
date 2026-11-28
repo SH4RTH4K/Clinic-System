@@ -1,2 +1,6 @@
 *
 !.gitignore
+!system-backups/
+!system-backups/.gitignore
+!system-health/
+!system-health/.gitignore

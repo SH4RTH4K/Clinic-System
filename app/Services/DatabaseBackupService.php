@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use RecursiveCallbackFilterIterator;
@@ -127,7 +128,9 @@ class DatabaseBackupService
             return file_exists($parent) && is_writable($parent)
                 ? 'Ready to create'
                 : 'Check permissions';
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            Log::warning('Backup storage status check failed: '.$e->getMessage());
+
             return 'Check permissions';
         }
     }
@@ -622,8 +625,14 @@ class DatabaseBackupService
             throw $e;
         }
 
-        if ($create && ! is_dir($backupRoot) && ! @mkdir($backupRoot, 0700, true) && ! is_dir($backupRoot)) {
-            throw new RuntimeException('Private backup storage is unavailable.');
+        if ($create && ! is_dir($backupRoot)) {
+            @mkdir($backupRoot, 0755, true);
+            if (! is_dir($backupRoot)) {
+                @mkdir($backupRoot, 0700, true);
+            }
+            if (! is_dir($backupRoot)) {
+                throw new RuntimeException('Private backup storage is unavailable.');
+            }
         }
 
         if (! is_dir($backupRoot)) {
