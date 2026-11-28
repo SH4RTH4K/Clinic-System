@@ -874,6 +874,11 @@
   - Built integrated **Live Cash Drawer Tender & Change Calculator** (`Tendered Cash à§³`, quick chips `[ Exact ]`, `[ à§³500 ]`, `[ à§³1,000 ]`, `[ à§³2,000 ]`, dynamic green return callout `Change to Return: à§³X` or amber callout `Remaining Due: à§³X`).
   - Added toggle `[x] Automatically open 80mm POS thermal print dialog after saving` and fast-track dual actions (`Create & Print POS Slip` vs `Create & View Invoice`).
   - Built responsive 2-column POS layout on Desktop/Tablet and streamlined vertical flow on mobile screens.
+  - Implemented **Inline Quick Patient Registration modal** with asynchronous AJAX submission to `admin.patients.store` and immediate auto-selection with zero cart loss.
+  - Added **Cashier Keyboard Shortcuts** (`Ctrl+/` or `F2` for dispensary search, `Ctrl+Shift+P` for quick patient modal, `Ctrl+Enter` to submit/checkout, `Esc` to close modals/search).
+  - Added **Dual Print Format Selector** toggle allowing cashier to choose between `80mm Continuous Thermal POS Slip` and `A5/A4 Formal Medical Invoice`.
+  - Added **Real-time Stock Limit Over-dispensing Alert** highlighting cart rows when item quantity exceeds available dispensary batch stock.
+  - Added **Tax / Additional Service Fee** calculation input field in the financial summary.
 - [x] **Task 56.3**: Automated Testing & Suite Verification
   - Expanded `tests/Feature/InvoiceWorkstationTest.php` to 9 passing feature tests (103 assertions).
   - Verified full billing suite with zero regressions.

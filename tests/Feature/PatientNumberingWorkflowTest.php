@@ -209,6 +209,35 @@ class PatientNumberingWorkflowTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_patient_can_be_quickly_registered_via_json_request(): void
+    {
+        $this->createClinicSetting();
+        $user = $this->userWithPermissions(['patients.create']);
+
+        $response = $this->actingAs($user)
+            ->postJson(route('admin.patients.store'), [
+                'name' => 'Quick POS Patient',
+                'gender' => 'male',
+                'phone' => '01811223344',
+                'age_years' => 32,
+            ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Patient created successfully.',
+            ])
+            ->assertJsonPath('patient.name', 'Quick POS Patient')
+            ->assertJsonPath('patient.phone', '01811223344');
+
+        $this->assertDatabaseHas('patients', [
+            'name' => 'Quick POS Patient',
+            'gender' => 'male',
+            'phone' => '01811223344',
+            'age_years' => 32,
+        ]);
+    }
+
     /** @param array<string, mixed> $overrides */
     private function profileData(array $overrides = []): array
     {

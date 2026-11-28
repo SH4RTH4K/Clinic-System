@@ -30,6 +30,11 @@ export default function Create({
     defaultFee = 500.00,
     generatedInvoiceNumber = '',
 }) {
+    // Form & DOM references
+    const formRef = useRef(null);
+    const batchInputRef = useRef(null);
+    const patientInputRef = useRef(null);
+
     // Patient Search & Selection
     const [patientSearch, setPatientSearch] = useState(selectedPatient?.name || '');
     const [filteredPatients, setFilteredPatients] = useState([]);
@@ -37,6 +42,17 @@ export default function Create({
     const [recentVisits, setRecentVisits] = useState(patientRecentVisits);
     const [selectedDoctor, setSelectedDoctor] = useState(null);
     const [isSearchingPatient, setIsSearchingPatient] = useState(false);
+
+    // Quick Patient Modal State
+    const [quickPatientOpen, setQuickPatientOpen] = useState(false);
+    const [quickPatientLoading, setQuickPatientLoading] = useState(false);
+    const [quickPatientErrors, setQuickPatientErrors] = useState({});
+    const [quickPatientData, setQuickPatientData] = useState({
+        name: '',
+        phone: '',
+        gender: 'male',
+        age_years: '',
+    });
 
     // Pharmacy Batch Combobox Search
     const [batchQuery, setBatchQuery] = useState('');
@@ -47,6 +63,7 @@ export default function Create({
     // Cashier Tender & Change Calculator
     const [tenderedCash, setTenderedCash] = useState('');
     const [autoPrintPos, setAutoPrintPos] = useState(true);
+    const [printFormat, setPrintFormat] = useState('thermal'); // 'thermal' (80mm) or 'formal' (A5)
 
     const defaultItems = initialData.items?.length > 0
         ? initialData.items
@@ -58,6 +75,7 @@ export default function Create({
                 unit_price: defaultFee,
                 total_price: defaultFee,
                 medicine_batch_id: null,
+                stock_available: null,
                 notes: '',
             },
         ];
@@ -93,6 +111,37 @@ export default function Create({
     const tenderAmountNum = Number(tenderedCash || 0);
     const changeToReturn = tenderAmountNum >= totalAmount ? tenderAmountNum - totalAmount : 0;
     const remainingDue = tenderAmountNum < totalAmount ? totalAmount - tenderAmountNum : 0;
+
+    // Keyboard Shortcuts for Cashier Speed
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Ctrl + / or F2: Focus Dispensary Search
+            if ((e.ctrlKey && e.key === '/') || e.key === 'F2') {
+                e.preventDefault();
+                batchInputRef.current?.focus();
+            }
+            // Ctrl + Shift + P: Focus Patient Search
+            if (e.ctrlKey && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+                e.preventDefault();
+                patientInputRef.current?.focus();
+            }
+            // Ctrl + Enter: Submit & Print
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (!processing && data.patient_id && data.items.length > 0) {
+                    formRef.current?.requestSubmit();
+                }
+            }
+            // Escape: Close dropdowns & modals
+            if (e.key === 'Escape') {
+                setShowBatchDropdown(false);
+                setQuickPatientOpen(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [processing, data.patient_id, data.items.length]);
 
     // Update payment amount when total changes
     useEffect(() => {
@@ -205,6 +254,41 @@ export default function Create({
         setRecentVisits([]);
     };
 
+    const handleQuickPatientSubmit = async (e) => {
+        e.preventDefault();
+        setQuickPatientLoading(true);
+        setQuickPatientErrors({});
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const res = await fetch('/admin/patients', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(quickPatientData),
+            });
+
+            const result = await res.json();
+            if (res.ok && result.success && result.patient) {
+                handleSelectPatient(result.patient);
+                setQuickPatientOpen(false);
+                setQuickPatientData({ name: '', phone: '', gender: 'male', age_years: '' });
+            } else if (result.errors) {
+                setQuickPatientErrors(result.errors);
+            } else {
+                setQuickPatientErrors({ name: result.message || 'Could not create patient record.' });
+            }
+        } catch {
+            setQuickPatientErrors({ name: 'Connection error while saving patient.' });
+        } finally {
+            setQuickPatientLoading(false);
+        }
+    };
+
     const handleDoctorChange = (doctorId) => {
         const doc = doctors.find((d) => String(d.id) === String(doctorId)) || null;
         setSelectedDoctor(doc);
@@ -227,7 +311,7 @@ export default function Create({
         }));
     };
 
-    const handleAddItem = (type = 'other', name = '', price = 0, batchId = null, notes = '') => {
+    const handleAddItem = (type = 'other', name = '', price = 0, batchId = null, stock = null, notes = '') => {
         const newItem = {
             item_type: type,
             item_name: name,
@@ -235,6 +319,7 @@ export default function Create({
             unit_price: price,
             total_price: price,
             medicine_batch_id: batchId,
+            stock_available: stock,
             notes: notes,
         };
         setData('items', [...data.items, newItem]);
@@ -242,7 +327,14 @@ export default function Create({
 
     const handleAddBatchItem = (batch) => {
         const label = `${batch.item_name} [${batch.sub_label || batch.item_type}] (Batch: ${batch.batch_number})`;
-        handleAddItem('medicine', label, Number(batch.selling_price || 0), batch.id, `Stock: ${batch.current_quantity}`);
+        handleAddItem(
+            'medicine',
+            label,
+            Number(batch.selling_price || 0),
+            batch.id,
+            Number(batch.current_quantity || 0),
+            `Stock: ${batch.current_quantity}`
+        );
         setBatchQuery('');
         setBatchResults([]);
         setShowBatchDropdown(false);
@@ -289,8 +381,13 @@ export default function Create({
         e.preventDefault();
         post(route('admin.invoices.store'), {
             onSuccess: (page) => {
-                if (autoPrintPos && page?.props?.flash?.invoice_id) {
-                    window.open(route('admin.invoices.pos_receipt', page.props.flash.invoice_id), '_blank');
+                const invoiceId = page?.props?.flash?.invoice_id;
+                if (autoPrintPos && invoiceId) {
+                    if (printFormat === 'thermal') {
+                        window.open(route('admin.invoices.pos_receipt', invoiceId), '_blank');
+                    } else {
+                        window.open(route('admin.invoices.print', invoiceId), '_blank');
+                    }
                 }
             },
         });
@@ -337,7 +434,7 @@ export default function Create({
                 />
 
                 {/* Main 2-Column POS Workspace */}
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     {/* LEFT COLUMN: Cart & Billable Items Studio (7 cols on lg) */}
                     <div className="lg:col-span-7 space-y-4">
                         {/* 1. Fast Line Item Presets Strip */}
@@ -412,9 +509,15 @@ export default function Create({
                                     <span>Live Pharmacy Inventory Search</span>
                                     <span className="text-[11px] text-slate-400 font-normal">(ঔষধ ও ব্যাচ অনুসন্ধান)</span>
                                 </label>
-                                {isSearchingBatch && (
-                                    <span className="text-[11px] text-teal-700 font-medium animate-pulse">Searching dispensary...</span>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    {isSearchingBatch ? (
+                                        <span className="text-[11px] text-teal-700 font-medium animate-pulse">Searching dispensary...</span>
+                                    ) : (
+                                        <kbd className="hidden sm:inline text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
+                                            Ctrl + / or F2
+                                        </kbd>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="relative">
@@ -424,6 +527,7 @@ export default function Create({
                                     </svg>
                                 </span>
                                 <input
+                                    ref={batchInputRef}
                                     type="text"
                                     value={batchQuery}
                                     onChange={(e) => setBatchQuery(e.target.value)}
@@ -524,114 +628,145 @@ export default function Create({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 bg-white">
-                                        {data.items.map((item, index) => (
-                                            <tr key={index} className="hover:bg-slate-50/70 transition">
-                                                <td className="px-3 py-2 align-middle">
-                                                    <select
-                                                        value={item.item_type}
-                                                        onChange={(e) => handleItemChange(index, 'item_type', e.target.value)}
-                                                        className="w-full rounded-md border-slate-300 text-xs py-1.5 px-2 bg-slate-50/40 focus:bg-white focus:border-teal-500 focus:ring-teal-500 font-medium text-slate-700"
-                                                    >
-                                                        {ITEM_TYPES.map((t) => (
-                                                            <option key={t.value} value={t.value}>
-                                                                {t.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </td>
-                                                <td className="px-3 py-2 align-middle">
-                                                    <input
-                                                        type="text"
-                                                        value={item.item_name}
-                                                        onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                                        placeholder="Service or medicine title..."
-                                                        className="w-full rounded-md border-slate-300 text-xs py-1.5 px-2.5 focus:border-teal-500 focus:ring-teal-500 font-medium text-slate-900"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-2 align-middle">
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleAdjustQty(index, -1)}
-                                                            className="w-6 h-6 flex items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 text-xs font-bold"
+                                        {data.items.map((item, index) => {
+                                            const hasStockWarning = item.medicine_batch_id && item.stock_available !== null && Number(item.quantity || 0) > Number(item.stock_available || 0);
+                                            return (
+                                                <tr key={index} className="hover:bg-slate-50/70 transition">
+                                                    <td className="px-3 py-2 align-middle">
+                                                        <select
+                                                            value={item.item_type}
+                                                            onChange={(e) => handleItemChange(index, 'item_type', e.target.value)}
+                                                            className="w-full rounded-md border-slate-300 text-xs py-1.5 px-2 bg-slate-50/40 focus:bg-white focus:border-teal-500 focus:ring-teal-500 font-medium text-slate-700"
                                                         >
-                                                            -
-                                                        </button>
+                                                            {ITEM_TYPES.map((t) => (
+                                                                <option key={t.value} value={t.value}>
+                                                                    {t.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2 align-middle">
                                                         <input
-                                                            type="number"
-                                                            min="0.1"
-                                                            step="any"
-                                                            value={item.quantity}
-                                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                                            className="w-12 rounded-md border-slate-300 text-xs py-1 px-1 text-center font-mono font-bold text-slate-900 focus:border-teal-500 focus:ring-teal-500"
+                                                            type="text"
+                                                            value={item.item_name}
+                                                            onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
+                                                            placeholder="Service or medicine title..."
+                                                            className="w-full rounded-md border-slate-300 text-xs py-1.5 px-2.5 focus:border-teal-500 focus:ring-teal-500 font-medium text-slate-900"
                                                             required
                                                         />
+                                                        {hasStockWarning && (
+                                                            <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded mt-1 flex items-center gap-1">
+                                                                <span>⚠️</span>
+                                                                <span>Exceeds dispensary stock ({item.stock_available} available)</span>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-2 py-2 align-middle">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAdjustQty(index, -1)}
+                                                                className="w-6 h-6 flex items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 text-xs font-bold"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <input
+                                                                type="number"
+                                                                min="0.1"
+                                                                step="any"
+                                                                value={item.quantity}
+                                                                onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                                className={`w-12 rounded-md border text-xs py-1 px-1 text-center font-mono font-bold focus:border-teal-500 focus:ring-teal-500 ${
+                                                                    hasStockWarning ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-slate-300 text-slate-900'
+                                                                }`}
+                                                                required
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAdjustQty(index, 1)}
+                                                                className="w-6 h-6 flex items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 text-xs font-bold"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-right align-middle">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={item.unit_price}
+                                                            onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                                                            className="w-full rounded-md border-slate-300 text-xs py-1.5 px-2 text-right font-mono font-medium focus:border-teal-500 focus:ring-teal-500"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2 text-right font-bold text-slate-900 whitespace-nowrap font-mono align-middle">
+                                                        ৳{(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center align-middle">
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleAdjustQty(index, 1)}
-                                                            className="w-6 h-6 flex items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 text-xs font-bold"
+                                                            onClick={() => handleRemoveItem(index)}
+                                                            disabled={data.items.length <= 1}
+                                                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-20 transition"
+                                                            title="Remove item"
                                                         >
-                                                            +
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
                                                         </button>
-                                                    </div>
-                                                </td>
-                                                <td className="px-3 py-2 text-right align-middle">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        value={item.unit_price}
-                                                        onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
-                                                        className="w-full rounded-md border-slate-300 text-xs py-1.5 px-2 text-right font-mono font-medium focus:border-teal-500 focus:ring-teal-500"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-3 py-2 text-right font-bold text-slate-900 whitespace-nowrap font-mono align-middle">
-                                                    ৳{(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}
-                                                </td>
-                                                <td className="px-2 py-2 text-center align-middle">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveItem(index)}
-                                                        disabled={data.items.length <= 1}
-                                                        className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-20 transition"
-                                                        title="Remove item"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
 
-                            {/* Subtotal & Discount Row */}
-                            <div className="p-4 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                                <div className="flex items-center gap-2 w-full sm:w-auto">
-                                    <span className="font-semibold text-slate-700">Discount (ছাড়):</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={data.discount_amount}
-                                        onChange={(e) => setData('discount_amount', e.target.value)}
-                                        className="w-20 rounded-md border-slate-300 text-xs py-1 px-2 text-right font-mono"
-                                    />
-                                    <select
-                                        value={data.discount_type}
-                                        onChange={(e) => setData('discount_type', e.target.value)}
-                                        className="rounded-md border-slate-300 text-xs py-1 px-2 font-medium"
-                                    >
-                                        <option value="fixed">৳ Fixed</option>
-                                        <option value="percentage">% Percent</option>
-                                    </select>
+                            {/* Subtotal, Discount & Tax Row */}
+                            <div className="p-4 bg-slate-50/50 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+                                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                    {/* Discount Input */}
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="font-semibold text-slate-700">Discount (ছাড়):</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={data.discount_amount}
+                                            onChange={(e) => setData('discount_amount', e.target.value)}
+                                            className="w-16 rounded-md border-slate-300 text-xs py-1 px-1.5 text-right font-mono"
+                                        />
+                                        <select
+                                            value={data.discount_type}
+                                            onChange={(e) => setData('discount_type', e.target.value)}
+                                            className="rounded-md border-slate-300 text-xs py-1 px-1.5 font-medium"
+                                        >
+                                            <option value="fixed">৳ Fixed</option>
+                                            <option value="percentage">%</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Tax / Service Fee Input */}
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="font-semibold text-slate-700">Tax / Fee (ফি):</span>
+                                        <div className="relative">
+                                            <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 font-mono text-xs">৳</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={data.tax_amount}
+                                                onChange={(e) => setData('tax_amount', e.target.value)}
+                                                className="w-20 rounded-md border-slate-300 text-xs py-1 pl-5 pr-2 text-right font-mono"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 self-end sm:self-auto font-sans">
+                                <div className="flex items-center gap-4 self-end md:self-auto font-sans">
                                     <div className="text-right">
                                         <span className="text-slate-500 mr-1.5 text-xs">Subtotal:</span>
                                         <strong className="text-slate-900 font-mono text-sm">৳{subtotal.toFixed(2)}</strong>
@@ -640,6 +775,12 @@ export default function Create({
                                         <div className="text-right">
                                             <span className="text-rose-600 mr-1 text-xs">Discount:</span>
                                             <strong className="text-rose-700 font-mono text-sm">-৳{discountValue.toFixed(2)}</strong>
+                                        </div>
+                                    )}
+                                    {Number(data.tax_amount || 0) > 0 && (
+                                        <div className="text-right">
+                                            <span className="text-slate-600 mr-1 text-xs">Tax/Fee:</span>
+                                            <strong className="text-slate-800 font-mono text-sm">+৳{Number(data.tax_amount).toFixed(2)}</strong>
                                         </div>
                                     )}
                                 </div>
@@ -670,7 +811,7 @@ export default function Create({
                                     <span>Patient Demographics</span>
                                     <span className="text-rose-500">*</span>
                                 </h3>
-                                {activePatient && (
+                                {activePatient ? (
                                     <button
                                         type="button"
                                         onClick={handleClearPatient}
@@ -678,10 +819,21 @@ export default function Create({
                                     >
                                         Change Patient ✕
                                     </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuickPatientOpen(true)}
+                                        className="text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline inline-flex items-center gap-1"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span>+ Quick Patient (দ্রুত রোগী)</span>
+                                    </button>
                                 )}
                             </div>
 
-                            {/* If No Patient Selected: Search Bar */}
+                            {/* If No Patient Selected: Search Bar & Fast Actions */}
                             {!activePatient ? (
                                 <div className="space-y-2 relative">
                                     <div className="relative">
@@ -691,10 +843,11 @@ export default function Create({
                                             </svg>
                                         </span>
                                         <input
+                                            ref={patientInputRef}
                                             type="text"
                                             value={patientSearch}
                                             onChange={(e) => setPatientSearch(e.target.value)}
-                                            placeholder="Search registered patient by name, phone, or ID..."
+                                            placeholder="Search patient by name, phone, or ID... (Ctrl+Shift+P)"
                                             className="w-full rounded-lg border-slate-300 pl-9 pr-3 text-xs shadow-2xs focus:border-teal-500 focus:ring-teal-500"
                                         />
                                     </div>
@@ -723,7 +876,24 @@ export default function Create({
                                         </div>
                                     )}
 
-                                    {errors.patient_id && <p className="text-xs text-rose-600">{errors.patient_id}</p>}
+                                    {/* Empty Search Suggestion with Quick Register CTA */}
+                                    {patientSearch.trim().length >= 2 && filteredPatients.length === 0 && !isSearchingPatient && (
+                                        <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-center space-y-2">
+                                            <p className="text-xs text-slate-600">No patient record matches "{patientSearch}".</p>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setQuickPatientData((prev) => ({ ...prev, name: patientSearch }));
+                                                    setQuickPatientOpen(true);
+                                                }}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-xs transition"
+                                            >
+                                                <span>+ Register "{patientSearch}" as New Patient</span>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {errors.patient_id && <p className="text-xs text-rose-600 font-semibold">{errors.patient_id}</p>}
                                 </div>
                             ) : (
                                 /* Verified Patient Card */
@@ -987,8 +1157,8 @@ export default function Create({
                                 </div>
                             )}
 
-                            {/* Auto-print POS Receipt Checkbox */}
-                            <div className="pt-2 border-t border-slate-100">
+                            {/* Dual Print Format Selection */}
+                            <div className="pt-2 border-t border-slate-100 space-y-2">
                                 <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 font-medium select-none">
                                     <input
                                         type="checkbox"
@@ -996,24 +1166,171 @@ export default function Create({
                                         onChange={(e) => setAutoPrintPos(e.target.checked)}
                                         className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                                     />
-                                    <span>Automatically open 80mm Thermal POS slip on completion</span>
+                                    <span>Automatically open print slip on completion</span>
                                 </label>
+
+                                {autoPrintPos && (
+                                    <div className="grid grid-cols-2 gap-2 pl-6">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPrintFormat('thermal')}
+                                            className={`p-2 rounded-lg border text-left text-xs transition ${
+                                                printFormat === 'thermal'
+                                                    ? 'bg-teal-50 border-teal-300 text-teal-900 font-bold'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <div className="font-bold">🧾 80mm Thermal Slip</div>
+                                            <div className="text-[10px] text-slate-400 font-normal">রসিদ প্রিন্টার</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPrintFormat('formal')}
+                                            className={`p-2 rounded-lg border text-left text-xs transition ${
+                                                printFormat === 'formal'
+                                                    ? 'bg-teal-50 border-teal-300 text-teal-900 font-bold'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <div className="font-bold">📄 A5 Formal Invoice</div>
+                                            <div className="text-[10px] text-slate-400 font-normal">A5 মেডিকেল প্যাড</div>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Action Submit Button */}
+                            {/* Action Submit Button with Keyboard Shortcut Badge */}
                             <button
                                 type="submit"
                                 disabled={processing || !data.patient_id || data.items.length === 0}
-                                className="w-full min-h-[46px] rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                                className="w-full min-h-[46px] rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition flex items-center justify-between gap-2"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                </svg>
-                                <span>{processing ? 'Creating Invoice...' : 'Create & Print POS Invoice'}</span>
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    <span>{processing ? 'Creating Invoice...' : 'Create & Print POS Invoice'}</span>
+                                </div>
+                                <kbd className="hidden sm:inline text-[10px] font-mono bg-teal-700/80 text-teal-100 px-2 py-0.5 rounded border border-teal-500/50">
+                                    Ctrl + ↵
+                                </kbd>
                             </button>
                         </div>
                     </div>
                 </form>
+
+                {/* Quick Patient Registration Modal */}
+                {quickPatientOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+                        <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                <div>
+                                    <h3 className="font-bold text-sm text-slate-900">Quick Patient Registration (দ্রুত রোগী নিবন্ধন)</h3>
+                                    <p className="text-xs text-slate-500">Creates record and auto-selects for this invoice</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setQuickPatientOpen(false)}
+                                    className="text-slate-400 hover:text-slate-600 font-bold p-1 text-sm"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleQuickPatientSubmit} className="p-5 space-y-3.5">
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-semibold text-slate-700">
+                                        Patient Full Name (রোগীর নাম) <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        autoFocus
+                                        value={quickPatientData.name}
+                                        onChange={(e) => setQuickPatientData({ ...quickPatientData, name: e.target.value })}
+                                        placeholder="e.g. Md. Karim Hossain"
+                                        className="w-full rounded-lg border-slate-300 text-xs py-2 px-3 focus:border-teal-500 focus:ring-teal-500"
+                                    />
+                                    {quickPatientErrors.name && (
+                                        <p className="text-xs text-rose-600">{quickPatientErrors.name}</p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-semibold text-slate-700">
+                                        Phone Number (মোবাইল নম্বর)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={quickPatientData.phone}
+                                        onChange={(e) => setQuickPatientData({ ...quickPatientData, phone: e.target.value })}
+                                        placeholder="017XXXXXXXX"
+                                        className="w-full rounded-lg border-slate-300 text-xs py-2 px-3 font-mono focus:border-teal-500 focus:ring-teal-500"
+                                    />
+                                    {quickPatientErrors.phone && (
+                                        <p className="text-xs text-rose-600">{quickPatientErrors.phone}</p>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="block text-xs font-semibold text-slate-700">
+                                            Gender (লিঙ্গ)
+                                        </label>
+                                        <select
+                                            value={quickPatientData.gender}
+                                            onChange={(e) => setQuickPatientData({ ...quickPatientData, gender: e.target.value })}
+                                            className="w-full rounded-lg border-slate-300 text-xs py-2 px-3 focus:border-teal-500 focus:ring-teal-500"
+                                        >
+                                            <option value="male">Male (পুরুষ)</option>
+                                            <option value="female">Female (মহিলা)</option>
+                                            <option value="other">Other (অন্যান্য)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="block text-xs font-semibold text-slate-700">
+                                            Age in Years (বয়স)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="120"
+                                            value={quickPatientData.age_years}
+                                            onChange={(e) => setQuickPatientData({ ...quickPatientData, age_years: e.target.value })}
+                                            placeholder="e.g. 32"
+                                            className="w-full rounded-lg border-slate-300 text-xs py-2 px-3 font-mono focus:border-teal-500 focus:ring-teal-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuickPatientOpen(false)}
+                                        className="px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={quickPatientLoading || !quickPatientData.name.trim()}
+                                        className="px-4 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-xs transition disabled:opacity-50 flex items-center gap-1.5"
+                                    >
+                                        {quickPatientLoading ? (
+                                            <span>Saving...</span>
+                                        ) : (
+                                            <>
+                                                <span>✓</span>
+                                                <span>Save &amp; Select Patient</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

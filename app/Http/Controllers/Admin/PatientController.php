@@ -485,6 +485,24 @@ class PatientController extends Controller
             }
         });
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'patient' => [
+                    'id' => $patient->id,
+                    'name' => $patient->name,
+                    'phone' => $patient->phone,
+                    'gender' => $patient->gender,
+                    'age_years' => $patient->age_years,
+                    'patient_no' => $patient->patient_no,
+                    'patient_series' => $patient->patient_series,
+                    'patient_code' => $patient->patient_code,
+                    'patient_identifier' => $patient->patient_identifier,
+                ],
+                'message' => 'Patient created successfully.',
+            ]);
+        }
+
         if ($appointmentRequestId !== null) {
             return redirect()->route('admin.appointment_requests.index')
                 ->with('success', 'Patient created and linked to the appointment request.');
