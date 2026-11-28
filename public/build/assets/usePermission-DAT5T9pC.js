@@ -1,1 +1,0 @@
-import{o as e}from"./app-DXszY5AS.js";function t(){let{auth:t={}}=e().props||{},n=t?.permissions,r=Array.isArray(n)?n:n&&typeof n==`object`?Object.values(n):[],i=t?.roles,a=(Array.isArray(i)?i:i&&typeof i==`object`?Object.values(i):[]).includes(`Super Admin`);return e=>a?!0:r.includes(e)}export{t};

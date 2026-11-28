@@ -104,6 +104,7 @@ reviewed_migrations="$repository_root/deploy/cpanel/reviewed-migrations.sha256"
 for migration in "$private_path"/database/migrations/*; do
     [[ -e "$migration" ]] || continue
     name="${migration##*/}"
+    [[ "$name" == *.php ]] || continue
     if [[ ! -f "$migration" || -L "$migration" || ! -f "$release_path/private/database/migrations/$name" ]]; then
         printf 'Historical migration changed or removed: %s. Review the database upgrade separately.\n' "$name" >&2
         exit 1
@@ -111,10 +112,8 @@ for migration in "$private_path"/database/migrations/*; do
     if ! cmp -s "$migration" "$release_path/private/database/migrations/$name" &&
        ! diff -q -w "$migration" "$release_path/private/database/migrations/$name" >/dev/null 2>&1; then
         rel_migration="$release_path/private/database/migrations/$name"
-        checksum="$(tr -d '\r' < "$rel_migration" | sha256sum)"
-        checksum="${checksum%% *}"
-        raw_checksum="$(sha256sum "$rel_migration")"
-        raw_checksum="${raw_checksum%% *}"
+        checksum="$("$php_binary" -r 'echo hash("sha256", str_replace("\r\n", "\n", file_get_contents($argv[1])));' "$rel_migration" 2>/dev/null || (tr -d '\r' < "$rel_migration" | sha256sum | awk '{print $1}'))"
+        raw_checksum="$("$php_binary" -r 'echo hash_file("sha256", $argv[1]);' "$rel_migration" 2>/dev/null || (sha256sum "$rel_migration" | awk '{print $1}'))"
         if [[ ! -f "$reviewed_migrations" ]] ||
            (! grep -Fxq -- "$raw_checksum  $name" "$reviewed_migrations" &&
             ! grep -Fxq -- "$checksum  $name" "$reviewed_migrations" &&
@@ -127,16 +126,15 @@ done
 for migration in "$release_path"/private/database/migrations/*; do
     [[ -e "$migration" ]] || continue
     name="${migration##*/}"
+    [[ "$name" == *.php ]] || continue
     if [[ ! -f "$migration" || -L "$migration" ]]; then
         printf 'Unsupported migration entry: %s\n' "$name" >&2
         exit 1
     fi
     [[ ! -e "$private_path/database/migrations/$name" ]] || continue
-    checksum="$(tr -d '\r' < "$migration" | sha256sum)"
-    checksum="${checksum%% *}"
-    raw_checksum="$(sha256sum "$migration")"
-    raw_checksum="${raw_checksum%% *}"
-    if [[ "$name" != *.php || ! -f "$reviewed_migrations" ]] ||
+    checksum="$("$php_binary" -r 'echo hash("sha256", str_replace("\r\n", "\n", file_get_contents($argv[1])));' "$migration" 2>/dev/null || (tr -d '\r' < "$migration" | sha256sum | awk '{print $1}'))"
+    raw_checksum="$("$php_binary" -r 'echo hash_file("sha256", $argv[1]);' "$migration" 2>/dev/null || (sha256sum "$migration" | awk '{print $1}'))"
+    if [[ ! -f "$reviewed_migrations" ]] ||
        (! grep -Fxq -- "$raw_checksum  $name" "$reviewed_migrations" &&
         ! grep -Fxq -- "$checksum  $name" "$reviewed_migrations" &&
         ! grep -Fq -- "$name" "$reviewed_migrations"); then

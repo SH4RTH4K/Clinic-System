@@ -250,6 +250,8 @@ Route::middleware(['auth', 'permission:symptom_medicine_map.delete'])
 // Clinic settings
 Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.view'])
     ->get('settings', [ClinicSettingController::class, 'edit'])->name('settings.edit');
+Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.view'])
+    ->get('settings-alias', fn () => redirect()->route('admin.settings.edit'))->name('settings');
 Route::middleware(['auth', 'role:Super Admin', 'permission:clinic_settings.update'])
     ->match(['put', 'post'], 'settings', [ClinicSettingController::class, 'update'])->name('settings.update');
 

@@ -51,6 +51,10 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 
+Route::get('/admin', function () {
+    return redirect()->route('admin.dashboard');
+});
+
 Route::prefix('admin')->name('admin.')->group(function () {
     require __DIR__.'/admin.php';
 });

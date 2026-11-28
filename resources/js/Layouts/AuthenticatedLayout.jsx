@@ -6,8 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 const AUTH_SESSION_CHANNEL = 'hcs-auth-session';
 
 export default function AuthenticatedLayout({ header, children }) {
-    const pageProps = usePage().props;
-    const rawAuth = pageProps.auth || {};
+    const pageProps = usePage()?.props || {};
+    const rawAuth = (pageProps.auth && typeof pageProps.auth === 'object') ? pageProps.auth : {};
     const user = rawAuth.user;
     const permissions = Array.isArray(rawAuth.permissions)
         ? rawAuth.permissions
@@ -15,8 +15,8 @@ export default function AuthenticatedLayout({ header, children }) {
     const roles = Array.isArray(rawAuth.roles)
         ? rawAuth.roles
         : (rawAuth.roles && typeof rawAuth.roles === 'object' ? Object.values(rawAuth.roles) : []);
-    const { success } = pageProps.flash ?? {};
-    const clinic = pageProps.clinic || {};
+    const { success } = (pageProps.flash && typeof pageProps.flash === 'object') ? pageProps.flash : {};
+    const clinic = (pageProps.clinic && typeof pageProps.clinic === 'object') ? pageProps.clinic : {};
     const locale = pageProps.locale || 'en';
     const clinicDisplayName = (locale === 'bn' && clinic.name_bn) ? clinic.name_bn : (clinic.name_en || clinic.name || 'RemediQ Clinic');
     const [sidebarOpen, setSidebarOpen] = useState(false);

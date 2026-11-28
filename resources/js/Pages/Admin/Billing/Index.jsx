@@ -24,23 +24,24 @@ const methodIcons = {
 };
 
 export default function Index({ invoices = { data: [] }, filters = {}, metrics = {} }) {
-    const safeInvoices = invoices || { data: [] };
-    const safeMetrics = metrics || {};
-    const safeFilters = filters || {};
+    const safeInvoices = (invoices && typeof invoices === 'object') ? invoices : { data: [] };
+    const safeData = Array.isArray(safeInvoices.data) ? safeInvoices.data : [];
+    const safeMetrics = (metrics && typeof metrics === 'object' && !Array.isArray(metrics)) ? metrics : {};
+    const safeFilters = (filters && typeof filters === 'object' && !Array.isArray(filters)) ? filters : {};
 
     const can = usePermission();
-    const canCreate = can('billing.create');
-    const canUpdate = can('billing.update');
+    const canCreate = typeof can === 'function' && can('billing.create');
+    const canUpdate = typeof can === 'function' && can('billing.update');
 
     // Filter states
-    const [searchTerm, setSearchTerm] = useState(safeFilters.search || '');
-    const [selectedStatus, setSelectedStatus] = useState(safeFilters.status || 'all');
-    const [selectedMethod, setSelectedMethod] = useState(safeFilters.payment_method || 'all');
-    const [selectedPreset, setSelectedPreset] = useState(safeFilters.date_preset || '');
-    const [startDate, setStartDate] = useState(safeFilters.start_date || '');
-    const [endDate, setEndDate] = useState(safeFilters.end_date || '');
-    const [selectedSort, setSelectedSort] = useState(safeFilters.sort || 'latest');
-    const [perPage, setPerPage] = useState(safeFilters.per_page || '15');
+    const [searchTerm, setSearchTerm] = useState(safeFilters?.search || '');
+    const [selectedStatus, setSelectedStatus] = useState(safeFilters?.status || 'all');
+    const [selectedMethod, setSelectedMethod] = useState(safeFilters?.payment_method || 'all');
+    const [selectedPreset, setSelectedPreset] = useState(safeFilters?.date_preset || '');
+    const [startDate, setStartDate] = useState(safeFilters?.start_date || '');
+    const [endDate, setEndDate] = useState(safeFilters?.end_date || '');
+    const [selectedSort, setSelectedSort] = useState(safeFilters?.sort || 'latest');
+    const [perPage, setPerPage] = useState(safeFilters?.per_page || '15');
 
     // Quick Due Collection Modal state
     const [payingInvoice, setPayingInvoice] = useState(null);
@@ -90,7 +91,7 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
             return;
         }
 
-        if (searchTerm === (filters.search || '')) {
+        if (searchTerm === (safeFilters?.search || '')) {
             return;
         }
 
@@ -499,8 +500,8 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
-                                {invoices?.data?.length > 0 ? (
-                                    invoices.data.map((inv) => {
+                                {safeData.length > 0 ? (
+                                    safeData.map((inv) => {
                                         const dueAmt = Number(inv.due_amount || 0);
                                         const hasDue = dueAmt > 0 && !['cancelled', 'waived'].includes(inv.status);
 
@@ -639,17 +640,17 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                         </table>
                     </div>
 
-                    {invoices?.links && (
+                    {safeInvoices?.links && (
                         <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
-                            <Pagination links={invoices.links} />
+                            <Pagination links={safeInvoices.links} />
                         </div>
                     )}
                 </div>
 
                 {/* 2. Mobile Touch Cards (< 768px: block md:hidden) */}
                 <div className="block md:hidden space-y-3">
-                    {invoices?.data?.length > 0 ? (
-                        invoices.data.map((inv) => {
+                    {safeData.length > 0 ? (
+                        safeData.map((inv) => {
                             const dueAmt = Number(inv.due_amount || 0);
                             const hasDue = dueAmt > 0 && !['cancelled', 'waived'].includes(inv.status);
 
@@ -763,9 +764,9 @@ export default function Index({ invoices = { data: [] }, filters = {}, metrics =
                         </div>
                     )}
 
-                    {invoices?.links && (
+                    {safeInvoices?.links && (
                         <div className="pt-2">
-                            <Pagination links={invoices.links} />
+                            <Pagination links={safeInvoices.links} />
                         </div>
                     )}
                 </div>

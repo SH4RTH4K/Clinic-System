@@ -10,14 +10,15 @@ function cleanLabel(label) {
 }
 
 export default function Pagination({ links = [], className = '' }) {
-    if (!links || links.length <= 3) return null;
+    const safeLinks = Array.isArray(links) ? links : [];
+    if (safeLinks.length <= 3) return null;
 
     return (
         <nav
             aria-label="Pagination"
             className={`flex flex-wrap items-center justify-center gap-1.5 pt-4 ${className}`}
         >
-            {links.map((link, index) => {
+            {safeLinks.map((link, index) => {
                 const label = cleanLabel(link.label);
 
                 if (!link.url) {
