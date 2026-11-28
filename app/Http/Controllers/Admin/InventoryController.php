@@ -48,6 +48,10 @@ class InventoryController extends Controller
             match ($request->input('expiry_status')) {
                 'expired' => $query->expired(),
                 'near_expiry' => $query->expiringSoon(90),
+                '30_days' => $query->expiringSoon(30),
+                '60_days' => $query->expiringSoon(60),
+                '90_days' => $query->expiringSoon(90),
+                '180_days' => $query->expiringSoon(180),
                 'valid' => $query->where(fn ($q) => $q->whereNull('expiry_date')->orWhereDate('expiry_date', '>', now()->addDays(90))),
                 default => null,
             };
@@ -257,6 +261,70 @@ class InventoryController extends Controller
                     number_format($costVal, 2, '.', ''),
                     number_format($retailVal, 2, '.', ''),
                     $b->is_active ? 'Active' : 'Inactive',
+                ]);
+            }
+
+            fclose($file);
+        }, 200, $headers);
+    }
+
+    public function exportPurchaseOrderDraft(Request $request): StreamedResponse
+    {
+        $query = MedicineBatch::query()
+            ->active()
+            ->lowStock()
+            ->with([
+                'medicine:id,name,potency,form',
+                'pharmaceutical:id,brand_name,generic_name,strength,dosage_form,manufacturer',
+            ]);
+
+        if ($request->filled('type') && in_array($request->type, ['remedy', 'pharmaceutical'], true)) {
+            $query->where('item_type', $request->type);
+        }
+
+        $batches = $query->orderBy('reorder_level', 'desc')->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="pharmacy-purchase-order-draft-'.now()->format('Y-m-d').'.csv"',
+        ];
+
+        return response()->stream(function () use ($batches): void {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF"); // UTF-8 BOM
+
+            fputcsv($file, [
+                'Item Type',
+                'Item Name',
+                'Potency / Strength',
+                'Supplier / Manufacturer',
+                'Current Stock',
+                'Reorder Level',
+                'Suggested Order Qty',
+                'Unit Purchase Price (BDT)',
+                'Estimated Cost (BDT)',
+                'Batch Ref',
+            ]);
+
+            foreach ($batches as $b) {
+                $currentQty = (float) $b->current_quantity;
+                $reorderLvl = (float) $b->reorder_level;
+                $suggestedQty = max(10.0, ($reorderLvl * 2) - $currentQty);
+                $estCost = $suggestedQty * (float) $b->purchase_price;
+                $strengthOrPotency = $b->item_type === 'remedy' ? ($b->potency ?? $b->medicine?->potency) : ($b->pharmaceutical?->strength ?? '—');
+                $supplierOrMfr = $b->supplier_name ?: ($b->pharmaceutical?->manufacturer ?? '—');
+
+                fputcsv($file, [
+                    $b->item_type === 'remedy' ? 'Homeopathic Remedy' : 'Conventional Pharmaceutical',
+                    $b->item_name,
+                    $strengthOrPotency ?? '—',
+                    $supplierOrMfr,
+                    $currentQty,
+                    $reorderLvl,
+                    $suggestedQty,
+                    number_format((float) $b->purchase_price, 2, '.', ''),
+                    number_format($estCost, 2, '.', ''),
+                    $b->batch_number,
                 ]);
             }
 

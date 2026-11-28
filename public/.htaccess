@@ -50,3 +50,18 @@
     # Uncomment after confirming HTTPS works end-to-end.
     # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
+
+# =============================================================================
+# LiteSpeed & cPanel Proxy Cache Control
+# =============================================================================
+<IfModule LiteSpeed>
+    CacheLookup off
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Prevent caching of dynamic PHP application and Inertia SPA responses
+    <FilesMatch "\.(php)$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+</IfModule>

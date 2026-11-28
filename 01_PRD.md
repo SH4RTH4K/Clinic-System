@@ -285,8 +285,11 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - Central operational command center managing Homeopathic potencies (CH, LM, X, MT) and Allopathic pharmaceuticals across active batches.
   - Multi-attribute search matching remedy Latin/common name, pharma brand, generic, potency, strength (mg/ml), batch number, and supplier name.
   - FEFO (First-Expired, First-Out) shelf rotation sorting and lowest stock reorder prioritization.
+  - **1-Click Purchase Order (PO) Draft CSV Generator (`/admin/inventory/purchase-order-draft`)**: Automatically filters all items at or below reorder level, calculates suggested restock quantities, and generates vendor-ready requisition CSVs.
+  - **Multi-Horizon Expiry Filtering**: Filter batches expiring within 30, 60, 90, or 180 days, as well as expired stock for prioritized returns or write-offs.
+  - **Uniform Crisp SVG Iconography**: All raw emojis replaced with uniform, scalable inline SVG icons (`LeafIcon`, `PillIcon`, `FactoryIcon`, `ClipboardListIcon`, `PackageIcon`, `CoinsIcon`, `AlertTriangleIcon`, `ClockIcon`, `AlertOctagonIcon`, `TrashIcon`).
   - Offline physical audit stocktake CSV export with cost and retail valuation.
-  - Safe stock adjustments (`adjustment`, `wastage`, `return`, `purchase`) with audit ledger movement records.
+  - Safe stock adjustments (`adjustment`, `wastage`, `return`, `purchase`) with audit ledger movement records and damage/disposal justifications.
   - Tactile mobile touch cards (`block md:hidden`) replacing horizontal table scrolling.
 - `[x] Done` **Dual Stock Management**:
   - Homeopathic inventory: Dilutions, Mother Tinctures (30ml, 100ml, 450ml), Globules, and Biochemic preparations.
@@ -318,6 +321,8 @@ The clinic's clinical behavior adapts dynamically based on the configured `pract
   - **Dual-Mode Presentation**: Responsive desktop table alongside High-Density Mobile Touch Cards with 44px+ touch-friendly actions (`Download`, `Delete`).
   - **Disaster Recovery Safeguards**: Strict validation and color-coded safety indicators for `Restore to Empty Target` vs `Overwrite Existing Target` (with pre-restore recovery backup) and `Reset As New`.
 - `[x] Done` **In-App Private Backups**: Create, list, download, and delete database SQL dumps, media files, or full system backups directly inside private storage.
+- `[x] Done` **Dedicated Cron Database Backup Command (`php artisan clinic:backup-database`)**: Automates database backups for cPanel Cron Jobs with automatic expired archive pruning and zero-downtime execution.
+- `[x] Done` **LiteSpeed & cPanel Proxy Cache Hardening (`public/.htaccess`)**: Explicitly disables LiteSpeed proxy cache lookup and enforces strict `no-store, no-cache` headers on dynamic PHP/Inertia responses to guarantee session and clinical privacy.
 - `[x] Done` **cPanel Deployment Package**: One-click generation and download of complete cPanel deployment zip bundles.
 - `[x] Done` **In-App Git Repository Manager**: Super Admin can check for updates from remote GitHub repository, inspect commits, pull updates, run database migrations, and clear application caches directly from the UI without SSH.
 - `[x] Done` **Cryptographic Migration Manifest Verification**: All database migrations strictly verified via SHA-256 manifest (`deploy/cpanel/reviewed-migrations.sha256`) during cPanel split deployments, preventing unverified or broken database mutations.

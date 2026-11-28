@@ -222,4 +222,68 @@ class InventoryWorkstationTest extends TestCase
         $response->assertSessionHas('success');
         $this->assertSame(20.0, (float) $batch->fresh()->current_quantity);
     }
+
+    public function test_authorized_pharmacist_can_export_purchase_order_draft_csv(): void
+    {
+        $med = Medicine::create(['name' => 'Belladonna', 'potency' => '30C', 'form' => 'drops', 'is_active' => true]);
+
+        MedicineBatch::create([
+            'medicine_id' => $med->id,
+            'item_type' => 'remedy',
+            'batch_number' => 'BEL-LOW-01',
+            'current_quantity' => 2,
+            'initial_quantity' => 50,
+            'reorder_level' => 15,
+            'purchase_price' => 95.00,
+            'selling_price' => 140.00,
+            'supplier_name' => 'Schwabe India',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->authorizedPharmacist)
+            ->get(route('admin.inventory.purchase_order_draft'));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $this->assertStringContainsString('attachment; filename="pharmacy-purchase-order-draft-', (string) $response->headers->get('Content-Disposition'));
+
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('BEL-LOW-01', $content);
+        $this->assertStringContainsString('Belladonna', $content);
+        $this->assertStringContainsString('Schwabe India', $content);
+    }
+
+    public function test_authorized_pharmacist_can_record_damage_and_disposal_adjustments(): void
+    {
+        $med = Medicine::create(['name' => 'Rhus Tox', 'potency' => '200C', 'form' => 'drops', 'is_active' => true]);
+
+        $batch = MedicineBatch::create([
+            'medicine_id' => $med->id,
+            'item_type' => 'remedy',
+            'batch_number' => 'RHUS-DMG-01',
+            'current_quantity' => 10,
+            'initial_quantity' => 10,
+            'reorder_level' => 3,
+            'purchase_price' => 80.00,
+            'selling_price' => 120.00,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->authorizedPharmacist)
+            ->post(route('admin.inventory.adjust', $batch->id), [
+                'new_quantity' => 8,
+                'transaction_type' => 'wastage',
+                'reason' => 'Two glass bottles broken during dispensing (Damage/Wastage audit)',
+            ]);
+
+        $response->assertSessionHas('success');
+        $this->assertSame(8.0, (float) $batch->fresh()->current_quantity);
+
+        $this->assertDatabaseHas('stock_transactions', [
+            'medicine_batch_id' => $batch->id,
+            'transaction_type' => 'wastage',
+            'quantity' => -2,
+            'balance_after' => 8,
+        ]);
+    }
 }

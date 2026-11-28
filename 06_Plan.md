@@ -160,6 +160,11 @@
 - [x] **Task 10.2**: Expiry & Low-Stock Alerts
   - Real-time stock status calculations: low-stock (`current_quantity <= reorder_level`), expiring soon (within 30 days), and expired stock.
   - Prominent alert banner on Admin Dashboard linking directly to filtered views (`status=low_stock`, `status=expiring`).
+- [x] **Task 10.3**: Purchase Order (PO) Draft Generator & UI/UX Icon Uniformity
+  - Added 1-Click Purchase Order CSV Export (`/admin/inventory/purchase-order-draft`) calculating suggested restock quantities for low-stock batches.
+  - Added multi-horizon expiry filters (`30_days`, `60_days`, `90_days`, `180_days`, `expired`).
+  - Standardized iconography across the entire inventory interface by replacing all raw emojis with crisp inline SVG components (`LeafIcon`, `PillIcon`, `FactoryIcon`, `ClipboardListIcon`, `PackageIcon`, `CoinsIcon`, etc.).
+  - Added dedicated cPanel cron database backup command `php artisan clinic:backup-database` and LiteSpeed proxy cache exclusions in `public/.htaccess`.
 - [x] **Task 10.3**: Prescription Auto-Deduction
   - Toggle setting on Clinic Settings: `auto_deduct_inventory`.
   - Atomic FIFO auto-deduction hook during visit prescription finalization in `VisitController::finalize()`.
