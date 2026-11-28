@@ -4,6 +4,7 @@ import DataTable from '@/Components/DataTable';
 import Pagination from '@/Components/Pagination';
 import StatusBadge from '@/Components/StatusBadge';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import MedicineImportModal from './Partials/MedicineImportModal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 
@@ -34,6 +35,7 @@ export default function Index({ medicines, filters = {}, availableForms = [], kp
     const [selectedStock, setSelectedStock] = useState(filters.stock_status || 'all');
     const [perPage, setPerPage] = useState(filters.per_page || '15');
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     const isFirstRender = useRef(true);
 
@@ -289,6 +291,18 @@ export default function Index({ medicines, filters = {}, availableForms = [], kp
                             >
                                 <span>📥</span> Export CSV
                             </a>
+                            {canCreate && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowImportModal(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary-300 bg-primary-50 px-3.5 py-1.5 text-xs font-bold text-primary-700 shadow-2xs transition hover:bg-primary-100"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                    </svg>
+                                    <span>Import (ইমপোর্ট)</span>
+                                </button>
+                            )}
                             {canCreate && (
                                 <Link
                                     href={route('admin.medicines.create')}
@@ -624,6 +638,12 @@ export default function Index({ medicines, filters = {}, availableForms = [], kp
                     confirmVariant="danger"
                     onConfirm={confirmDelete}
                     onClose={() => setDeleteTarget(null)}
+                />
+
+                {/* Medicine Catalog Import Modal */}
+                <MedicineImportModal
+                    show={showImportModal}
+                    onClose={() => setShowImportModal(false)}
                 />
             </div>
         </AuthenticatedLayout>

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ImportMedicinesRequest;
 use App\Models\Medicine;
+use App\Services\Admin\MedicineImportExportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -126,68 +128,35 @@ class MedicineController extends Controller
         return redirect()->route('admin.medicines.index')->with('success', 'Medicine deactivated successfully.');
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request, MedicineImportExportService $service): StreamedResponse
     {
-        $query = Medicine::query()
-            ->withSum(['batches as total_stock' => function ($q) {
-                $q->active();
-            }], 'current_quantity')
-            ->withCount(['batches as active_batches_count' => function ($q) {
-                $q->active();
-            }]);
+        return $service->exportCsv($request);
+    }
 
-        if ($search = $request->input('search')) {
-            $query->search($search);
-        }
+    public function downloadTemplate(MedicineImportExportService $service): StreamedResponse
+    {
+        return $service->downloadTemplate();
+    }
 
-        if ($request->filled('scale') && $request->input('scale') !== 'all') {
-            $query->scale($request->input('scale'));
-        }
+    public function import(ImportMedicinesRequest $request, MedicineImportExportService $service): RedirectResponse
+    {
+        $result = $service->import(
+            $request->file('file'),
+            (string) $request->validated('duplicate_strategy')
+        );
 
-        if ($request->filled('form') && $request->input('form') !== 'all') {
-            $query->where('form', $request->input('form'));
-        }
+        $msg = "Import completed: {$result['created']} added, {$result['updated']} updated, {$result['skipped']} skipped (out of {$result['total_rows']} total rows).";
 
-        if ($request->filled('status') && $request->input('status') !== 'all') {
-            $query->where('is_active', $request->input('status') === 'active');
-        }
+        $response = redirect()->route('admin.medicines.index')->with('success', $msg);
 
-        $medicines = $query->orderBy('name')->get();
-
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="homeopathic-medicines-catalog-'.now()->format('Y-m-d').'.csv"',
-        ];
-
-        return response()->stream(function () use ($medicines): void {
-            $file = fopen('php://output', 'w');
-            fwrite($file, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-
-            fputcsv($file, [
-                'ID',
-                'Remedy Name',
-                'Potency',
-                'Formulation',
-                'Default Instruction',
-                'Status',
-                'Physical Batch Stock',
-                'Active Batches Count',
-            ]);
-
-            foreach ($medicines as $m) {
-                fputcsv($file, [
-                    $m->id,
-                    $m->name,
-                    $m->potency,
-                    $m->form,
-                    $m->default_instruction ?? '—',
-                    $m->is_active ? 'Active' : 'Inactive',
-                    (float) ($m->total_stock ?? 0),
-                    $m->active_batches_count ?? 0,
-                ]);
+        if (! empty($result['errors'])) {
+            $warnings = implode(' | ', array_slice($result['errors'], 0, 5));
+            if (count($result['errors']) > 5) {
+                $warnings .= ' ...and '.(count($result['errors']) - 5).' more.';
             }
+            $response->with('warning', 'Some rows had validation notices: '.$warnings);
+        }
 
-            fclose($file);
-        }, 200, $headers);
+        return $response;
     }
 }

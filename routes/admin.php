@@ -107,8 +107,11 @@ Route::middleware(['auth', 'role_or_permission:Super Admin|patient_config.delete
     ->name('patient_config.relationships.destroy');
 
 // Medicines
-Route::middleware(['auth', 'permission:medicines.create'])
-    ->group(fn () => Route::resource('medicines', MedicineController::class)->only(['create', 'store']));
+Route::middleware(['auth', 'permission:medicines.create'])->group(function () {
+    Route::post('medicines/import', [MedicineController::class, 'import'])->name('medicines.import');
+    Route::get('medicines/import-template', [MedicineController::class, 'downloadTemplate'])->name('medicines.import_template');
+    Route::resource('medicines', MedicineController::class)->only(['create', 'store']);
+});
 Route::middleware(['auth', 'permission:medicines.view'])->group(function () {
     Route::get('medicines/export', [MedicineController::class, 'export'])->name('medicines.export');
     Route::resource('medicines', MedicineController::class)->only(['index', 'show']);
