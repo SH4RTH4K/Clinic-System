@@ -80,6 +80,15 @@ class SystemHealthSnapshotService
                 'enabled' => (bool) ($backupSchedule['enabled'] ?? false),
                 'backup_time' => $backupSchedule['time'] ?? '02:00',
                 'timezone' => $backupSchedule['timezone'] ?? 'UTC',
+                'backup_path' => $backupSchedule['backup_path'] ?? null,
+                'active_backup_path' => (function () use ($backupSchedule) {
+                    try {
+                        return $this->backupService->privateBackupDirectory();
+                    } catch (Throwable) {
+                        return $backupSchedule['backup_path'] ?? (string) config('system_health.backup_path') ?: storage_path('app/private/system-backups');
+                    }
+                })(),
+                'backup_path_source' => ! empty($backupSchedule['backup_path']) ? 'saved' : (config('system_health.backup_path') ? 'env' : 'default'),
                 'summary' => ! ($backupSchedule['valid'] ?? false)
                     ? 'Automatic backup scheduling is disabled because its private settings file is invalid. Save valid settings to resume it.'
                     : (($backupSchedule['enabled'] ?? false)

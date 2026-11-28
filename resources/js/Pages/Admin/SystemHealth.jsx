@@ -1177,10 +1177,10 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                     <span>Enable automatic daily full backup</span>
                                 </label>
 
-                                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end max-w-md">
+                                <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
                                     <div>
                                         <label htmlFor="backup-schedule-time" className="block text-xs font-medium text-slate-700">
-                                            Daily backup execution time ({health.scheduler?.timezone ?? 'UTC'})
+                                            Daily backup execution time
                                         </label>
                                         <input
                                             id="backup-schedule-time"
@@ -1194,11 +1194,74 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                         />
                                         {errors.backup_time && <p id="backup-schedule-time-error" className="mt-1 text-xs text-rose-700">{errors.backup_time}</p>}
                                     </div>
+
+                                    <div>
+                                        <label htmlFor="backup-timezone" className="block text-xs font-medium text-slate-700">
+                                            Schedule Timezone (সময় অঞ্চল)
+                                        </label>
+                                        <select
+                                            id="backup-timezone"
+                                            name="timezone"
+                                            defaultValue={health.scheduler?.timezone ?? 'Asia/Dhaka'}
+                                            className="mt-1 min-h-10 w-full rounded-lg border-slate-300 text-sm focus:border-cyan-600 focus:ring-cyan-600 bg-white"
+                                        >
+                                            <option value="Asia/Dhaka">Asia/Dhaka (GMT+6 - Bangladesh Standard Time)</option>
+                                            <option value="Asia/Kolkata">Asia/Kolkata (GMT+5:30 - India Standard Time)</option>
+                                            <option value="Asia/Karachi">Asia/Karachi (GMT+5 - Pakistan Standard Time)</option>
+                                            <option value="Asia/Dubai">Asia/Dubai (GMT+4 - Gulf Standard Time)</option>
+                                            <option value="Asia/Riyadh">Asia/Riyadh (GMT+3 - Arabia Standard Time)</option>
+                                            <option value="Europe/London">Europe/London (GMT/BST - UK Time)</option>
+                                            <option value="America/New_York">America/New_York (EST/EDT - US Eastern)</option>
+                                            <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                        </select>
+                                        {errors.timezone && <p className="mt-1 text-xs text-rose-700">{errors.timezone}</p>}
+                                    </div>
+                                </div>
+
+                                <div className="max-w-2xl">
+                                    <label htmlFor="backup-path" className="block text-xs font-medium text-slate-700">
+                                        Backup Storage Directory Location (ব্যাকআপ সংরক্ষণের ফোল্ডার পাথ / লোকেশন)
+                                    </label>
+                                    <input
+                                        id="backup-path"
+                                        type="text"
+                                        name="backup_path"
+                                        defaultValue={health.scheduler?.backup_path ?? ''}
+                                        placeholder="e.g. /home/account/clinic-backups (Leave blank for default private storage)"
+                                        className="mt-1 min-h-10 w-full font-mono text-xs rounded-lg border-slate-300 focus:border-cyan-600 focus:ring-cyan-600"
+                                    />
+                                    {errors.backup_path && <p className="mt-1 text-xs text-rose-700">{errors.backup_path}</p>}
+
+                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                                        <span className="font-semibold">Active storage directory:</span>
+                                        <code className="font-mono bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 break-all">
+                                            {health.scheduler?.active_backup_path ?? 'Default storage'}
+                                        </code>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                            health.scheduler?.backup_path_source === 'saved'
+                                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                                : health.scheduler?.backup_path_source === 'env'
+                                                ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                        }`}>
+                                            {health.scheduler?.backup_path_source === 'saved'
+                                                ? '✓ Saved via Application'
+                                                : health.scheduler?.backup_path_source === 'env'
+                                                ? 'Configured via .env'
+                                                : 'Default Private Storage'}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1.5 text-[11px] text-slate-500">
+                                        Saved securely in private application storage without editing .env or invalidating config caches. On cPanel hosting, enter an absolute directory owned by your cPanel account outside public_html.
+                                    </p>
+                                </div>
+
+                                <div>
                                     <button
                                         type="submit"
                                         className="min-h-10 rounded-lg bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 transition"
                                     >
-                                        Save Schedule
+                                        Save Schedule &amp; Storage Settings
                                     </button>
                                 </div>
                                 <p className="text-[11px] text-slate-500">

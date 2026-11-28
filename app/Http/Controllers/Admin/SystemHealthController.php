@@ -224,27 +224,31 @@ class SystemHealthController extends Controller
         $validated = $request->validated();
         $enabled = $request->boolean('enabled');
         $time = $validated['backup_time'];
+        $timezone = isset($validated['timezone']) ? (string) $validated['timezone'] : null;
+        $backupPath = isset($validated['backup_path']) ? (string) $validated['backup_path'] : null;
 
         try {
-            $scheduleService->save($enabled, $time);
+            $scheduleService->save($enabled, $time, $timezone, $backupPath);
         } catch (Throwable $exception) {
-            Log::error('System backup schedule update failed.', ['exception_class' => $exception::class]);
+            Log::error('System backup schedule update failed.', ['exception_class' => $exception::class, 'message' => $exception->getMessage()]);
 
-            return back()->with('error', 'The automatic backup schedule could not be saved.');
+            return back()->with('error', $exception instanceof \InvalidArgumentException ? $exception->getMessage() : 'The automatic backup schedule could not be saved.');
         }
 
         try {
             activity('system_health')
                 ->causedBy($request->user())
                 ->event('backup.schedule_updated')
-                ->withProperties(['enabled' => $enabled, 'time' => $time])
-                ->log('Updated the automatic backup schedule');
+                ->withProperties(['enabled' => $enabled, 'time' => $time, 'timezone' => $timezone, 'backup_path' => $backupPath])
+                ->log('Updated the automatic backup schedule and storage path');
         } catch (Throwable $exception) {
             report($exception);
         }
 
+        $savedSettings = $scheduleService->settings();
+
         return back()->with('success', $enabled
-            ? "Automatic full backups are scheduled daily at {$time} ({$scheduleService->settings()['timezone']})."
+            ? "Automatic full backups are scheduled daily at {$time} ({$savedSettings['timezone']})."
             : 'Automatic full backups are disabled. Manual backups remain available.');
     }
 

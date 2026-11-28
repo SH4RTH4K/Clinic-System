@@ -663,6 +663,20 @@ class DatabaseBackupService
 
     private function configuredBackupPath(): string
     {
+        try {
+            $scheduleService = app(SystemHealthBackupScheduleService::class);
+            $scheduleSettings = $scheduleService->settings();
+            if (! empty($scheduleSettings['backup_path'])) {
+                $savedPath = trim($scheduleSettings['backup_path']);
+                if (! $this->isAbsolutePath($savedPath)) {
+                    throw new RuntimeException('The configured backup path must be absolute.');
+                }
+
+                return rtrim($savedPath, '/\\');
+            }
+        } catch (Throwable) {
+        }
+
         $configuredPath = config('system_health.backup_path');
 
         if (is_string($configuredPath) && trim($configuredPath) !== '') {

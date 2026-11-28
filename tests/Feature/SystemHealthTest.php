@@ -218,6 +218,57 @@ class SystemHealthTest extends TestCase
         $this->assertCount(0, $backupEvents);
     }
 
+    public function test_manager_can_configure_custom_backup_storage_path_and_timezone(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+        $customDir = Storage::disk('local')->path('custom-clinic-backups');
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.backup_schedule'), [
+                'enabled' => '1',
+                'backup_time' => '03:45',
+                'timezone' => 'Asia/Dhaka',
+                'backup_path' => $customDir,
+            ])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('success');
+
+        $settings = app(SystemHealthBackupScheduleService::class)->settings();
+        $this->assertTrue($settings['enabled']);
+        $this->assertSame('03:45', $settings['time']);
+        $this->assertSame('Asia/Dhaka', $settings['timezone']);
+        $this->assertSame($customDir, $settings['backup_path']);
+
+        $this->withoutVite()
+            ->actingAs($user)
+            ->get(route('admin.system_health.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('health.scheduler.backup_time', '03:45')
+                ->where('health.scheduler.timezone', 'Asia/Dhaka')
+                ->where('health.scheduler.backup_path', $customDir)
+                ->where('health.scheduler.backup_path_source', 'saved'));
+
+        $backupPath = app(DatabaseBackupService::class)->create('media');
+        $this->assertSame(realpath($customDir), dirname($backupPath));
+    }
+
+    public function test_relative_backup_path_is_rejected(): void
+    {
+        $user = $this->userWithSystemHealthPermission();
+
+        $this->actingAs($user)
+            ->from(route('admin.system_health.index'))
+            ->post(route('admin.system_health.backup_schedule'), [
+                'enabled' => '1',
+                'backup_time' => '02:00',
+                'backup_path' => 'relative/path/backups',
+            ])
+            ->assertRedirect(route('admin.system_health.index'))
+            ->assertSessionHas('error');
+    }
+
     public function test_invalid_backup_time_is_rejected_without_changing_saved_schedule(): void
     {
         $scheduleService = app(SystemHealthBackupScheduleService::class);

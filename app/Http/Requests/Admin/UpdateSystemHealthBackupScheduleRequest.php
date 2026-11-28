@@ -21,6 +21,8 @@ class UpdateSystemHealthBackupScheduleRequest extends FormRequest
         return [
             'enabled' => ['sometimes', 'boolean'],
             'backup_time' => ['required', 'date_format:H:i'],
+            'timezone' => ['nullable', 'string', 'timezone'],
+            'backup_path' => ['nullable', 'string', 'max:500'],
         ];
     }
 }
