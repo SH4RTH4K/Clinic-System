@@ -81,6 +81,7 @@ class SystemHealthSnapshotService
                 'backup_time' => $backupSchedule['time'] ?? '02:00',
                 'timezone' => $backupSchedule['timezone'] ?? 'UTC',
                 'backup_path' => $backupSchedule['backup_path'] ?? null,
+                'suggested_cpanel_backup_path' => str_replace('\\', '/', dirname(base_path()).'/clinic-backups'),
                 'active_backup_path' => (function () use ($backupSchedule) {
                     try {
                         return $this->backupService->privateBackupDirectory();

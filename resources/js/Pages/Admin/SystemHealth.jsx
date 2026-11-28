@@ -416,6 +416,7 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
     const [backupSearch, setBackupSearch] = useState('');
     const [backupTypeFilter, setBackupTypeFilter] = useState('all');
     const [backupSort, setBackupSort] = useState('newest');
+    const [backupPathInput, setBackupPathInput] = useState(health.scheduler?.backup_path ?? '');
 
     useEffect(() => {
         if (flash?.download_backup && downloadedFileRef.current !== flash.download_backup) {
@@ -1226,11 +1227,26 @@ export default function SystemHealth({ health = {}, backups = [], backupCapabili
                                         id="backup-path"
                                         type="text"
                                         name="backup_path"
-                                        defaultValue={health.scheduler?.backup_path ?? ''}
-                                        placeholder="e.g. /home/account/clinic-backups (Leave blank for default private storage)"
+                                        value={backupPathInput}
+                                        onChange={(e) => setBackupPathInput(e.target.value)}
+                                        placeholder="e.g. /home/jbhomio/clinic-backups (Leave blank for default private storage)"
                                         className="mt-1 min-h-10 w-full font-mono text-xs rounded-lg border-slate-300 focus:border-cyan-600 focus:ring-cyan-600"
                                     />
                                     {errors.backup_path && <p className="mt-1 text-xs text-rose-700">{errors.backup_path}</p>}
+
+                                    {health.scheduler?.suggested_cpanel_backup_path && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setBackupPathInput(health.scheduler.suggested_cpanel_backup_path)}
+                                            className="mt-2 inline-flex items-center gap-1.5 text-xs text-cyan-700 hover:text-cyan-900 font-medium"
+                                        >
+                                            <span>💡 Suggested cPanel folder:</span>
+                                            <code className="bg-cyan-50 text-cyan-800 px-1.5 py-0.5 rounded border border-cyan-200 font-mono text-[11px] underline">
+                                                {health.scheduler.suggested_cpanel_backup_path}
+                                            </code>
+                                            <span className="text-[11px] font-semibold text-cyan-600">(Click to apply)</span>
+                                        </button>
+                                    )}
 
                                     <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
                                         <span className="font-semibold">Active storage directory:</span>
